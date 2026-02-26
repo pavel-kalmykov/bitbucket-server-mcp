@@ -7,6 +7,9 @@ MCP (Model Context Protocol) server for Bitbucket Server Pull Request management
 
 ## ✨ New Features
 
+- **🌿 Branch Management**: List branches with default branch detection using `list_branches`, delete merged branches with `delete_branch`
+- **📝 Commit History**: Browse commit history with branch and author filtering using `list_commits`
+- **✅ PR Approval**: Approve and unapprove pull requests with `approve_pull_request` and `unapprove_pull_request`
 - **🔍 Advanced Search**: Search code and files across repositories with project/repository filtering using the `search` tool
 - **📄 File Operations**: Read file contents and browse repository directories with `get_file_content` and `browse_repository`
 - **💬 Comment Management**: Extract and filter PR comments with `get_comments` tool
@@ -298,6 +301,83 @@ Parameters:
 - `branch`: Branch or commit hash (optional, defaults to main/master)
 - `limit`: Maximum items to return (default: 50)
 
+### `list_branches`
+
+**Explore repository branches**: List branches in a repository with optional filtering. Identifies the default branch and shows latest commit information for each branch.
+
+**Use cases:**
+- Find branch names for PR creation or checkout
+- Verify branch existence before operations
+- Identify the default branch
+- Search for branches by name
+
+Parameters:
+- `project`: Bitbucket project key (optional, uses BITBUCKET_DEFAULT_PROJECT if not provided)
+- `repository` (required): Repository slug
+- `filterText`: Filter branches by name (case-insensitive partial match)
+- `limit`: Number of branches to return (default: 25, max: 1000)
+- `start`: Start index for pagination (default: 0)
+
+### `list_commits`
+
+**Browse commit history**: List commits in a repository with optional branch and author filtering. Use this to review changes, track contributions, or understand the evolution of a branch.
+
+**Use cases:**
+- Review recent changes on a branch
+- Find commits by a specific author
+- Track commit history before merging
+- Understand branch evolution
+
+Parameters:
+- `project`: Bitbucket project key (optional, uses BITBUCKET_DEFAULT_PROJECT if not provided)
+- `repository` (required): Repository slug
+- `branch`: Branch name to list commits from (defaults to the repository's default branch)
+- `author`: Filter by author name or email (case-insensitive partial match, applied client-side)
+- `limit`: Number of commits to return (default: 25, max: 1000)
+- `start`: Start index for pagination (default: 0)
+
+### `delete_branch`
+
+**Clean up merged branches**: Delete a branch from a repository. Includes a safety check to prevent deletion of the default branch.
+
+**Use cases:**
+- Clean up feature branches after PR merge
+- Remove stale or abandoned branches
+- Repository maintenance and hygiene
+
+Parameters:
+- `project`: Bitbucket project key (optional, uses BITBUCKET_DEFAULT_PROJECT if not provided)
+- `repository` (required): Repository slug
+- `branch` (required): Branch name to delete
+
+### `approve_pull_request`
+
+**Approve code changes**: Approve a pull request as the current authenticated user. Records your approval on the PR, signaling that changes are ready to merge.
+
+**Use cases:**
+- Approve reviewed pull requests
+- Signal readiness for merge
+- Complete code review workflow
+
+Parameters:
+- `project`: Bitbucket project key (optional, uses BITBUCKET_DEFAULT_PROJECT if not provided)
+- `repository` (required): Repository slug
+- `prId` (required): Pull request ID to approve
+
+### `unapprove_pull_request`
+
+**Retract approval**: Remove your approval from a pull request. Use this when you need to retract a previous approval after discovering issues or when the PR has changed.
+
+**Use cases:**
+- Retract approval after discovering issues
+- Remove approval when PR scope changes
+- Correct accidental approvals
+
+Parameters:
+- `project`: Bitbucket project key (optional, uses BITBUCKET_DEFAULT_PROJECT if not provided)
+- `repository` (required): Repository slug
+- `prId` (required): Pull request ID to remove approval from
+
 ## Usage Examples
 
 ### Listing Projects and Repositories
@@ -363,6 +443,49 @@ get_activities --repository "my-repo" --prId 123
 merge_pull_request --repository "my-repo" --prId 123 --strategy "squash" --message "Feature: New functionality (#123)"
 ```
 
+### Branch Management
+
+```bash
+# List all branches in a repository
+list_branches --repository "my-repo"
+
+# Filter branches by name
+list_branches --project "MYPROJECT" --repository "my-repo" --filterText "feature"
+
+# Delete a merged branch
+delete_branch --repository "my-repo" --branch "feature/completed-work"
+```
+
+### Commit History
+
+```bash
+# List recent commits on the default branch
+list_commits --repository "my-repo"
+
+# List commits on a specific branch
+list_commits --repository "my-repo" --branch "develop" --limit 10
+
+# Filter commits by author
+list_commits --repository "my-repo" --author "john.doe"
+
+# Combine branch and author filters
+list_commits --project "MYPROJECT" --repository "my-repo" --branch "main" --author "jane"
+```
+
+### PR Approval Workflow
+
+```bash
+# Approve a pull request
+approve_pull_request --repository "my-repo" --prId 123
+
+# Remove your approval
+unapprove_pull_request --repository "my-repo" --prId 123
+
+# Full workflow: review diff, approve, merge
+get_diff --repository "my-repo" --prId 123
+approve_pull_request --repository "my-repo" --prId 123
+merge_pull_request --repository "my-repo" --prId 123 --strategy "squash"
+```
 
 ## Dependencies
 
@@ -421,7 +544,7 @@ The server supports a read-only mode for deployments where you want to prevent a
 
 **Available tools in read-only mode:**
 - `list_projects` - Browse and list projects
-- `list_repositories` - Browse and list repositories  
+- `list_repositories` - Browse and list repositories
 - `get_pull_request` - View pull request details
 - `get_diff` - View code changes and diffs
 - `get_reviews` - View review history and status
@@ -430,12 +553,17 @@ The server supports a read-only mode for deployments where you want to prevent a
 - `search` - Search code and files across repositories
 - `get_file_content` - Read file contents
 - `browse_repository` - Browse repository structure
+- `list_branches` - List repository branches
+- `list_commits` - Browse commit history
 
 **Disabled tools in read-only mode:**
 - `create_pull_request` - Creating new pull requests
 - `merge_pull_request` - Merging pull requests
-- `decline_pull_request` - Declining pull requests  
+- `decline_pull_request` - Declining pull requests
 - `add_comment` - Adding comments to pull requests
+- `delete_branch` - Deleting branches
+- `approve_pull_request` - Approving pull requests
+- `unapprove_pull_request` - Removing PR approvals
 
 **Behavior:**
 - When `BITBUCKET_READ_ONLY` is not set or set to any value other than `true`, all tools function normally (backward compatible)

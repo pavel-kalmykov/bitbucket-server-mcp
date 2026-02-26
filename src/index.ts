@@ -90,6 +90,19 @@ interface FileContentOptions extends ListOptions {
   branch?: string;
 }
 
+interface BranchListOptions extends ListOptions {
+  project?: string;
+  repository?: string;
+  filterText?: string;
+}
+
+interface CommitListOptions extends ListOptions {
+  project?: string;
+  repository?: string;
+  branch?: string;
+  author?: string;
+}
+
 class BitbucketServer {
   private readonly server: Server;
   private readonly api: AxiosInstance;
@@ -159,7 +172,7 @@ class BitbucketServer {
   }
 
   private setupToolHandlers() {
-    const readOnlyTools = ['list_projects', 'list_repositories', 'get_pull_request', 'get_diff', 'get_reviews', 'get_activities', 'get_comments', 'search', 'get_file_content', 'browse_repository'];
+    const readOnlyTools = ['list_projects', 'list_repositories', 'get_pull_request', 'get_diff', 'get_reviews', 'get_activities', 'get_comments', 'search', 'get_file_content', 'browse_repository', 'list_branches', 'list_commits'];
     
     this.server.setRequestHandler(ListToolsRequestSchema, async () => ({
       tools: [
@@ -390,6 +403,76 @@ class BitbucketServer {
             },
             required: ['repository']
           }
+        },
+        {
+          name: 'list_branches',
+          description: 'List branches in a Bitbucket repository. Shows branch names, latest commits, and identifies the default branch. Use this to explore available branches, find branch names for checkout or PR creation, or verify branch existence before operations.',
+          inputSchema: {
+            type: 'object',
+            properties: {
+              project: { type: 'string', description: 'Bitbucket project key. If omitted, uses BITBUCKET_DEFAULT_PROJECT environment variable.' },
+              repository: { type: 'string', description: 'Repository slug to list branches from.' },
+              filterText: { type: 'string', description: 'Filter branches by name (case-insensitive partial match).' },
+              limit: { type: 'number', description: 'Number of branches to return (default: 25, max: 1000).' },
+              start: { type: 'number', description: 'Start index for pagination (default: 0).' }
+            },
+            required: ['repository']
+          }
+        },
+        {
+          name: 'list_commits',
+          description: 'List commits in a Bitbucket repository, optionally filtered by branch and/or author. Use this to review commit history, find specific changes, track contributions, or understand the evolution of a branch.',
+          inputSchema: {
+            type: 'object',
+            properties: {
+              project: { type: 'string', description: 'Bitbucket project key. If omitted, uses BITBUCKET_DEFAULT_PROJECT environment variable.' },
+              repository: { type: 'string', description: 'Repository slug to list commits from.' },
+              branch: { type: 'string', description: 'Branch name to list commits from (e.g., "main", "develop", "feature/xyz"). If omitted, lists commits from the default branch.' },
+              author: { type: 'string', description: 'Filter commits by author name or email (case-insensitive partial match, applied client-side).' },
+              limit: { type: 'number', description: 'Number of commits to return (default: 25, max: 1000).' },
+              start: { type: 'number', description: 'Start index for pagination (default: 0).' }
+            },
+            required: ['repository']
+          }
+        },
+        {
+          name: 'delete_branch',
+          description: 'Delete a branch from a Bitbucket repository. Cannot delete the default branch. Use this for cleanup after merging pull requests or removing stale feature branches.',
+          inputSchema: {
+            type: 'object',
+            properties: {
+              project: { type: 'string', description: 'Bitbucket project key. If omitted, uses BITBUCKET_DEFAULT_PROJECT environment variable.' },
+              repository: { type: 'string', description: 'Repository slug containing the branch.' },
+              branch: { type: 'string', description: 'Branch name to delete (e.g., "feature/old-feature", "bugfix/resolved-issue").' }
+            },
+            required: ['repository', 'branch']
+          }
+        },
+        {
+          name: 'approve_pull_request',
+          description: 'Approve a pull request as the current user. Use this to signal that you have reviewed the changes and they are ready to be merged. The approval is recorded with your user identity.',
+          inputSchema: {
+            type: 'object',
+            properties: {
+              project: { type: 'string', description: 'Bitbucket project key. If omitted, uses BITBUCKET_DEFAULT_PROJECT environment variable.' },
+              repository: { type: 'string', description: 'Repository slug containing the pull request.' },
+              prId: { type: 'number', description: 'Pull request ID to approve.' }
+            },
+            required: ['repository', 'prId']
+          }
+        },
+        {
+          name: 'unapprove_pull_request',
+          description: 'Remove your approval from a pull request. Use this to retract a previous approval if you discover issues after approving or if the PR has changed since your review.',
+          inputSchema: {
+            type: 'object',
+            properties: {
+              project: { type: 'string', description: 'Bitbucket project key. If omitted, uses BITBUCKET_DEFAULT_PROJECT environment variable.' },
+              repository: { type: 'string', description: 'Repository slug containing the pull request.' },
+              prId: { type: 'number', description: 'Pull request ID to remove approval from.' }
+            },
+            required: ['repository', 'prId']
+          }
         }
       ].filter(tool => !this.config.readOnly || readOnlyTools.includes(tool.name))
     }));
@@ -574,6 +657,53 @@ class BitbucketServer {
               branch: args.branch as string,
               limit: args.limit as number
             });
+          }
+
+          case 'list_branches': {
+            return await this.listBranches({
+              project: getProject(args.project as string),
+              repository: args.repository as string,
+              filterText: args.filterText as string,
+              limit: args.limit as number,
+              start: args.start as number
+            });
+          }
+
+          case 'list_commits': {
+            return await this.listCommits({
+              project: getProject(args.project as string),
+              repository: args.repository as string,
+              branch: args.branch as string,
+              author: args.author as string,
+              limit: args.limit as number,
+              start: args.start as number
+            });
+          }
+
+          case 'delete_branch': {
+            return await this.deleteBranch(
+              getProject(args.project as string),
+              args.repository as string,
+              args.branch as string
+            );
+          }
+
+          case 'approve_pull_request': {
+            const approvePrParams: PullRequestParams = {
+              project: getProject(args.project as string),
+              repository: args.repository as string,
+              prId: args.prId as number
+            };
+            return await this.approvePullRequest(approvePrParams);
+          }
+
+          case 'unapprove_pull_request': {
+            const unapprovePrParams: PullRequestParams = {
+              project: getProject(args.project as string),
+              repository: args.repository as string,
+              prId: args.prId as number
+            };
+            return await this.unapprovePullRequest(unapprovePrParams);
           }
 
           default:
@@ -1220,6 +1350,200 @@ class BitbucketServer {
 
     return {
       content: [{ type: 'text', text: JSON.stringify(browseResults, null, 2) }]
+    };
+  }
+
+  private async listBranches(options: BranchListOptions) {
+    const { project, repository, filterText, limit = 25, start = 0 } = options;
+
+    if (!project || !repository) {
+      throw new McpError(
+        ErrorCode.InvalidParams,
+        'Project and repository are required'
+      );
+    }
+
+    const params: Record<string, string | number> = { limit, start };
+    if (filterText) {
+      params.filterText = filterText;
+    }
+
+    // Fetch branches and default branch in parallel
+    const [branchesResponse, defaultBranchResponse] = await Promise.all([
+      this.api.get(`/projects/${project}/repos/${repository}/branches`, { params }),
+      this.api.get(`/projects/${project}/repos/${repository}/default-branch`).catch(() => null)
+    ]);
+
+    const defaultBranchId = defaultBranchResponse?.data?.id;
+    const branches = branchesResponse.data.values || [];
+
+    const summary = {
+      project,
+      repository,
+      defaultBranch: defaultBranchResponse?.data?.displayId || null,
+      total: branchesResponse.data.size || branches.length,
+      showing: branches.length,
+      isLastPage: branchesResponse.data.isLastPage,
+      nextPageStart: branchesResponse.data.nextPageStart,
+      branches: branches.map((branch: { displayId: string; id: string; latestCommit: string }) => ({
+        name: branch.displayId,
+        id: branch.id,
+        latestCommit: branch.latestCommit,
+        isDefault: branch.id === defaultBranchId
+      }))
+    };
+
+    return {
+      content: [{ type: 'text', text: JSON.stringify(summary, null, 2) }]
+    };
+  }
+
+  private async listCommits(options: CommitListOptions) {
+    const { project, repository, branch, author, limit = 25, start = 0 } = options;
+
+    if (!project || !repository) {
+      throw new McpError(
+        ErrorCode.InvalidParams,
+        'Project and repository are required'
+      );
+    }
+
+    const params: Record<string, string | number> = { limit, start };
+    if (branch) {
+      params.until = `refs/heads/${branch}`;
+    }
+
+    const response = await this.api.get(
+      `/projects/${project}/repos/${repository}/commits`,
+      { params }
+    );
+
+    let commits = response.data.values || [];
+
+    // Client-side author filter (API doesn't support server-side author filtering)
+    if (author) {
+      const authorLower = author.toLowerCase();
+      commits = commits.filter((commit: { author: { name: string; emailAddress?: string } }) => {
+        const nameMatch = commit.author?.name?.toLowerCase().includes(authorLower);
+        const emailMatch = commit.author?.emailAddress?.toLowerCase().includes(authorLower);
+        return nameMatch || emailMatch;
+      });
+    }
+
+    const summary = {
+      project,
+      repository,
+      branch: branch || 'default',
+      authorFilter: author || null,
+      total: response.data.size || response.data.values?.length || 0,
+      showing: commits.length,
+      isLastPage: response.data.isLastPage,
+      nextPageStart: response.data.nextPageStart,
+      commits: commits.map((commit: { id: string; displayId: string; message: string; author: { name: string; emailAddress?: string }; authorTimestamp: number; parents?: { id: string }[] }) => ({
+        id: commit.id,
+        displayId: commit.displayId,
+        message: commit.message,
+        author: commit.author,
+        authorTimestamp: commit.authorTimestamp,
+        parents: commit.parents?.map((p: { id: string }) => p.id) || []
+      }))
+    };
+
+    return {
+      content: [{ type: 'text', text: JSON.stringify(summary, null, 2) }]
+    };
+  }
+
+  private async deleteBranch(project: string, repository: string, branch: string) {
+    if (!project || !repository || !branch) {
+      throw new McpError(
+        ErrorCode.InvalidParams,
+        'Project, repository, and branch are required'
+      );
+    }
+
+    // Pre-check: prevent deletion of default branch
+    try {
+      const defaultBranchResponse = await this.api.get(
+        `/projects/${project}/repos/${repository}/default-branch`
+      );
+      if (defaultBranchResponse.data?.displayId === branch) {
+        throw new McpError(
+          ErrorCode.InvalidParams,
+          `Cannot delete the default branch "${branch}". Change the default branch first.`
+        );
+      }
+    } catch (error) {
+      // Re-throw McpError (our own validation)
+      if (error instanceof McpError) throw error;
+      // Ignore other errors (e.g., 404 on empty repos) and proceed
+    }
+
+    // branch-utils API uses a different base path than /rest/api/1.0
+    const url = `${this.config.baseUrl}/rest/branch-utils/1.0/projects/${project}/repos/${repository}/branches`;
+
+    await axios.delete(url, {
+      data: { name: `refs/heads/${branch}` },
+      headers: this.config.token
+        ? {
+            Authorization: `Bearer ${this.config.token}`,
+            'Content-Type': 'application/json'
+          }
+        : { 'Content-Type': 'application/json' },
+      auth: this.config.username && this.config.password
+        ? { username: this.config.username, password: this.config.password }
+        : undefined,
+    });
+
+    return {
+      content: [{
+        type: 'text',
+        text: JSON.stringify({
+          success: true,
+          message: `Branch "${branch}" deleted from ${project}/${repository}`
+        }, null, 2)
+      }]
+    };
+  }
+
+  private async approvePullRequest(params: PullRequestParams) {
+    const { project, repository, prId } = params;
+
+    if (!project || !repository || !prId) {
+      throw new McpError(
+        ErrorCode.InvalidParams,
+        'Project, repository, and prId are required'
+      );
+    }
+
+    const response = await this.api.post(
+      `/projects/${project}/repos/${repository}/pull-requests/${prId}/approve`,
+      {},
+      { headers: { 'Content-Type': 'application/json' } }
+    );
+
+    return {
+      content: [{ type: 'text', text: JSON.stringify(response.data, null, 2) }]
+    };
+  }
+
+  private async unapprovePullRequest(params: PullRequestParams) {
+    const { project, repository, prId } = params;
+
+    if (!project || !repository || !prId) {
+      throw new McpError(
+        ErrorCode.InvalidParams,
+        'Project, repository, and prId are required'
+      );
+    }
+
+    const response = await this.api.delete(
+      `/projects/${project}/repos/${repository}/pull-requests/${prId}/approve`,
+      { headers: { 'Content-Type': 'application/json' } }
+    );
+
+    return {
+      content: [{ type: 'text', text: JSON.stringify(response.data, null, 2) }]
     };
   }
 
