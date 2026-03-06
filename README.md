@@ -7,6 +7,7 @@ MCP (Model Context Protocol) server for Bitbucket Server Pull Request management
 
 ## ✨ New Features
 
+- **🔧 Custom HTTP Headers**: Add custom headers to all requests via `BITBUCKET_CUSTOM_HEADERS` environment variable (useful for Zero Trust tokens or proxies)
 - **📋 PR Discovery**: List and filter pull requests by state, author, or direction using `list_pull_requests` (fixes #14)
 - **🌿 Branch Management**: List branches with default branch detection using `list_branches`, delete merged branches with `delete_branch`
 - **📝 Commit History**: Browse commit history with branch and author filtering using `list_commits`
@@ -566,6 +567,7 @@ The server requires configuration in the VSCode MCP settings file. Here's a samp
 - `BITBUCKET_DIFF_MAX_LINES_PER_FILE` (optional): Default maximum lines to show per file in diffs. Set to prevent large files from overwhelming output. Can be overridden by the `maxLinesPerFile` parameter in `get_diff` calls.
 - `BITBUCKET_LOG_PATH` (optional): Custom path for the log file (default: `~/.bitbucket-server-mcp/bitbucket.log`)
 - `BITBUCKET_READ_ONLY` (optional): Set to `true` to enable read-only mode
+- `BITBUCKET_CUSTOM_HEADERS` (optional): Comma-separated list of custom HTTP headers to add to all requests (format: `Header-Name=value,Another-Header=value2`). Useful for Zero Trust tokens or proxy headers
 
 **Note**: With the new optional project support, you can now:
 
@@ -624,6 +626,33 @@ The log directory is created automatically if it doesn't exist.
 {
   "env": {
     "BITBUCKET_LOG_PATH": "/var/log/bitbucket-mcp/server.log"
+  }
+}
+```
+
+### Custom HTTP Headers
+
+You can add custom HTTP headers to all API requests using the `BITBUCKET_CUSTOM_HEADERS` environment variable. This is useful for Zero Trust security tokens, proxy headers, or any other headers required by your infrastructure.
+
+**Format**: Comma-separated key-value pairs where values can contain equals signs:
+```
+Header-Name=value,Another-Header=value2
+```
+
+**Single header example**:
+```json
+{
+  "env": {
+    "BITBUCKET_CUSTOM_HEADERS": "X-Zero-Trust-Token=eyJhbGciOiJSUzI1NiIsIng1dCI6IjdkRC1nZWNOZ1gxSk4..."
+  }
+}
+```
+
+**Multiple headers example**:
+```json
+{
+  "env": {
+    "BITBUCKET_CUSTOM_HEADERS": "X-Custom-Header=value1,X-Proxy-Auth=token123"
   }
 }
 ```
