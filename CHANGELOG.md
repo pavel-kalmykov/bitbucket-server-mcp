@@ -1,3 +1,10 @@
+## [0.1.1](https://github.com/pavel-kalmykov/bitbucket-server-mcp-server/compare/v0.1.0...v0.1.1) (2026-03-12)
+
+
+### Bug Fixes
+
+* disable PR comments in semantic-release to avoid upstream 404s ([14ff892](https://github.com/pavel-kalmykov/bitbucket-server-mcp-server/commit/14ff892a6586ac80c8def96a90c15bad66b73d4d))
+
 # [0.1.0](https://github.com/pavel-kalmykov/bitbucket-server-mcp-server/compare/v0.0.0...v0.1.0) (2026-03-12)
 
 
