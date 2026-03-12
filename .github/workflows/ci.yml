@@ -14,13 +14,13 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        node-version: [18.x, 20.x, 22.x]
+        node-version: [18.x, 20.x, 22.x, 24.x]
     permissions:
       contents: read
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v6
         with:
           node-version: ${{ matrix.node-version }}
           cache: npm
@@ -28,7 +28,7 @@ jobs:
       - run: npm ci
 
       - name: Lint
-        if: matrix.node-version == '18.x'
+        if: matrix.node-version == '24.x'
         run: npm run lint
 
       - run: npm test
@@ -36,10 +36,10 @@ jobs:
       - run: npm run build
 
       - name: Upload build artifact
-        if: matrix.node-version == '18.x'
-        uses: actions/upload-artifact@v4
+        if: matrix.node-version == '24.x'
+        uses: actions/upload-artifact@v7
         with:
-          name: build-node-18
+          name: build-node-24
           path: build/
 
   release:
@@ -53,22 +53,22 @@ jobs:
       packages: write
       pull-requests: write
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
         with:
           fetch-depth: 0
           persist-credentials: false
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v6
         with:
-          node-version: 18.x
+          node-version: 24.x
           cache: npm
           registry-url: https://npm.pkg.github.com
 
       - run: npm ci
 
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v8
         with:
-          name: build-node-18
+          name: build-node-24
           path: build/
 
       - name: Release
@@ -86,16 +86,16 @@ jobs:
       packages: write
       pull-requests: write
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v6
         with:
-          node-version: 18.x
+          node-version: 24.x
           registry-url: https://npm.pkg.github.com
 
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v8
         with:
-          name: build-node-18
+          name: build-node-24
           path: build/
 
       - name: Publish preview
@@ -154,11 +154,11 @@ jobs:
       packages: write
       pull-requests: write
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v6
         with:
-          node-version: 18.x
+          node-version: 24.x
           registry-url: https://npm.pkg.github.com
 
       - name: Remove preview dist-tag and comment
