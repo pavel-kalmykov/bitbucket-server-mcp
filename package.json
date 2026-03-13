@@ -1,5 +1,5 @@
 {
-  "name": "@pavel-kalmykov/bitbucket-server-mcp-server",
+  "name": "@pavel.kalmykov/bitbucket-server-mcp-server",
   "version": "0.1.1",
   "description": "MCP Server for Bitbucket Server PR management",
   "type": "module",
