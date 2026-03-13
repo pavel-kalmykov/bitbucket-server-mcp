@@ -50,8 +50,8 @@ startCommand:
     # A function that produces the CLI command to start the MCP on stdio.
     |-
     (config) => ({
-      command: 'node',
-      args: ['build/index.js'],
+      command: 'npx',
+      args: ['-y', '@pavel-kalmykov/bitbucket-server-mcp-server'],
       env: {
         BITBUCKET_URL: config.bitbucketUrl,
         BITBUCKET_TOKEN: config.bitbucketToken,
