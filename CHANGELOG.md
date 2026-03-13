@@ -1,3 +1,10 @@
+## [0.1.2](https://github.com/pavel-kalmykov/bitbucket-server-mcp-server/compare/v0.1.1...v0.1.2) (2026-03-13)
+
+
+### Bug Fixes
+
+* use npx to start server in Smithery commandFunction ([becd917](https://github.com/pavel-kalmykov/bitbucket-server-mcp-server/commit/becd9173a258d4d32949272a9fdee654ae3be3a5))
+
 ## [0.1.1](https://github.com/pavel-kalmykov/bitbucket-server-mcp-server/compare/v0.1.0...v0.1.1) (2026-03-12)
 
 
