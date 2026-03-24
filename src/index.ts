@@ -66,6 +66,7 @@ interface MergeOptions {
 interface CommentOptions {
   text: string;
   parentId?: number;
+  state?: 'OPEN' | 'PENDING';
 }
 
 interface InlineCommentOptions extends CommentOptions {
@@ -80,6 +81,24 @@ interface PullRequestInput extends RepositoryParams {
   sourceBranch: string;
   targetBranch: string;
   reviewers?: string[];
+  sourceProject?: string;
+  sourceRepository?: string;
+}
+
+interface EditCommentOptions {
+  commentId: number;
+  text: string;
+  version: number;
+}
+
+interface DeleteCommentOptions {
+  commentId: number;
+  version: number;
+}
+
+interface PublishReviewOptions {
+  commentText?: string;
+  participantStatus?: 'APPROVED' | 'NEEDS_WORK' | null;
 }
 
 interface ListOptions {
@@ -220,7 +239,7 @@ export class BitbucketServer {
   }
 
   private setupToolHandlers() {
-    const readOnlyTools = ['list_projects', 'list_repositories', 'get_pull_request', 'list_pull_requests', 'get_diff', 'get_reviews', 'get_activities', 'get_comments', 'search', 'get_file_content', 'browse_repository', 'list_branches', 'list_commits'];
+    const readOnlyTools = ['list_projects', 'list_repositories', 'get_pull_request', 'list_pull_requests', 'get_diff', 'get_reviews', 'get_activities', 'get_comments', 'search', 'get_file_content', 'browse_repository', 'list_branches', 'list_commits', 'get_code_insights'];
     
     this.server.setRequestHandler(ListToolsRequestSchema, async () => ({
       tools: [
@@ -263,7 +282,9 @@ export class BitbucketServer {
                 type: 'array',
                 items: { type: 'string' },
                 description: 'Array of Bitbucket usernames to assign as reviewers for this pull request.'
-              }
+              },
+              sourceProject: { type: 'string', description: 'Project key of the source repository when creating a cross-repo PR from a fork. If omitted, defaults to the same project as the target.' },
+              sourceRepository: { type: 'string', description: 'Slug of the source repository when creating a cross-repo PR from a fork. If omitted, defaults to the same repository as the target.' }
             },
             required: ['repository', 'title', 'sourceBranch', 'targetBranch']
           }
@@ -324,7 +345,8 @@ export class BitbucketServer {
               repository: { type: 'string', description: 'Repository slug containing the pull request.' },
               prId: { type: 'number', description: 'Pull request ID to comment on.' },
               text: { type: 'string', description: 'Comment text content. Supports Markdown formatting for code blocks, links, and emphasis.' },
-              parentId: { type: 'number', description: 'ID of parent comment to reply to. Omit for top-level comments.' }
+              parentId: { type: 'number', description: 'ID of parent comment to reply to. Omit for top-level comments.' },
+              state: { type: 'string', enum: ['OPEN', 'PENDING'], description: 'Comment state. Use PENDING to create a draft comment visible only to you until you publish the review. Defaults to OPEN.' }
             },
             required: ['repository', 'prId', 'text']
           }
@@ -342,7 +364,8 @@ export class BitbucketServer {
               parentId: { type: 'number', description: 'ID of parent comment to reply to. Omit for top-level comments.' },
               filePath: { type: 'string', description: 'Path to the file in the repository where the comment should be added (e.g., "src/main.py", "README.md").' },
               line: { type: 'number', description: 'Line number in the file to attach the comment to (1-based).' },
-              lineType: { type: 'string', enum: ['ADDED', 'REMOVED'], description: 'Type of change the comment is associated with: ADDED for additions, REMOVED for deletions.' }
+              lineType: { type: 'string', enum: ['ADDED', 'REMOVED'], description: 'Type of change the comment is associated with: ADDED for additions, REMOVED for deletions.' },
+              state: { type: 'string', enum: ['OPEN', 'PENDING'], description: 'Comment state. Use PENDING to create a draft comment visible only to you until you publish the review. Defaults to OPEN.' }
             },
             required: ['repository', 'prId', 'text', 'filePath', 'line', 'lineType']
           }
@@ -546,6 +569,65 @@ export class BitbucketServer {
             },
             required: ['repository', 'prId']
           }
+        },
+        {
+          name: 'edit_comment',
+          description: 'Edit an existing comment on a pull request. Use this to fix typos, update information, or reformat comments. Requires the comment version for optimistic locking.',
+          inputSchema: {
+            type: 'object',
+            properties: {
+              project: { type: 'string', description: 'Bitbucket project key. If omitted, uses BITBUCKET_DEFAULT_PROJECT environment variable.' },
+              repository: { type: 'string', description: 'Repository slug containing the pull request.' },
+              prId: { type: 'number', description: 'Pull request ID the comment belongs to.' },
+              commentId: { type: 'number', description: 'ID of the comment to edit.' },
+              text: { type: 'string', description: 'New text content for the comment. Supports Markdown.' },
+              version: { type: 'number', description: 'Current version of the comment (for optimistic locking). Obtain from get_comments or add_comment response.' }
+            },
+            required: ['repository', 'prId', 'commentId', 'text', 'version']
+          }
+        },
+        {
+          name: 'delete_comment',
+          description: 'Delete a comment from a pull request. Requires the comment version for optimistic locking.',
+          inputSchema: {
+            type: 'object',
+            properties: {
+              project: { type: 'string', description: 'Bitbucket project key. If omitted, uses BITBUCKET_DEFAULT_PROJECT environment variable.' },
+              repository: { type: 'string', description: 'Repository slug containing the pull request.' },
+              prId: { type: 'number', description: 'Pull request ID the comment belongs to.' },
+              commentId: { type: 'number', description: 'ID of the comment to delete.' },
+              version: { type: 'number', description: 'Current version of the comment (for optimistic locking). Obtain from get_comments or add_comment response.' }
+            },
+            required: ['repository', 'prId', 'commentId', 'version']
+          }
+        },
+        {
+          name: 'publish_review',
+          description: 'Publish all pending (draft) review comments on a pull request at once. Optionally set your review status to APPROVED or NEEDS_WORK, and add an overview comment. This is the batch operation that transitions all PENDING comments to published.',
+          inputSchema: {
+            type: 'object',
+            properties: {
+              project: { type: 'string', description: 'Bitbucket project key. If omitted, uses BITBUCKET_DEFAULT_PROJECT environment variable.' },
+              repository: { type: 'string', description: 'Repository slug containing the pull request.' },
+              prId: { type: 'number', description: 'Pull request ID to publish the review on.' },
+              commentText: { type: 'string', description: 'Optional overview comment to include with the review.' },
+              participantStatus: { type: 'string', enum: ['APPROVED', 'NEEDS_WORK'], description: 'Optional review status. APPROVED marks the PR as ready to merge. NEEDS_WORK indicates changes are required. Omit for general feedback without changing status.' }
+            },
+            required: ['repository', 'prId']
+          }
+        },
+        {
+          name: 'get_code_insights',
+          description: 'Retrieve Code Insights reports (SonarQube, security scans, etc.) and their annotations for a pull request. Use this to check quality gates, code coverage, security findings, and other CI/CD analysis results.',
+          inputSchema: {
+            type: 'object',
+            properties: {
+              project: { type: 'string', description: 'Bitbucket project key. If omitted, uses BITBUCKET_DEFAULT_PROJECT environment variable.' },
+              repository: { type: 'string', description: 'Repository slug containing the pull request.' },
+              prId: { type: 'number', description: 'Pull request ID to get insights for.' }
+            },
+            required: ['repository', 'prId']
+          }
         }
       ].filter(tool => !this.config.readOnly || readOnlyTools.includes(tool.name))
     }));
@@ -598,8 +680,12 @@ export class BitbucketServer {
                 'Invalid pull request input parameters'
               );
             }
-            // Ensure project is set
-            const createArgs = { ...args, project: getProject(args.project) };
+            const createArgs = {
+              ...args,
+              project: getProject(args.project),
+              sourceProject: args.sourceProject as string | undefined,
+              sourceRepository: args.sourceRepository as string | undefined
+            };
             return await this.createPullRequest(createArgs);
           }
 
@@ -641,11 +727,12 @@ export class BitbucketServer {
             };
             return await this.addComment(commentPrParams, {
               text: args.text as string,
-              parentId: args.parentId as number
+              parentId: args.parentId as number,
+              state: args.state as 'OPEN' | 'PENDING' | undefined
             });
           }
 
-           case 'add_comment_inline': {
+          case 'add_comment_inline': {
             const commentPrParams: PullRequestParams = {
               project: getProject(args.project as string),
               repository: args.repository as string,
@@ -656,7 +743,8 @@ export class BitbucketServer {
               parentId: args.parentId as number,
               filePath: args.filePath as string,
               line: args.line as number,
-              lineType: args.lineType as 'ADDED' | 'REMOVED'
+              lineType: args.lineType as 'ADDED' | 'REMOVED',
+              state: args.state as 'OPEN' | 'PENDING' | undefined
             });
           }
 
@@ -791,6 +879,52 @@ export class BitbucketServer {
             return await this.unapprovePullRequest(unapprovePrParams);
           }
 
+          case 'edit_comment': {
+            const editPrParams: PullRequestParams = {
+              project: getProject(args.project as string),
+              repository: args.repository as string,
+              prId: args.prId as number
+            };
+            return await this.editComment(editPrParams, {
+              commentId: args.commentId as number,
+              text: args.text as string,
+              version: args.version as number
+            });
+          }
+
+          case 'delete_comment': {
+            const deletePrParams: PullRequestParams = {
+              project: getProject(args.project as string),
+              repository: args.repository as string,
+              prId: args.prId as number
+            };
+            return await this.deleteComment(deletePrParams, {
+              commentId: args.commentId as number,
+              version: args.version as number
+            });
+          }
+
+          case 'publish_review': {
+            const reviewPrParams: PullRequestParams = {
+              project: getProject(args.project as string),
+              repository: args.repository as string,
+              prId: args.prId as number
+            };
+            return await this.publishReview(reviewPrParams, {
+              commentText: args.commentText as string | undefined,
+              participantStatus: args.participantStatus as 'APPROVED' | 'NEEDS_WORK' | undefined
+            });
+          }
+
+          case 'get_code_insights': {
+            const insightsPrParams: PullRequestParams = {
+              project: getProject(args.project as string),
+              repository: args.repository as string,
+              prId: args.prId as number
+            };
+            return await this.getCodeInsights(insightsPrParams);
+          }
+
           default:
             throw new McpError(
               ErrorCode.MethodNotFound,
@@ -887,6 +1021,9 @@ export class BitbucketServer {
   }
 
   private async createPullRequest(input: PullRequestInput) {
+    const sourceProject = input.sourceProject ?? input.project;
+    const sourceRepo = input.sourceRepository ?? input.repository;
+
     const response = await this.api.post(
       `/projects/${input.project}/repos/${input.repository}/pull-requests`,
       {
@@ -895,8 +1032,8 @@ export class BitbucketServer {
         fromRef: {
           id: `refs/heads/${input.sourceBranch}`,
           repository: {
-            slug: input.repository,
-            project: { key: input.project }
+            slug: sourceRepo,
+            project: { key: sourceProject }
           }
         },
         toRef: {
@@ -997,21 +1134,22 @@ export class BitbucketServer {
 
   private async addComment(params: PullRequestParams, options: CommentOptions) {
     const { project, repository, prId } = params;
-    
+
     if (!project || !repository || !prId) {
       throw new McpError(
         ErrorCode.InvalidParams,
         'Project, repository, and prId are required'
       );
     }
-    
-    const { text, parentId } = options;
-    
+
+    const { text, parentId, state } = options;
+
     const response = await this.api.post(
       `/projects/${project}/repos/${repository}/pull-requests/${prId}/comments`,
       {
         text,
-        parent: parentId ? { id: parentId } : undefined
+        parent: parentId ? { id: parentId } : undefined,
+        ...(state && { state })
       }
     );
 
@@ -1022,34 +1160,139 @@ export class BitbucketServer {
 
   private async addCommentInline(params: PullRequestParams, options: InlineCommentOptions) {
     const { project, repository, prId } = params;
-    
+
     if (!project || !repository || !prId || !options.filePath || !options.line || !options.lineType) {
       throw new McpError(
         ErrorCode.InvalidParams,
         'Project, repository, prId, filePath, line, and lineType are required'
       );
     }
-    
-    const { text, parentId } = options;
-    
+
+    const { text, parentId, state } = options;
+
     const response = await this.api.post(
       `/projects/${project}/repos/${repository}/pull-requests/${prId}/comments`,
       {
         text,
         parent: parentId ? { id: parentId } : undefined,
+        ...(state && { state }),
         anchor: {
           path: options.filePath,
           lineType: options.lineType,
           line: options.line,
           diffType: 'EFFECTIVE',
-          fileType: 'TO',}
+          fileType: 'TO',
+        }
       }
     );
 
-    logger.error(response);
+    return {
+      content: [{ type: 'text', text: JSON.stringify(response.data, null, 2) }]
+    };
+  }
+
+  private async editComment(params: PullRequestParams, options: EditCommentOptions) {
+    const { project, repository, prId } = params;
+
+    if (!project || !repository || !prId) {
+      throw new McpError(
+        ErrorCode.InvalidParams,
+        'Project, repository, and prId are required'
+      );
+    }
+
+    const response = await this.api.put(
+      `/projects/${project}/repos/${repository}/pull-requests/${prId}/comments/${options.commentId}`,
+      {
+        text: options.text,
+        version: options.version
+      }
+    );
 
     return {
       content: [{ type: 'text', text: JSON.stringify(response.data, null, 2) }]
+    };
+  }
+
+  private async deleteComment(params: PullRequestParams, options: DeleteCommentOptions) {
+    const { project, repository, prId } = params;
+
+    if (!project || !repository || !prId) {
+      throw new McpError(
+        ErrorCode.InvalidParams,
+        'Project, repository, and prId are required'
+      );
+    }
+
+    await this.api.delete(
+      `/projects/${project}/repos/${repository}/pull-requests/${prId}/comments/${options.commentId}`,
+      { params: { version: options.version } }
+    );
+
+    return {
+      content: [{ type: 'text', text: JSON.stringify({ deleted: true, commentId: options.commentId }, null, 2) }]
+    };
+  }
+
+  private async publishReview(params: PullRequestParams, options: PublishReviewOptions) {
+    const { project, repository, prId } = params;
+
+    if (!project || !repository || !prId) {
+      throw new McpError(
+        ErrorCode.InvalidParams,
+        'Project, repository, and prId are required'
+      );
+    }
+
+    const response = await this.api.put(
+      `/projects/${project}/repos/${repository}/pull-requests/${prId}/review`,
+      {
+        commentText: options.commentText ?? null,
+        ...(options.participantStatus && { participantStatus: options.participantStatus })
+      }
+    );
+
+    return {
+      content: [{ type: 'text', text: JSON.stringify(response.data ?? { published: true }, null, 2) }]
+    };
+  }
+
+  private async getCodeInsights(params: PullRequestParams) {
+    const { project, repository, prId } = params;
+
+    if (!project || !repository || !prId) {
+      throw new McpError(
+        ErrorCode.InvalidParams,
+        'Project, repository, and prId are required'
+      );
+    }
+
+    const reportsResponse = await this.api.get(
+      `/projects/${project}/repos/${repository}/pull-requests/${prId}/reports`,
+      { baseURL: `${this.config.baseUrl}/rest/insights/latest` }
+    );
+
+    const reports = reportsResponse.data.values ?? [];
+    const result: { reports: unknown[]; annotations: Record<string, unknown[]> } = {
+      reports,
+      annotations: {}
+    };
+
+    for (const report of reports) {
+      const reportKey = (report as { key: string }).key;
+      try {
+        const annotationsResponse = await this.api.get(
+          `/projects/${project}/repos/${repository}/pull-requests/${prId}/reports/${reportKey}/annotations`,
+          { baseURL: `${this.config.baseUrl}/rest/insights/latest` }
+        );
+        result.annotations[reportKey] = annotationsResponse.data.values ?? [];
+      } catch {
+        result.annotations[reportKey] = [];
+      }
+    }
+
+    return {
+      content: [{ type: 'text', text: JSON.stringify(result, null, 2) }]
     };
   }
 

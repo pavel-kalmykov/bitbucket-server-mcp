@@ -102,6 +102,8 @@ Parameters:
 - `sourceBranch` (required): Source branch containing changes
 - `targetBranch` (required): Target branch for merging
 - `reviewers`: Array of reviewer usernames
+- `sourceProject`: Project key of the source repository (for cross-repo PRs from forks)
+- `sourceRepository`: Slug of the source repository (for cross-repo PRs from forks)
 
 ### `get_pull_request`
 
@@ -179,6 +181,7 @@ Parameters:
 - `prId` (required): Pull request ID
 - `text` (required): Comment content (supports Markdown)
 - `parentId`: Parent comment ID for threaded replies
+- `state`: Comment state: `OPEN` (default, published immediately) or `PENDING` (draft, visible only to you until review is published)
 
 ### `get_diff`
 
@@ -432,6 +435,77 @@ Parameters:
 - `repository` (required): Repository slug
 - `prId` (required): Pull request ID to remove approval from
 
+### `edit_comment`
+
+**Edit an existing comment**: Modify the text of a comment on a pull request. Works with both published and pending (draft) comments. Requires the comment version for optimistic locking.
+
+**Use cases:**
+
+- Fix typos or formatting in review comments
+- Update information in an existing comment
+- Reformat comments (e.g., to Conventional Comments style)
+
+Parameters:
+
+- `project`: Bitbucket project key (optional, uses BITBUCKET_DEFAULT_PROJECT if not provided)
+- `repository` (required): Repository slug
+- `prId` (required): Pull request ID the comment belongs to
+- `commentId` (required): ID of the comment to edit
+- `text` (required): New text content (supports Markdown)
+- `version` (required): Current version of the comment for optimistic locking (from `get_comments` or `add_comment` response)
+
+### `delete_comment`
+
+**Delete a comment**: Remove a comment from a pull request. Requires the comment version for optimistic locking.
+
+**Use cases:**
+
+- Remove incorrectly posted comments
+- Clean up draft comments that are no longer needed
+
+Parameters:
+
+- `project`: Bitbucket project key (optional, uses BITBUCKET_DEFAULT_PROJECT if not provided)
+- `repository` (required): Repository slug
+- `prId` (required): Pull request ID the comment belongs to
+- `commentId` (required): ID of the comment to delete
+- `version` (required): Current version of the comment for optimistic locking
+
+### `publish_review`
+
+**Publish a batch review**: Publish all pending (draft) comments at once, optionally setting your review status and adding an overview comment. This is the equivalent of clicking "Finish review" in the Bitbucket UI.
+
+**Use cases:**
+
+- Publish all draft review comments in a single action
+- Approve a PR along with review comments
+- Request changes with a "needs work" status and feedback
+
+Parameters:
+
+- `project`: Bitbucket project key (optional, uses BITBUCKET_DEFAULT_PROJECT if not provided)
+- `repository` (required): Repository slug
+- `prId` (required): Pull request ID
+- `commentText`: Optional overview comment for the review
+- `participantStatus`: Optional review status: `APPROVED` (ready to merge) or `NEEDS_WORK` (changes required). Omit for general feedback.
+
+### `get_code_insights`
+
+**Retrieve CI/CD analysis results**: Fetch Code Insights reports (SonarQube, security scans, etc.) and their annotations for a pull request.
+
+**Use cases:**
+
+- Check SonarQube quality gate status
+- Review security scan findings
+- Inspect code coverage metrics
+- See CI/CD analysis annotations per file
+
+Parameters:
+
+- `project`: Bitbucket project key (optional, uses BITBUCKET_DEFAULT_PROJECT if not provided)
+- `repository` (required): Repository slug
+- `prId` (required): Pull request ID
+
 ## Usage Examples
 
 ### Listing Projects and Repositories
@@ -629,6 +703,7 @@ The server supports a read-only mode for deployments where you want to prevent a
 - `browse_repository` - Browse repository structure
 - `list_branches` - List repository branches
 - `list_commits` - Browse commit history
+- `get_code_insights` - Retrieve CI/CD analysis reports and annotations
 
 **Disabled tools in read-only mode:**
 
@@ -636,6 +711,10 @@ The server supports a read-only mode for deployments where you want to prevent a
 - `merge_pull_request` - Merging pull requests
 - `decline_pull_request` - Declining pull requests
 - `add_comment` - Adding comments to pull requests
+- `add_comment_inline` - Adding inline comments to pull requests
+- `edit_comment` - Editing existing comments
+- `delete_comment` - Deleting comments
+- `publish_review` - Publishing batch reviews
 - `delete_branch` - Deleting branches
 - `approve_pull_request` - Approving pull requests
 - `unapprove_pull_request` - Removing PR approvals
