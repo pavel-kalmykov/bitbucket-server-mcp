@@ -1,0 +1,65 @@
+import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
+import { parseConfig } from "./config.js";
+import { createApiClients } from "./client.js";
+import { ApiCache } from "./utils/cache.js";
+import { registerRepositoryTools } from "./tools/repositories.js";
+import { registerBranchTools } from "./tools/branches.js";
+import { registerPullRequestTools } from "./tools/pull-requests.js";
+import { registerCommentTools } from "./tools/comments.js";
+import { registerSearchTools } from "./tools/search.js";
+import { registerInsightTools } from "./tools/insights.js";
+import { registerResources } from "./resources/index.js";
+import { registerPrompts } from "./prompts/index.js";
+import { initLogging } from "./utils/logging.js";
+import type { BitbucketServerOptions } from "./types.js";
+import { createRequire } from "module";
+
+const require = createRequire(import.meta.url);
+const { version } = require("../package.json");
+
+const SERVER_INSTRUCTIONS = `This server provides tools for Bitbucket Server (on-premise).
+Most tools require 'project' and 'repository' params. If not provided, 'project' defaults to BITBUCKET_DEFAULT_PROJECT.
+
+Workflow tips:
+- Use list_projects and list_repositories to discover available targets.
+- For code review: create draft comments with manage_comment (state: PENDING), then publish all at once with submit_review (action: publish).
+- For cross-repo PRs from forks: use sourceProject/sourceRepository in create_pull_request.
+- get_pr_activity returns reviews, comments, and events; use the filter param to narrow results.
+- manage_comment consolidates create/edit/delete of comments. Use severity: BLOCKER to create tasks.
+- submit_review consolidates approve/unapprove/publish actions.`;
+
+export function createServer(options?: BitbucketServerOptions) {
+  const config = parseConfig(options);
+  const clients = createApiClients(config);
+  const cache = new ApiCache({ defaultTtlMs: config.cacheTtlMs });
+
+  const server = new McpServer(
+    {
+      name: "bitbucket-server-mcp",
+      version,
+    },
+    {
+      instructions: SERVER_INSTRUCTIONS,
+    },
+  );
+
+  initLogging(server);
+
+  registerRepositoryTools(server, clients, cache, config.defaultProject);
+  registerBranchTools(server, clients, cache, config.defaultProject);
+  registerPullRequestTools(
+    server,
+    clients,
+    cache,
+    config.defaultProject,
+    config.maxLinesPerFile,
+  );
+  registerCommentTools(server, clients, cache, config.defaultProject);
+  registerSearchTools(server, clients, cache, config.defaultProject);
+  registerInsightTools(server, clients, cache, config.defaultProject);
+
+  registerResources(server, clients, cache);
+  registerPrompts(server, clients, config.defaultProject);
+
+  return { server, config };
+}
