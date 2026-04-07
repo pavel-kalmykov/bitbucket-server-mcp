@@ -1,13 +1,36 @@
 # Bitbucket Server MCP
 
-MCP (Model Context Protocol) server for Bitbucket Server / Data Center. Provides AI assistants with tools to interact with pull requests, branches, repositories, code review, and CI/CD insights through the MCP protocol.
+> MCP server for Bitbucket Server / Data Center. Gives AI assistants access to pull requests, code review, branches, repositories, search, and CI insights.
 
 [![npm version](https://img.shields.io/npm/v/@pavel-kalmykov/bitbucket-server-mcp)](https://www.npmjs.com/package/@pavel-kalmykov/bitbucket-server-mcp)
 [![npm downloads](https://img.shields.io/npm/dm/@pavel-kalmykov/bitbucket-server-mcp)](https://www.npmjs.com/package/@pavel-kalmykov/bitbucket-server-mcp)
 [![CI](https://github.com/pavel-kalmykov/bitbucket-server-mcp/actions/workflows/ci.yml/badge.svg)](https://github.com/pavel-kalmykov/bitbucket-server-mcp/actions/workflows/ci.yml)
-[![codecov](https://codecov.io/gh/pavel-kalmykov/bitbucket-server-mcp/graph/badge.svg)](https://codecov.io/gh/pavel-kalmykov/bitbucket-server-mcp)
+[![codecov](https://codecov.io/gh/pavel-kalmykov/bitbucket-server-mcp-server/graph/badge.svg)](https://codecov.io/gh/pavel-kalmykov/bitbucket-server-mcp-server)
 [![Node](https://img.shields.io/node/v/@pavel-kalmykov/bitbucket-server-mcp)](https://nodejs.org)
 [![License](https://img.shields.io/npm/l/@pavel-kalmykov/bitbucket-server-mcp)](LICENSE)
+
+## Quickstart
+
+```console
+claude mcp add bitbucket \
+  -e BITBUCKET_URL=https://your-bitbucket-server.com \
+  -e BITBUCKET_TOKEN=your-token \
+  -- npx -y @pavel-kalmykov/bitbucket-server-mcp
+```
+
+## What can it do?
+
+**18 tools** covering the full Bitbucket Server workflow:
+
+| Area | Tools | Highlights |
+|------|-------|------------|
+| **Pull Requests** | `create_pull_request`, `get_pull_request`, `update_pull_request`, `merge_pull_request`, `decline_pull_request`, `list_pull_requests`, `get_dashboard_pull_requests`, `get_pr_activity`, `get_diff` | Cross-repo PRs from forks, auto-fetch default reviewers, safe read-modify-write updates, per-file diff truncation |
+| **Code Review** | `manage_comment`, `submit_review` | Draft comments (`PENDING`), inline anchoring, tasks (`BLOCKER`), batch publish with `APPROVED`/`NEEDS_WORK` |
+| **Repositories** | `list_projects`, `list_repositories`, `browse_repository`, `get_file_content` | Pagination, branch selection |
+| **Branches** | `list_branches`, `list_commits`, `delete_branch` | Default branch detection, author filtering, safety check on delete |
+| **Search & CI** | `search`, `get_code_insights` | Code/file search, SonarQube and security scan reports |
+
+Plus **MCP Resources** (`bitbucket://projects`) and **Prompts** (`review-pr` for structured code review).
 
 ## Requirements
 
@@ -18,7 +41,8 @@ One of:
 
 ## Installation
 
-### Claude Desktop
+<details>
+<summary><strong>Claude Desktop</strong></summary>
 
 Add to `~/Library/Application Support/Claude/claude_desktop_config.json` (macOS) or `%APPDATA%\Claude\claude_desktop_config.json` (Windows):
 
@@ -37,16 +61,10 @@ Add to `~/Library/Application Support/Claude/claude_desktop_config.json` (macOS)
 }
 ```
 
-### Claude Code
+</details>
 
-```console
-claude mcp add bitbucket \
-  -e BITBUCKET_URL=https://your-bitbucket-server.com \
-  -e BITBUCKET_TOKEN=your-token \
-  -- npx -y @pavel-kalmykov/bitbucket-server-mcp
-```
-
-### VS Code
+<details>
+<summary><strong>VS Code</strong></summary>
 
 Add to your workspace `.vscode/mcp.json`:
 
@@ -65,7 +83,10 @@ Add to your workspace `.vscode/mcp.json`:
 }
 ```
 
-### Docker
+</details>
+
+<details>
+<summary><strong>Docker</strong></summary>
 
 For environments without Node.js:
 
@@ -87,7 +108,10 @@ For environments without Node.js:
 
 Or build locally: `docker build -t bitbucket-mcp .`
 
-### Bun
+</details>
+
+<details>
+<summary><strong>Bun</strong></summary>
 
 If you have [Bun](https://bun.sh) installed, you can use it as an alternative runtime:
 
@@ -106,54 +130,7 @@ If you have [Bun](https://bun.sh) installed, you can use it as an alternative ru
 }
 ```
 
-See the [Environment Variables](#environment-variables) section for all configuration options.
-
-## Tools
-
-### Repositories
-
-| Tool | Description |
-|------|-------------|
-| `list_projects` | List all accessible Bitbucket projects |
-| `list_repositories` | List repositories in a project |
-| `browse_repository` | Browse files and directories |
-| `get_file_content` | Read file contents with pagination |
-
-### Pull Requests
-
-| Tool | Description |
-|------|-------------|
-| `create_pull_request` | Create a PR, including cross-repo from forks (`sourceProject`/`sourceRepository`). Auto-fetches default reviewers unless `includeDefaultReviewers: false`. |
-| `get_pull_request` | Get PR details |
-| `update_pull_request` | Safely update title, description, or reviewers (read-modify-write, preserves fields not explicitly changed) |
-| `merge_pull_request` | Merge a PR with optional strategy (`merge-commit`, `squash`, `fast-forward`) |
-| `decline_pull_request` | Decline a PR |
-| `list_pull_requests` | List PRs with filtering by state, author, direction |
-| `get_dashboard_pull_requests` | List PRs across all repos for the authenticated user, filtered by role (`AUTHOR`/`REVIEWER`/`PARTICIPANT`), state, and review status |
-| `get_pr_activity` | Get PR activity timeline, filtered by type (`all`, `reviews`, `comments`) |
-| `get_diff` | Get PR diff with per-file truncation support |
-
-### Code Review
-
-| Tool | Description |
-|------|-------------|
-| `manage_comment` | Unified create/edit/delete for PR comments. Supports inline anchoring (`filePath`/`line`/`lineType`), draft state (`state: PENDING`), and task creation (`severity: BLOCKER`). |
-| `submit_review` | Unified approve/unapprove/publish. Publish transitions all `PENDING` comments to visible and optionally sets `participantStatus` (`APPROVED`/`NEEDS_WORK`). |
-
-### Branches & Commits
-
-| Tool | Description |
-|------|-------------|
-| `list_branches` | List branches with default branch detection |
-| `list_commits` | Browse commit history with branch and author filtering |
-| `delete_branch` | Delete a branch (safety check prevents deleting default branch) |
-
-### Search & Insights
-
-| Tool | Description |
-|------|-------------|
-| `search` | Search code and files across repositories |
-| `get_code_insights` | Fetch Code Insights reports (SonarQube, security scans) and annotations |
+</details>
 
 ## Configuration
 
