@@ -18,19 +18,52 @@ claude mcp add bitbucket \
   -- npx -y @pavel-kalmykov/bitbucket-server-mcp
 ```
 
-## What can it do?
+## Tools
 
-**18 tools** covering the full Bitbucket Server workflow:
+### Repositories
 
-| Area | Tools | Highlights |
-|------|-------|------------|
-| **Pull Requests** | `create_pull_request`, `get_pull_request`, `update_pull_request`, `merge_pull_request`, `decline_pull_request`, `list_pull_requests`, `get_dashboard_pull_requests`, `get_pr_activity`, `get_diff` | Cross-repo PRs from forks, auto-fetch default reviewers, safe read-modify-write updates, per-file diff truncation |
-| **Code Review** | `manage_comment`, `submit_review` | Draft comments (`PENDING`), inline anchoring, tasks (`BLOCKER`), batch publish with `APPROVED`/`NEEDS_WORK` |
-| **Repositories** | `list_projects`, `list_repositories`, `browse_repository`, `get_file_content` | Pagination, branch selection |
-| **Branches** | `list_branches`, `list_commits`, `delete_branch` | Default branch detection, author filtering, safety check on delete |
-| **Search & CI** | `search`, `get_code_insights` | Code/file search, SonarQube and security scan reports |
+| Tool | Description |
+|------|-------------|
+| `list_projects` | List all accessible Bitbucket projects |
+| `list_repositories` | List repositories in a project |
+| `browse_repository` | Browse files and directories |
+| `get_file_content` | Read file contents with pagination |
 
-Plus **MCP Resources** (`bitbucket://projects`) and **Prompts** (`review-pr` for structured code review).
+### Pull Requests
+
+| Tool | Description |
+|------|-------------|
+| `create_pull_request` | Create a PR, including cross-repo from forks (`sourceProject`/`sourceRepository`). Auto-fetches default reviewers unless `includeDefaultReviewers: false`. |
+| `get_pull_request` | Get PR details |
+| `update_pull_request` | Safely update title, description, or reviewers (read-modify-write, preserves fields not explicitly changed) |
+| `merge_pull_request` | Merge a PR with optional strategy (`merge-commit`, `squash`, `fast-forward`) |
+| `decline_pull_request` | Decline a PR |
+| `list_pull_requests` | List PRs with filtering by state, author, direction |
+| `get_dashboard_pull_requests` | List PRs across all repos for the authenticated user, filtered by role (`AUTHOR`/`REVIEWER`/`PARTICIPANT`), state, and review status |
+| `get_pr_activity` | Get PR activity timeline, filtered by type (`all`, `reviews`, `comments`) |
+| `get_diff` | Get PR diff with per-file truncation support |
+
+### Code Review
+
+| Tool | Description |
+|------|-------------|
+| `manage_comment` | Unified create/edit/delete for PR comments. Supports inline anchoring (`filePath`/`line`/`lineType`), draft state (`state: PENDING`), and task creation (`severity: BLOCKER`). |
+| `submit_review` | Unified approve/unapprove/publish. Publish transitions all `PENDING` comments to visible and optionally sets `participantStatus` (`APPROVED`/`NEEDS_WORK`). |
+
+### Branches & Commits
+
+| Tool | Description |
+|------|-------------|
+| `list_branches` | List branches with default branch detection |
+| `list_commits` | Browse commit history with branch and author filtering |
+| `delete_branch` | Delete a branch (safety check prevents deleting default branch) |
+
+### Search & Insights
+
+| Tool | Description |
+|------|-------------|
+| `search` | Search code and files across repositories |
+| `get_code_insights` | Fetch Code Insights reports (SonarQube, security scans) and annotations |
 
 ## Requirements
 
