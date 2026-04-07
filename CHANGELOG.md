@@ -1,3 +1,10 @@
+# [0.1.0](https://github.com/pavel-kalmykov/bitbucket-server-mcp/compare/v0.0.1...v0.1.0) (2026-04-07)
+
+
+### Features
+
+* redesign MCP server with modular architecture ([214ffd7](https://github.com/pavel-kalmykov/bitbucket-server-mcp/commit/214ffd70896493b9bf311ccfc47431123c1f211d)), closes [hi#level](https://github.com/hi/issues/level)
+
 # [1.1.0](https://github.com/pavel-kalmykov/bitbucket-server-mcp/compare/v1.0.0...v1.1.0) (2026-04-07)
 
 
