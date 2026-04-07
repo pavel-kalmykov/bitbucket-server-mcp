@@ -1,6 +1,6 @@
-# Bitbucket Server MCP
+<div align="center">
 
-> MCP server for Bitbucket Server / Data Center. Gives AI assistants access to pull requests, code review, branches, repositories, search, and CI insights.
+![bitbucket-server-mcp](https://socialify.git.ci/pavel-kalmykov/bitbucket-server-mcp/image?description=1&font=Raleway&logo=https%3A%2F%2Fwww.svgrepo.com%2Fshow%2F349308%2Fbitbucket.svg&name=1&owner=1&pattern=Charlie+Brown&theme=Auto)
 
 [![npm version](https://img.shields.io/npm/v/@pavel-kalmykov/bitbucket-server-mcp)](https://www.npmjs.com/package/@pavel-kalmykov/bitbucket-server-mcp)
 [![npm downloads](https://img.shields.io/npm/dm/@pavel-kalmykov/bitbucket-server-mcp)](https://www.npmjs.com/package/@pavel-kalmykov/bitbucket-server-mcp)
@@ -8,6 +8,8 @@
 [![codecov](https://codecov.io/gh/pavel-kalmykov/bitbucket-server-mcp-server/graph/badge.svg)](https://codecov.io/gh/pavel-kalmykov/bitbucket-server-mcp-server)
 [![Node](https://img.shields.io/node/v/@pavel-kalmykov/bitbucket-server-mcp)](https://nodejs.org)
 [![License](https://img.shields.io/npm/l/@pavel-kalmykov/bitbucket-server-mcp)](LICENSE)
+
+</div>
 
 ## Quickstart
 
