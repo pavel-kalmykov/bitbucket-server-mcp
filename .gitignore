@@ -20,6 +20,10 @@ dist/
 .env.local
 .env.*.local
 
-# System files 
+# Coverage
+coverage/
+.coverage/
+
+# System files
 .DS_Store
 Thumbs.db

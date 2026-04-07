@@ -1,46 +1,86 @@
 {
-  "name": "bitbucket-server",
-  "version": "1.0.0",
-  "description": "MCP Server for Bitbucket Server PR management",
+  "name": "@pavel-kalmykov/bitbucket-server-mcp",
+  "version": "1.1.0",
+  "description": "MCP server for Bitbucket Server / Data Center with code review, cross-repo PRs, and CI insights",
   "type": "module",
-  "main": "build/index.js",
-  "types": "build/index.d.ts",
+  "main": "build/entry.js",
+  "types": "build/entry.d.ts",
+  "files": [
+    "build",
+    "!build/__tests__"
+  ],
   "bin": {
-    "bitbucket-server-mcp": "./build/index.js"
+    "bitbucket-server-mcp": "./build/entry.js"
+  },
+  "publishConfig": {
+    "access": "public"
   },
   "scripts": {
-    "build": "tsc && node -e \"if (process.platform !== 'win32') require('child_process').execSync('chmod +x build/index.js')\"",
-    "postinstall": "node -e \"const fs=require('fs'); if (process.platform !== 'win32' && fs.existsSync('build/index.js')) require('child_process').execSync('chmod +x build/index.js')\"",
-    "start": "node build/index.js",
+    "build": "tsc",
+    "start": "node build/entry.js",
     "dev": "tsc -w",
-    "dev:server": "npm run build && npx @modelcontextprotocol/inspector -e DEBUG=true node build/index.js",
+    "dev:server": "npm run build && npx @modelcontextprotocol/inspector -e DEBUG=true node build/entry.js",
     "test": "vitest",
+    "test:coverage": "vitest run --coverage",
     "lint": "eslint src",
     "format": "prettier --write 'src/**/*.ts'",
     "update:check": "npx npm-check-updates",
     "update:deps": "npx npm-check-updates -u && npm install --legacy-peer-deps",
-    "inspector": "npx @modelcontextprotocol/inspector build/index.js"
+    "inspector": "npx @modelcontextprotocol/inspector build/entry.js",
+    "prepare": "husky"
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.27.1",
-    "axios": "^1.13.6",
-    "winston": "^3.19.0"
+    "ky": "^2.0.0",
+    "lru-cache": "^11.3.0",
+    "zod": "^4.3.6"
   },
   "devDependencies": {
+    "@commitlint/cli": "^20.5.0",
+    "@commitlint/config-conventional": "^20.5.0",
     "@eslint/js": "^10.0.1",
+    "@semantic-release/changelog": "^6.0.3",
+    "@semantic-release/git": "^10.0.1",
     "@types/node": "^25.3.5",
-    "@typescript-eslint/eslint-plugin": "^8.56.1",
-    "@typescript-eslint/parser": "^8.56.1",
     "@vitest/coverage-v8": "^4.0.18",
     "eslint": "^10.0.2",
     "globals": "^17.4.0",
+    "husky": "^9.1.7",
+    "lint-staged": "^16.4.0",
     "npm-check-updates": "^19.6.3",
     "prettier": "^3.8.1",
+    "semantic-release": "^25.0.3",
     "typescript": "^5.9.3",
     "typescript-eslint": "^8.56.1",
     "vitest": "^4.0.18"
   },
+  "lint-staged": {
+    "*.ts": [
+      "prettier --write",
+      "eslint --fix",
+      "vitest related --run"
+    ]
+  },
   "engines": {
-    "node": ">=18"
-  }
+    "node": ">=22.14"
+  },
+  "license": "Apache-2.0",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/pavel-kalmykov/bitbucket-server-mcp.git"
+  },
+  "homepage": "https://github.com/pavel-kalmykov/bitbucket-server-mcp#readme",
+  "bugs": {
+    "url": "https://github.com/pavel-kalmykov/bitbucket-server-mcp/issues"
+  },
+  "keywords": [
+    "mcp",
+    "model-context-protocol",
+    "bitbucket",
+    "bitbucket-server",
+    "bitbucket-data-center",
+    "code-review",
+    "pull-requests",
+    "ai"
+  ]
 }
