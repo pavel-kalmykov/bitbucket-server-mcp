@@ -67,6 +67,34 @@ server.registerTool('my_tool', {
 
 4. **Verify**: `npm test`, `npm run lint`, `npm run build`.
 
+## Response curation
+
+Read tools that return Bitbucket entities (PRs, projects, repositories, branches, commits) should curate their responses to reduce token usage. Use the utilities in `src/utils/curate.ts`:
+
+```typescript
+import { curateResponse, curateList, DEFAULT_PR_FIELDS } from '../utils/curate.js';
+
+// Single entity
+return formatResponse(curateResponse(data, fields ?? DEFAULT_PR_FIELDS));
+
+// List of entities
+return formatResponse({
+  total: data.size,
+  values: curateList(data.values, fields ?? DEFAULT_PR_FIELDS),
+  isLastPage: data.isLastPage,
+});
+```
+
+Every read tool that returns entities should expose a `fields` parameter:
+
+```typescript
+fields: z.string().optional().describe(
+  "Comma-separated fields to return (e.g. 'id,title,state'). Use '*all' for the full API response. Defaults to a curated summary."
+)
+```
+
+Default field sets are defined in `src/utils/curate.ts` (`DEFAULT_PR_FIELDS`, `DEFAULT_PROJECT_FIELDS`, etc.). They include only the fields an LLM typically needs. Nested paths like `author.user.name` pick specific sub-fields from objects and arrays.
+
 ## HTTP clients
 
 The server uses [ky](https://github.com/sindresorhus/ky) with pre-configured instances for each Bitbucket API base URL:

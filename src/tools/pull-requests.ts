@@ -5,6 +5,11 @@ import type { ApiCache } from "../utils/cache.js";
 import { formatResponse } from "../utils/response.js";
 import { handleToolError } from "../utils/errors.js";
 import { truncateDiff } from "../utils/diff.js";
+import {
+  curateResponse,
+  curateList,
+  DEFAULT_PR_FIELDS,
+} from "../utils/curate.js";
 
 function resolveProject(
   provided: string | undefined,
@@ -218,19 +223,27 @@ export function registerPullRequestTools(
           .describe("Project key. Defaults to BITBUCKET_DEFAULT_PROJECT."),
         repository: z.string().describe("Repository slug."),
         prId: z.number().describe("Pull request ID."),
+        fields: z
+          .string()
+          .optional()
+          .describe(
+            "Comma-separated fields to return (e.g. 'id,title,state,author.user.name'). Use '*all' for the full API response. Defaults to a curated summary.",
+          ),
       },
       annotations: { readOnlyHint: true },
     },
-    async ({ project, repository, prId }) => {
+    async ({ project, repository, prId, fields }) => {
       try {
         const resolvedProject = resolveProject(project, defaultProject);
         const data = await clients.api
           .get(
             `projects/${resolvedProject}/repos/${repository}/pull-requests/${prId}`,
           )
-          .json();
+          .json<Record<string, unknown>>();
 
-        return formatResponse(data);
+        return formatResponse(
+          curateResponse(data, fields ?? DEFAULT_PR_FIELDS),
+        );
       } catch (error) {
         return handleToolError(error);
       }
@@ -432,6 +445,12 @@ export function registerPullRequestTools(
           .number()
           .optional()
           .describe("Start index for pagination (default: 0)."),
+        fields: z
+          .string()
+          .optional()
+          .describe(
+            "Comma-separated fields per PR (e.g. 'id,title,state'). Use '*all' for the full API response. Defaults to a curated summary.",
+          ),
       },
       annotations: { readOnlyHint: true },
     },
@@ -444,10 +463,16 @@ export function registerPullRequestTools(
       order,
       limit = 25,
       start = 0,
+      fields,
     }) => {
       try {
         const resolvedProject = resolveProject(project, defaultProject);
-        const searchParams: Record<string, string | number> = { limit, start };
+        const searchParams: Record<string, string | number | boolean> = {
+          limit,
+          start,
+          withAttributes: false,
+          withProperties: false,
+        };
         if (state) searchParams.state = state;
         if (direction) searchParams.direction = direction;
         if (order) searchParams.order = order;
@@ -480,7 +505,10 @@ export function registerPullRequestTools(
 
         return formatResponse({
           total: author ? pullRequests.length : data.size,
-          pullRequests,
+          pullRequests: curateList(
+            pullRequests as Record<string, unknown>[],
+            fields ?? DEFAULT_PR_FIELDS,
+          ),
           isLastPage: data.isLastPage,
         });
       } catch (error) {
@@ -521,6 +549,12 @@ export function registerPullRequestTools(
           .number()
           .optional()
           .describe("Start index for pagination (default: 0)."),
+        fields: z
+          .string()
+          .optional()
+          .describe(
+            "Comma-separated fields per PR (e.g. 'id,title,state'). Use '*all' for the full API response. Defaults to a curated summary.",
+          ),
       },
       annotations: { readOnlyHint: true },
     },
@@ -532,6 +566,7 @@ export function registerPullRequestTools(
       closedSince,
       limit = 25,
       start = 0,
+      fields,
     }) => {
       try {
         const searchParams: Record<string, string | number> = { limit, start };
@@ -546,9 +581,16 @@ export function registerPullRequestTools(
           .get("dashboard/pull-requests", {
             searchParams,
           })
-          .json();
+          .json<{
+            values: Record<string, unknown>[];
+            size: number;
+            isLastPage: boolean;
+          }>();
 
-        return formatResponse(data);
+        return formatResponse({
+          ...data,
+          values: curateList(data.values, fields ?? DEFAULT_PR_FIELDS),
+        });
       } catch (error) {
         return handleToolError(error);
       }

@@ -4,6 +4,11 @@ import type { ApiClients } from "../client.js";
 import type { ApiCache } from "../utils/cache.js";
 import { formatResponse } from "../utils/response.js";
 import { handleToolError } from "../utils/errors.js";
+import {
+  curateList,
+  DEFAULT_PROJECT_FIELDS,
+  DEFAULT_REPOSITORY_FIELDS,
+} from "../utils/curate.js";
 
 function resolveProject(
   provided: string | undefined,
@@ -38,20 +43,30 @@ export function registerRepositoryTools(
           .number()
           .optional()
           .describe("Start index for pagination (default: 0)"),
+        fields: z
+          .string()
+          .optional()
+          .describe(
+            "Comma-separated fields to return. Use '*all' for the full API response. Defaults to a curated summary.",
+          ),
       },
       annotations: { readOnlyHint: true },
     },
-    async ({ limit = 25, start = 0 }) => {
+    async ({ limit = 25, start = 0, fields }) => {
       try {
         const data = await clients.api
           .get("projects", {
             searchParams: { limit, start },
           })
-          .json<{ values: unknown[]; size: number; isLastPage: boolean }>();
+          .json<{
+            values: Record<string, unknown>[];
+            size: number;
+            isLastPage: boolean;
+          }>();
 
         return formatResponse({
           total: data.size,
-          projects: data.values,
+          projects: curateList(data.values, fields ?? DEFAULT_PROJECT_FIELDS),
           isLastPage: data.isLastPage,
         });
       } catch (error) {
@@ -80,21 +95,34 @@ export function registerRepositoryTools(
           .number()
           .optional()
           .describe("Start index for pagination (default: 0)"),
+        fields: z
+          .string()
+          .optional()
+          .describe(
+            "Comma-separated fields to return. Use '*all' for the full API response. Defaults to a curated summary.",
+          ),
       },
       annotations: { readOnlyHint: true },
     },
-    async ({ project, limit = 25, start = 0 }) => {
+    async ({ project, limit = 25, start = 0, fields }) => {
       try {
         const resolvedProject = resolveProject(project, defaultProject);
         const data = await clients.api
           .get(`projects/${resolvedProject}/repos`, {
             searchParams: { limit, start },
           })
-          .json<{ values: unknown[]; size: number; isLastPage: boolean }>();
+          .json<{
+            values: Record<string, unknown>[];
+            size: number;
+            isLastPage: boolean;
+          }>();
 
         return formatResponse({
           total: data.size,
-          repositories: data.values,
+          repositories: curateList(
+            data.values,
+            fields ?? DEFAULT_REPOSITORY_FIELDS,
+          ),
           isLastPage: data.isLastPage,
         });
       } catch (error) {

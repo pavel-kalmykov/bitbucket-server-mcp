@@ -4,6 +4,12 @@ import type { ApiClients } from "../client.js";
 import type { ApiCache } from "../utils/cache.js";
 import { formatResponse } from "../utils/response.js";
 import { handleToolError } from "../utils/errors.js";
+import {
+  curateList,
+  curateResponse,
+  DEFAULT_BRANCH_FIELDS,
+  DEFAULT_COMMIT_FIELDS,
+} from "../utils/curate.js";
 
 function resolveProject(
   provided: string | undefined,
@@ -58,10 +64,23 @@ export function registerBranchTools(
           .number()
           .optional()
           .describe("Start index for pagination (default: 0)."),
+        fields: z
+          .string()
+          .optional()
+          .describe(
+            "Comma-separated fields to return. Use '*all' for the full API response. Defaults to a curated summary.",
+          ),
       },
       annotations: { readOnlyHint: true },
     },
-    async ({ project, repository, filterText, limit = 25, start = 0 }) => {
+    async ({
+      project,
+      repository,
+      filterText,
+      limit = 25,
+      start = 0,
+      fields,
+    }) => {
       try {
         const resolvedProject = resolveProject(project, defaultProject);
         const searchParams: Record<string, string | number> = { limit, start };
@@ -72,20 +91,28 @@ export function registerBranchTools(
             .get(`projects/${resolvedProject}/repos/${repository}/branches`, {
               searchParams,
             })
-            .json<{ values: unknown[]; size: number; isLastPage: boolean }>(),
+            .json<{
+              values: Record<string, unknown>[];
+              size: number;
+              isLastPage: boolean;
+            }>(),
           clients.api
             .get(
               `projects/${resolvedProject}/repos/${repository}/default-branch`,
             )
-            .json()
+            .json<Record<string, unknown>>()
             .catch(() => null),
         ]);
 
+        const activeFields = fields ?? DEFAULT_BRANCH_FIELDS;
+
         return formatResponse({
           total: branchData.size,
-          branches: branchData.values,
+          branches: curateList(branchData.values, activeFields),
           isLastPage: branchData.isLastPage,
-          defaultBranch,
+          defaultBranch: defaultBranch
+            ? curateResponse(defaultBranch, activeFields)
+            : null,
         });
       } catch (error) {
         return handleToolError(error);
@@ -122,10 +149,24 @@ export function registerBranchTools(
           .number()
           .optional()
           .describe("Start index for pagination (default: 0)."),
+        fields: z
+          .string()
+          .optional()
+          .describe(
+            "Comma-separated fields to return. Use '*all' for the full API response. Defaults to a curated summary.",
+          ),
       },
       annotations: { readOnlyHint: true },
     },
-    async ({ project, repository, branch, author, limit = 25, start = 0 }) => {
+    async ({
+      project,
+      repository,
+      branch,
+      author,
+      limit = 25,
+      start = 0,
+      fields,
+    }) => {
       try {
         const resolvedProject = resolveProject(project, defaultProject);
         const searchParams: Record<string, string | number> = { limit, start };
@@ -154,7 +195,10 @@ export function registerBranchTools(
 
         return formatResponse({
           total: author ? commits.length : data.size,
-          commits,
+          commits: curateList(
+            commits as Record<string, unknown>[],
+            fields ?? DEFAULT_COMMIT_FIELDS,
+          ),
           isLastPage: data.isLastPage,
         });
       } catch (error) {

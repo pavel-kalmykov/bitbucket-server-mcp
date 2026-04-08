@@ -121,6 +121,49 @@ describe("Branch tools", () => {
       );
     });
 
+    test("should return raw output when fields is '*all'", async () => {
+      const branchesResponse = {
+        values: [
+          {
+            displayId: "main",
+            id: "refs/heads/main",
+            isDefault: true,
+            type: "BRANCH",
+            latestCommit: "abc123",
+            metadata: { someKey: "someValue" },
+            extraField: "should be kept",
+          },
+        ],
+        size: 1,
+        isLastPage: true,
+      };
+      const defaultBranchResponse = {
+        displayId: "main",
+        id: "refs/heads/main",
+        extraField: "also kept",
+      };
+
+      (mockClients.api.get as ReturnType<typeof vi.fn>).mockImplementation(
+        (url: string) => {
+          if (url.includes("default-branch")) {
+            return { json: () => Promise.resolve(defaultBranchResponse) };
+          }
+          return { json: () => Promise.resolve(branchesResponse) };
+        },
+      );
+
+      const result = await client.callTool({
+        name: "list_branches",
+        arguments: { project: "TEST", repository: "my-repo", fields: "*all" },
+      });
+
+      const content = result.content as Array<{ type: string; text: string }>;
+      const parsed = JSON.parse(content[0].text);
+
+      expect(parsed.branches[0].extraField).toBe("should be kept");
+      expect(parsed.defaultBranch.extraField).toBe("also kept");
+    });
+
     test("should handle default branch fetch failure gracefully", async () => {
       const branchesResponse = {
         values: [{ displayId: "main", id: "refs/heads/main" }],

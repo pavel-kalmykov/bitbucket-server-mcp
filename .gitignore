@@ -27,3 +27,5 @@ coverage/
 # System files
 .DS_Store
 Thumbs.db
+demo.cast
+assets/

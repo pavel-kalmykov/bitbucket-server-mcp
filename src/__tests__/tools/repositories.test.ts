@@ -91,6 +91,42 @@ describe("Repository tools", () => {
       expect(parsed.projects).toHaveLength(1);
       expect(parsed.projects[0].key).toBe("PROJ");
     });
+
+    test("should return curated output with default fields", async () => {
+      const mockResponse = {
+        values: [
+          {
+            key: "PROJ",
+            id: 1,
+            name: "Project",
+            description: "Test",
+            public: false,
+            type: "NORMAL",
+            links: { self: [{ href: "http://example.com" }] },
+            extraField: "should be removed",
+          },
+        ],
+        size: 1,
+        isLastPage: true,
+      };
+
+      (mockClients.api.get as ReturnType<typeof vi.fn>).mockReturnValue({
+        json: () => Promise.resolve(mockResponse),
+      });
+
+      const result = await client.callTool({
+        name: "list_projects",
+        arguments: {},
+      });
+      const content = result.content as Array<{ type: string; text: string }>;
+      const parsed = JSON.parse(content[0].text);
+
+      const project = parsed.projects[0];
+      expect(project.key).toBe("PROJ");
+      expect(project.name).toBe("Project");
+      expect(project).not.toHaveProperty("links");
+      expect(project).not.toHaveProperty("extraField");
+    });
   });
 
   describe("list_repositories", () => {
