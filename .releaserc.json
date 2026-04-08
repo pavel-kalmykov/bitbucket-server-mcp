@@ -12,7 +12,18 @@
         { "type": "revert", "release": "patch" }
       ]
     }],
-    "@semantic-release/release-notes-generator",
+    ["@semantic-release/release-notes-generator", {
+      "preset": "angular",
+      "presetConfig": {
+        "types": [
+          { "type": "feat", "section": "Features" },
+          { "type": "fix", "section": "Bug Fixes" },
+          { "type": "perf", "section": "Performance" },
+          { "type": "refactor", "section": "Refactors" },
+          { "type": "revert", "section": "Reverts" }
+        ]
+      }
+    }],
     ["@semantic-release/changelog", { "changelogFile": "CHANGELOG.md" }],
     ["@semantic-release/npm", { "npmPublish": true, "pkgRoot": "." }],
     ["@semantic-release/git", {
