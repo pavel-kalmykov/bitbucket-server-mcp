@@ -38,7 +38,7 @@ export function registerCommentTools(
           .optional()
           .describe("Project key. Defaults to BITBUCKET_DEFAULT_PROJECT."),
         repository: z.string().describe("Repository slug."),
-        prId: z.number().describe("Pull request ID."),
+        prId: z.coerce.number().describe("Pull request ID."),
         text: z
           .string()
           .optional()
@@ -162,7 +162,7 @@ export function registerCommentTools(
           .optional()
           .describe("Project key. Defaults to BITBUCKET_DEFAULT_PROJECT."),
         repository: z.string().describe("Repository slug."),
-        prId: z.number().describe("Pull request ID."),
+        prId: z.coerce.number().describe("Pull request ID."),
         commentText: z
           .string()
           .optional()

@@ -40,7 +40,7 @@ export function registerInsightTools(
           .optional()
           .describe("Project key. Defaults to BITBUCKET_DEFAULT_PROJECT."),
         repository: z.string().describe("Repository slug."),
-        pullRequestId: z.number().describe("Pull request ID."),
+        pullRequestId: z.coerce.number().describe("Pull request ID."),
       },
       annotations: { readOnlyHint: true },
     },

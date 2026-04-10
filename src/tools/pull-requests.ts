@@ -222,7 +222,7 @@ export function registerPullRequestTools(
           .optional()
           .describe("Project key. Defaults to BITBUCKET_DEFAULT_PROJECT."),
         repository: z.string().describe("Repository slug."),
-        prId: z.number().describe("Pull request ID."),
+        prId: z.coerce.number().describe("Pull request ID."),
         fields: z
           .string()
           .optional()
@@ -262,7 +262,7 @@ export function registerPullRequestTools(
           .optional()
           .describe("Project key. Defaults to BITBUCKET_DEFAULT_PROJECT."),
         repository: z.string().describe("Repository slug."),
-        prId: z.number().describe("Pull request ID."),
+        prId: z.coerce.number().describe("Pull request ID."),
         title: z.string().optional().describe("New title."),
         description: z.string().optional().describe("New description."),
         targetBranch: z.string().optional().describe("New target branch."),
@@ -330,7 +330,7 @@ export function registerPullRequestTools(
           .optional()
           .describe("Project key. Defaults to BITBUCKET_DEFAULT_PROJECT."),
         repository: z.string().describe("Repository slug."),
-        prId: z.number().describe("Pull request ID."),
+        prId: z.coerce.number().describe("Pull request ID."),
         message: z.string().optional().describe("Custom merge commit message."),
         strategy: z
           .enum(["merge-commit", "squash", "fast-forward"])
@@ -379,7 +379,7 @@ export function registerPullRequestTools(
           .optional()
           .describe("Project key. Defaults to BITBUCKET_DEFAULT_PROJECT."),
         repository: z.string().describe("Repository slug."),
-        prId: z.number().describe("Pull request ID."),
+        prId: z.coerce.number().describe("Pull request ID."),
         message: z.string().optional().describe("Reason for declining."),
       },
       annotations: { destructiveHint: true },
@@ -609,7 +609,7 @@ export function registerPullRequestTools(
           .optional()
           .describe("Project key. Defaults to BITBUCKET_DEFAULT_PROJECT."),
         repository: z.string().describe("Repository slug."),
-        prId: z.number().describe("Pull request ID."),
+        prId: z.coerce.number().describe("Pull request ID."),
         filter: z
           .enum(["all", "reviews", "comments"])
           .optional()
@@ -655,7 +655,7 @@ export function registerPullRequestTools(
           .optional()
           .describe("Project key. Defaults to BITBUCKET_DEFAULT_PROJECT."),
         repository: z.string().describe("Repository slug."),
-        prId: z.number().describe("Pull request ID."),
+        prId: z.coerce.number().describe("Pull request ID."),
         contextLines: z
           .number()
           .optional()
