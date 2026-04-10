@@ -1,8 +1,10 @@
+import { readFile } from "node:fs/promises";
+import { basename } from "node:path";
 import { z } from "zod";
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import type { ApiClients } from "../client.js";
 import type { ApiCache } from "../utils/cache.js";
-import { formatResponse } from "../utils/response.js";
+import { formatResponse, toolAnnotations } from "../utils/response.js";
 import { handleToolError } from "../utils/errors.js";
 import {
   curateList,
@@ -50,7 +52,7 @@ export function registerRepositoryTools(
             "Comma-separated fields to return. Defaults to: key, id, name, description, type, public. Use '*all' for the full API response.",
           ),
       },
-      annotations: { readOnlyHint: true },
+      annotations: toolAnnotations(),
     },
     async ({ limit = 25, start = 0, fields }) => {
       try {
@@ -102,7 +104,7 @@ export function registerRepositoryTools(
             "Comma-separated fields to return. Defaults to: slug, id, name, description, state, forkable, project (key, name). Use '*all' for the full API response with clone URLs and links.",
           ),
       },
-      annotations: { readOnlyHint: true },
+      annotations: toolAnnotations(),
     },
     async ({ project, limit = 25, start = 0, fields }) => {
       try {
@@ -155,7 +157,7 @@ export function registerRepositoryTools(
           .optional()
           .describe("Max items to return (default: 50)."),
       },
-      annotations: { readOnlyHint: true },
+      annotations: toolAnnotations(),
     },
     async ({ project, repository, path, branch, limit = 50 }) => {
       try {
@@ -200,7 +202,7 @@ export function registerRepositoryTools(
           .optional()
           .describe("Starting line number (default: 0)."),
       },
-      annotations: { readOnlyHint: true },
+      annotations: toolAnnotations(),
     },
     async ({
       project,
@@ -223,6 +225,68 @@ export function registerRepositoryTools(
           .json();
 
         return formatResponse(data);
+      } catch (error) {
+        return handleToolError(error);
+      }
+    },
+  );
+
+  server.registerTool(
+    "upload_attachment",
+    {
+      description:
+        "Upload a file attachment to a repository. Returns a markdown reference to embed in PR comments or descriptions.",
+      inputSchema: {
+        project: z
+          .string()
+          .optional()
+          .describe("Project key. Defaults to BITBUCKET_DEFAULT_PROJECT."),
+        repository: z.string().describe("Repository slug."),
+        filePath: z
+          .string()
+          .describe("Absolute path to the file on the local filesystem."),
+      },
+      annotations: toolAnnotations({ readOnlyHint: false, idempotentHint: false }),
+    },
+    async ({ project, repository, filePath }) => {
+      try {
+        const resolvedProject = resolveProject(project, defaultProject);
+
+        const fileBuffer = await readFile(filePath);
+        const fileName = basename(filePath);
+        const blob = new Blob([fileBuffer]);
+        const formData = new FormData();
+        formData.append("files", blob, fileName);
+
+        const data = await clients.api
+          .post(
+            `projects/${resolvedProject}/repos/${repository}/attachments`,
+            { body: formData },
+          )
+          .json<{
+            attachments: Array<{
+              id: number;
+              url: string;
+              links: {
+                self: { href: string };
+                attachment: { href: string };
+              };
+            }>;
+          }>();
+
+        const attachment = data.attachments[0];
+        const ref = attachment.links.attachment.href;
+        const isImage = /\.(png|jpe?g|gif|svg|webp|bmp|ico)$/i.test(fileName);
+        const markdown = isImage
+          ? `![${fileName}](${ref})`
+          : `[${fileName}](${ref})`;
+
+        return formatResponse({
+          id: attachment.id,
+          url: attachment.url,
+          ref,
+          markdown,
+        });
       } catch (error) {
         return handleToolError(error);
       }

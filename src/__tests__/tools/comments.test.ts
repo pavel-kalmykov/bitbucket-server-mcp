@@ -72,7 +72,7 @@ describe("Comment tools", () => {
         arguments: {
           action: "create",
           repository: "my-repo",
-          prId: 42,
+          prId: "42",
           text: "Looks good!",
         },
       });
@@ -292,7 +292,7 @@ describe("Comment tools", () => {
         arguments: {
           action: "approve",
           repository: "my-repo",
-          prId: 42,
+          prId: "42",
         },
       });
 

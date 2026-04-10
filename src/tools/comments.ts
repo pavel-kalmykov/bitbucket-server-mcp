@@ -2,7 +2,7 @@ import { z } from "zod";
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import type { ApiClients } from "../client.js";
 import type { ApiCache } from "../utils/cache.js";
-import { formatResponse } from "../utils/response.js";
+import { formatResponse, toolAnnotations } from "../utils/response.js";
 import { handleToolError } from "../utils/errors.js";
 
 function resolveProject(
@@ -38,7 +38,7 @@ export function registerCommentTools(
           .optional()
           .describe("Project key. Defaults to BITBUCKET_DEFAULT_PROJECT."),
         repository: z.string().describe("Repository slug."),
-        prId: z.number().describe("Pull request ID."),
+        prId: z.coerce.number().describe("Pull request ID."),
         text: z
           .string()
           .optional()
@@ -82,7 +82,7 @@ export function registerCommentTools(
           .optional()
           .describe("Whether the line is added or removed (create only)."),
       },
-      annotations: { readOnlyHint: false },
+      annotations: toolAnnotations({ readOnlyHint: false, idempotentHint: false }),
     },
     async ({
       action,
@@ -162,7 +162,7 @@ export function registerCommentTools(
           .optional()
           .describe("Project key. Defaults to BITBUCKET_DEFAULT_PROJECT."),
         repository: z.string().describe("Repository slug."),
-        prId: z.number().describe("Pull request ID."),
+        prId: z.coerce.number().describe("Pull request ID."),
         commentText: z
           .string()
           .optional()
@@ -172,7 +172,7 @@ export function registerCommentTools(
           .optional()
           .describe("Participant status to set (for publish action)."),
       },
-      annotations: { readOnlyHint: false },
+      annotations: toolAnnotations({ readOnlyHint: false, idempotentHint: false }),
     },
     async ({
       action,

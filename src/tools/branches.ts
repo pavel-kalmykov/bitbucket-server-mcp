@@ -2,7 +2,7 @@ import { z } from "zod";
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import type { ApiClients } from "../client.js";
 import type { ApiCache } from "../utils/cache.js";
-import { formatResponse } from "../utils/response.js";
+import { formatResponse, toolAnnotations } from "../utils/response.js";
 import { handleToolError } from "../utils/errors.js";
 import {
   curateList,
@@ -71,7 +71,7 @@ export function registerBranchTools(
             "Comma-separated fields to return. Defaults to: id, displayId, type, latestCommit, isDefault, metadata. Use '*all' for the full API response.",
           ),
       },
-      annotations: { readOnlyHint: true },
+      annotations: toolAnnotations(),
     },
     async ({
       project,
@@ -156,7 +156,7 @@ export function registerBranchTools(
             "Comma-separated fields to return. Defaults to: id, displayId, message, author (name, email), authorTimestamp, parents. Use '*all' for the full API response.",
           ),
       },
-      annotations: { readOnlyHint: true },
+      annotations: toolAnnotations(),
     },
     async ({
       project,
@@ -220,7 +220,7 @@ export function registerBranchTools(
         repository: z.string().describe("Repository slug."),
         branch: z.string().describe("Branch name to delete."),
       },
-      annotations: { destructiveHint: true },
+      annotations: toolAnnotations({ readOnlyHint: false, destructiveHint: true, idempotentHint: false }),
     },
     async ({ project, repository, branch }) => {
       try {

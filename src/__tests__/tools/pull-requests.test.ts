@@ -260,7 +260,7 @@ describe("Pull request tools", () => {
 
       const result = await client.callTool({
         name: "get_pull_request",
-        arguments: { project: "PROJ", repository: "my-repo", prId: 42 },
+        arguments: { project: "PROJ", repository: "my-repo", prId: "42" },
       });
 
       const content = result.content as Array<{ type: string; text: string }>;

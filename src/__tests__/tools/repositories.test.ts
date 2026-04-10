@@ -1,3 +1,4 @@
+import { writeFile, mkdir } from "node:fs/promises";
 import { describe, test, expect, beforeEach, afterEach, vi } from "vitest";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
@@ -196,6 +197,89 @@ describe("Repository tools", () => {
 
       const content = result.content as Array<{ type: string; text: string }>;
       expect(content[0].type).toBe("text");
+    });
+  });
+
+  describe("upload_attachment", () => {
+    test("should upload a local file and return image markdown reference", async () => {
+      const tmpDir = "/tmp/bitbucket-mcp-test";
+      await mkdir(tmpDir, { recursive: true });
+      await writeFile(`${tmpDir}/screenshot.png`, "fake-png-content");
+
+      const mockResponse = {
+        attachments: [
+          {
+            id: 3,
+            url: "http://bitbucket.example.com/projects/TEST/repos/my-repo/attachments/3",
+            links: {
+              self: {
+                href: "http://bitbucket.example.com/projects/TEST/repos/my-repo/attachments/3",
+              },
+              attachment: { href: "attachment:1/3" },
+            },
+          },
+        ],
+      };
+
+      (mockClients.api.post as ReturnType<typeof vi.fn>).mockReturnValue({
+        json: () => Promise.resolve(mockResponse),
+      });
+
+      const result = await client.callTool({
+        name: "upload_attachment",
+        arguments: {
+          project: "TEST",
+          repository: "my-repo",
+          filePath: `${tmpDir}/screenshot.png`,
+        },
+      });
+
+      const content = result.content as Array<{ type: string; text: string }>;
+      expect(result.isError).toBeFalsy();
+      const parsed = JSON.parse(content[0].text);
+
+      expect(parsed.id).toBe(3);
+      expect(parsed.markdown).toBe("![screenshot.png](attachment:1/3)");
+      expect(mockClients.api.post).toHaveBeenCalledWith(
+        "projects/TEST/repos/my-repo/attachments",
+        expect.objectContaining({ body: expect.any(FormData) }),
+      );
+    });
+
+    test("should use link markdown for non-image files", async () => {
+      const tmpDir = "/tmp/bitbucket-mcp-test";
+      await mkdir(tmpDir, { recursive: true });
+      await writeFile(`${tmpDir}/report.pdf`, "fake-pdf-content");
+
+      const mockResponse = {
+        attachments: [
+          {
+            id: 5,
+            url: "http://bitbucket.example.com/attachments/5",
+            links: {
+              self: { href: "http://bitbucket.example.com/attachments/5" },
+              attachment: { href: "attachment:1/5" },
+            },
+          },
+        ],
+      };
+
+      (mockClients.api.post as ReturnType<typeof vi.fn>).mockReturnValue({
+        json: () => Promise.resolve(mockResponse),
+      });
+
+      const result = await client.callTool({
+        name: "upload_attachment",
+        arguments: {
+          project: "TEST",
+          repository: "my-repo",
+          filePath: `${tmpDir}/report.pdf`,
+        },
+      });
+
+      const content = result.content as Array<{ type: string; text: string }>;
+      const parsed = JSON.parse(content[0].text);
+      expect(parsed.markdown).toBe("[report.pdf](attachment:1/5)");
     });
   });
 
