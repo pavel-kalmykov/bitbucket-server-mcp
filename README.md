@@ -162,7 +162,7 @@ Or build locally: `docker build -t bitbucket-mcp .`
 | `create_pull_request` | Create a PR, including cross-repo from forks (`sourceProject`/`sourceRepository`). Auto-fetches default reviewers unless `includeDefaultReviewers: false`. |
 | `get_pull_request` | Get PR details |
 | `update_pull_request` | Safely update title, description, or reviewers (read-modify-write, preserves fields not explicitly changed) |
-| `merge_pull_request` | Merge a PR with optional strategy (`merge-commit`, `squash`, `fast-forward`) |
+| `merge_pull_request` | Merge a PR with optional strategy (`no-ff`, `ff`, `ff-only`, `squash`, `rebase-no-ff`, `rebase-ff-only`, `squash-ff-only`) |
 | `decline_pull_request` | Decline a PR |
 | `list_pull_requests` | List PRs with filtering by state, author, direction |
 | `get_dashboard_pull_requests` | List PRs across all repos for the authenticated user, filtered by role (`AUTHOR`/`REVIEWER`/`PARTICIPANT`), state, and review status |
@@ -173,7 +173,7 @@ Or build locally: `docker build -t bitbucket-mcp .`
 
 | Tool | Description |
 |------|-------------|
-| `manage_comment` | Unified create/edit/delete for PR comments. Supports inline anchoring (`filePath`/`line`/`lineType`), draft state (`state: PENDING`), and task creation (`severity: BLOCKER`). |
+| `manage_comment` | Unified create/edit/delete for PR comments. Supports inline anchoring (`filePath`/`line`/`lineType`), draft state (`state: PENDING`), task creation (`severity: BLOCKER`), threaded replies (`parentId`), and resolve/unresolve (`state: RESOLVED`/`OPEN`). |
 | `submit_review` | Unified approve/unapprove/publish. Publish transitions all `PENDING` comments to visible and optionally sets `participantStatus` (`APPROVED`/`NEEDS_WORK`). |
 
 ### Branches & Commits
