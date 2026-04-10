@@ -74,7 +74,7 @@ export function createServer(options?: BitbucketServerOptions) {
   registerInsightTools(server, clients, cache, config.defaultProject);
 
   registerResources(server, clients, cache);
-  registerPrompts(server, clients, config.defaultProject);
+  registerPrompts(server);
 
   return { server, config };
 }

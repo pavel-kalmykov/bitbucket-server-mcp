@@ -191,6 +191,18 @@ Or build locally: `docker build -t bitbucket-mcp .`
 | `search` | Search code and files across repositories |
 | `get_code_insights` | Fetch Code Insights reports (SonarQube, security scans) and annotations |
 
+### Prompts
+
+| Prompt | Description |
+|--------|-------------|
+| `review-pr` | Step-by-step workflow for reviewing a PR: fetch details, read diff, check CI, create draft comments, and publish the review. Invoke via `/bitbucket:review-pr` in Claude Code. No arguments needed; the LLM asks for the PR interactively. You can add context, e.g. `/bitbucket:review-pr PR #42 in my-repo`. |
+
+### Resources
+
+| Resource | URI | Description |
+|----------|-----|-------------|
+| `projects` | `bitbucket://projects` | Cached list of all accessible projects (5 min TTL). Useful as ambient context without explicit tool calls. |
+
 ## Configuration
 
 ### Environment Variables
