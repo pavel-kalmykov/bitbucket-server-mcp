@@ -25,8 +25,10 @@ Workflow tips:
 - For code review: create draft comments with manage_comment (state: PENDING), then publish all at once with submit_review (action: publish).
 - For cross-repo PRs from forks: use sourceProject/sourceRepository in create_pull_request.
 - get_pr_activity returns reviews, comments, and events; use the filter param to narrow results.
-- manage_comment consolidates create/edit/delete of comments. Use severity: BLOCKER to create tasks.
+- manage_comment consolidates create/edit/delete of comments. Use severity: BLOCKER to create tasks. Use state: RESOLVED/OPEN to resolve/reopen.
 - submit_review consolidates approve/unapprove/publish actions.
+- When reviewing PRs: get_diff shows changed hunks with limited context. If you need full file context (surrounding code, function signatures, imports), read the files locally from the PR's source branch using git or filesystem tools.
+- upload_attachment uploads a local file and returns a markdown reference to embed in PR comments (images: ![name](ref), files: [name](ref)).
 
 Response curation:
 Read tools return curated (compact) responses by default. Use the 'fields' parameter to customize:
@@ -72,7 +74,7 @@ export function createServer(options?: BitbucketServerOptions) {
   registerInsightTools(server, clients, cache, config.defaultProject);
 
   registerResources(server, clients, cache);
-  registerPrompts(server, clients, config.defaultProject);
+  registerPrompts(server);
 
   return { server, config };
 }

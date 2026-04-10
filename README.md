@@ -162,7 +162,7 @@ Or build locally: `docker build -t bitbucket-mcp .`
 | `create_pull_request` | Create a PR, including cross-repo from forks (`sourceProject`/`sourceRepository`). Auto-fetches default reviewers unless `includeDefaultReviewers: false`. |
 | `get_pull_request` | Get PR details |
 | `update_pull_request` | Safely update title, description, or reviewers (read-modify-write, preserves fields not explicitly changed) |
-| `merge_pull_request` | Merge a PR with optional strategy (`merge-commit`, `squash`, `fast-forward`) |
+| `merge_pull_request` | Merge a PR with optional strategy (`no-ff`, `ff`, `ff-only`, `squash`, `rebase-no-ff`, `rebase-ff-only`, `squash-ff-only`) |
 | `decline_pull_request` | Decline a PR |
 | `list_pull_requests` | List PRs with filtering by state, author, direction |
 | `get_dashboard_pull_requests` | List PRs across all repos for the authenticated user, filtered by role (`AUTHOR`/`REVIEWER`/`PARTICIPANT`), state, and review status |
@@ -173,7 +173,7 @@ Or build locally: `docker build -t bitbucket-mcp .`
 
 | Tool | Description |
 |------|-------------|
-| `manage_comment` | Unified create/edit/delete for PR comments. Supports inline anchoring (`filePath`/`line`/`lineType`), draft state (`state: PENDING`), and task creation (`severity: BLOCKER`). |
+| `manage_comment` | Unified create/edit/delete for PR comments. Supports inline anchoring (`filePath`/`line`/`lineType`), draft state (`state: PENDING`), task creation (`severity: BLOCKER`), threaded replies (`parentId`), and resolve/unresolve (`state: RESOLVED`/`OPEN`). |
 | `submit_review` | Unified approve/unapprove/publish. Publish transitions all `PENDING` comments to visible and optionally sets `participantStatus` (`APPROVED`/`NEEDS_WORK`). |
 
 ### Branches & Commits
@@ -190,6 +190,18 @@ Or build locally: `docker build -t bitbucket-mcp .`
 |------|-------------|
 | `search` | Search code and files across repositories |
 | `get_code_insights` | Fetch Code Insights reports (SonarQube, security scans) and annotations |
+
+### Prompts
+
+| Prompt | Description |
+|--------|-------------|
+| `review-pr` | Step-by-step workflow for reviewing a PR: fetch details, read diff, check CI, create draft comments, and publish the review. Invoke via `/bitbucket:review-pr` in Claude Code. No arguments needed; the LLM asks for the PR interactively. You can add context, e.g. `/bitbucket:review-pr PR #42 in my-repo`. |
+
+### Resources
+
+| Resource | URI | Description |
+|----------|-----|-------------|
+| `projects` | `bitbucket://projects` | Cached list of all accessible projects (5 min TTL). Useful as ambient context without explicit tool calls. |
 
 ## Configuration
 

@@ -455,7 +455,66 @@ describe("Pull request tools", () => {
       expect(mockClients.api.post).toHaveBeenCalledWith(
         "projects/PROJ/repos/my-repo/pull-requests/5/merge",
         expect.objectContaining({
-          json: { version: 12, message: "Merging feature", strategy: "squash" },
+          json: { version: 12, message: "Merging feature" },
+          searchParams: { strategyId: "squash" },
+        }),
+      );
+    });
+
+    test("should merge with no-ff strategy", async () => {
+      const mockPr = { id: 5, version: 12, state: "OPEN" };
+      const mergedPr = { id: 5, version: 13, state: "MERGED" };
+
+      (mockClients.api.get as ReturnType<typeof vi.fn>).mockReturnValueOnce({
+        json: () => Promise.resolve(mockPr),
+      });
+      (mockClients.api.post as ReturnType<typeof vi.fn>).mockReturnValueOnce({
+        json: () => Promise.resolve(mergedPr),
+      });
+
+      await client.callTool({
+        name: "merge_pull_request",
+        arguments: {
+          project: "PROJ",
+          repository: "my-repo",
+          prId: 5,
+          strategy: "no-ff",
+        },
+      });
+
+      expect(mockClients.api.post).toHaveBeenCalledWith(
+        "projects/PROJ/repos/my-repo/pull-requests/5/merge",
+        expect.objectContaining({
+          json: { version: 12 },
+          searchParams: { strategyId: "no-ff" },
+        }),
+      );
+    });
+
+    test("should merge without strategy (server default)", async () => {
+      const mockPr = { id: 5, version: 12, state: "OPEN" };
+      const mergedPr = { id: 5, version: 13, state: "MERGED" };
+
+      (mockClients.api.get as ReturnType<typeof vi.fn>).mockReturnValueOnce({
+        json: () => Promise.resolve(mockPr),
+      });
+      (mockClients.api.post as ReturnType<typeof vi.fn>).mockReturnValueOnce({
+        json: () => Promise.resolve(mergedPr),
+      });
+
+      await client.callTool({
+        name: "merge_pull_request",
+        arguments: {
+          project: "PROJ",
+          repository: "my-repo",
+          prId: 5,
+        },
+      });
+
+      expect(mockClients.api.post).toHaveBeenCalledWith(
+        "projects/PROJ/repos/my-repo/pull-requests/5/merge",
+        expect.objectContaining({
+          json: { version: 12 },
         }),
       );
     });

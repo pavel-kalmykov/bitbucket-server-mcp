@@ -244,6 +244,42 @@ describe("Comment tools", () => {
       );
     });
 
+    test("should resolve a comment", async () => {
+      const mockResponse = {
+        id: 1,
+        text: "Fix this",
+        state: "RESOLVED",
+        version: 1,
+      };
+
+      (mockClients.api.put as ReturnType<typeof vi.fn>).mockReturnValue({
+        json: () => Promise.resolve(mockResponse),
+      });
+
+      const result = await client.callTool({
+        name: "manage_comment",
+        arguments: {
+          action: "edit",
+          repository: "my-repo",
+          prId: 42,
+          commentId: 1,
+          version: 0,
+          state: "RESOLVED",
+        },
+      });
+
+      const content = result.content as Array<{ type: string; text: string }>;
+      const parsed = JSON.parse(content[0].text);
+
+      expect(parsed.state).toBe("RESOLVED");
+      expect(mockClients.api.put).toHaveBeenCalledWith(
+        "projects/DEFAULT/repos/my-repo/pull-requests/42/comments/1",
+        expect.objectContaining({
+          json: expect.objectContaining({ state: "RESOLVED", version: 0 }),
+        }),
+      );
+    });
+
     test("should delete a comment", async () => {
       (mockClients.api.delete as ReturnType<typeof vi.fn>).mockReturnValue(
         Promise.resolve(),

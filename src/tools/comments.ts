@@ -58,10 +58,10 @@ export function registerCommentTools(
           .optional()
           .describe("Parent comment ID for threaded replies (create only)."),
         state: z
-          .enum(["OPEN", "PENDING"])
+          .enum(["OPEN", "PENDING", "RESOLVED"])
           .optional()
           .describe(
-            "Comment state. PENDING creates a draft comment (create only).",
+            "Comment state. PENDING = draft (create only). RESOLVED = mark as resolved (edit only). OPEN = reopen a resolved comment (edit only).",
           ),
         severity: z
           .enum(["NORMAL", "BLOCKER"])
@@ -129,6 +129,7 @@ export function registerCommentTools(
             text,
             version,
             ...(severity && { severity }),
+            ...(state && { state }),
           };
 
           const data = await clients.api

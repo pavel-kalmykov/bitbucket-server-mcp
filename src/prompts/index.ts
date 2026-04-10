@@ -1,103 +1,31 @@
-import { z } from "zod";
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
-import type { ApiClients } from "../client.js";
 
-function resolveProject(
-  provided: string | undefined,
-  defaultProject?: string,
-): string {
-  const project = provided || defaultProject;
-  if (!project) throw new Error("Project is required.");
-  return project;
-}
-
-export function registerPrompts(
-  server: McpServer,
-  clients: ApiClients,
-  defaultProject?: string,
-) {
+export function registerPrompts(server: McpServer) {
   server.registerPrompt(
     "review-pr",
     {
       description:
-        "Fetch all context needed to review a pull request: details, diff, comments, and CI results.",
-      argsSchema: {
-        project: z
-          .string()
-          .optional()
-          .describe("Project key. Defaults to BITBUCKET_DEFAULT_PROJECT."),
-        repository: z.string().describe("Repository slug."),
-        prId: z.string().describe("Pull request ID."),
-      },
+        "Step-by-step workflow for reviewing a Bitbucket pull request.",
     },
-    async ({ project, repository, prId }) => {
-      const resolvedProject = resolveProject(project, defaultProject);
-      const prIdNum = parseInt(prId, 10);
-      const basePath = `projects/${resolvedProject}/repos/${repository}/pull-requests/${prIdNum}`;
+    async () => ({
+      messages: [
+        {
+          role: "user" as const,
+          content: {
+            type: "text" as const,
+            text: `Review a Bitbucket pull request. Follow these steps:
 
-      const [prData, diffData, activitiesData, insightsData] =
-        await Promise.all([
-          clients.api.get(basePath).json<Record<string, unknown>>(),
-          clients.api
-            .get(`${basePath}/diff`, {
-              searchParams: { contextLines: 10, withComments: false },
-            })
-            .json<Record<string, unknown>>(),
-          clients.api
-            .get(`${basePath}/activities`)
-            .json<{ values: unknown[] }>(),
-          clients.insights
-            .get(`${basePath}/reports`)
-            .json<{ values: unknown[] }>()
-            .catch(() => ({ values: [] })),
-        ]);
-
-      const title = prData.title ?? "Unknown";
-      const author =
-        (
-          (prData.author as Record<string, unknown>)?.user as Record<
-            string,
-            unknown
-          >
-        )?.displayName ?? "Unknown";
-      const description = prData.description ?? "No description";
-      const state = prData.state ?? "UNKNOWN";
-
-      const comments = (activitiesData.values ?? []).filter(
-        (a: unknown) => (a as Record<string, unknown>).action === "COMMENTED",
-      );
-
-      const sections = [
-        `# Pull Request #${prIdNum}: ${title}`,
-        `**Author:** ${author} | **State:** ${state}`,
-        "",
-        "## Description",
-        String(description),
-        "",
-        "## Diff",
-        "```",
-        JSON.stringify(diffData, null, 2).slice(0, 5000),
-        "```",
-        "",
-        `## Comments (${comments.length})`,
-        comments.length > 0
-          ? JSON.stringify(comments, null, 2).slice(0, 3000)
-          : "No comments yet.",
-        "",
-        `## CI Reports (${insightsData.values.length})`,
-        insightsData.values.length > 0
-          ? JSON.stringify(insightsData.values, null, 2).slice(0, 2000)
-          : "No CI reports available.",
-      ];
-
-      return {
-        messages: [
-          {
-            role: "user" as const,
-            content: { type: "text" as const, text: sections.join("\n") },
+1. Ask me which PR to review (project, repository, and PR ID).
+2. Use get_pull_request to get the PR details (title, author, description, reviewers, branches).
+3. Use get_diff to see the changes. Start with a small contextLines value. If the diff is large, focus on specific files.
+4. For any file where the diff context is not enough to understand the change, read the full file locally from the PR's source branch using git checkout or filesystem tools.
+5. Use get_pr_activity with filter "comments" to see existing review comments and whether they have been addressed.
+6. Use get_code_insights to check CI status (SonarQube, security scans, test results).
+7. Create your review comments with manage_comment using state: PENDING (draft). Use severity: BLOCKER for issues that must be fixed before merging. Use filePath/line for inline comments, or parentId to reply to existing threads.
+8. When all comments are ready, use submit_review with action: publish to make them visible at once. Set participantStatus to APPROVED or NEEDS_WORK.`,
           },
-        ],
-      };
-    },
+        },
+      ],
+    }),
   );
 }
