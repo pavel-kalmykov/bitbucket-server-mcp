@@ -1,3 +1,5 @@
+import { readFile } from "node:fs/promises";
+import { basename } from "node:path";
 import { z } from "zod";
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import type { ApiClients } from "../client.js";
@@ -223,6 +225,68 @@ export function registerRepositoryTools(
           .json();
 
         return formatResponse(data);
+      } catch (error) {
+        return handleToolError(error);
+      }
+    },
+  );
+
+  server.registerTool(
+    "upload_attachment",
+    {
+      description:
+        "Upload a file attachment to a repository. Returns a markdown reference to embed in PR comments or descriptions.",
+      inputSchema: {
+        project: z
+          .string()
+          .optional()
+          .describe("Project key. Defaults to BITBUCKET_DEFAULT_PROJECT."),
+        repository: z.string().describe("Repository slug."),
+        filePath: z
+          .string()
+          .describe("Absolute path to the file on the local filesystem."),
+      },
+      annotations: { readOnlyHint: false },
+    },
+    async ({ project, repository, filePath }) => {
+      try {
+        const resolvedProject = resolveProject(project, defaultProject);
+
+        const fileBuffer = await readFile(filePath);
+        const fileName = basename(filePath);
+        const blob = new Blob([fileBuffer]);
+        const formData = new FormData();
+        formData.append("files", blob, fileName);
+
+        const data = await clients.api
+          .post(
+            `projects/${resolvedProject}/repos/${repository}/attachments`,
+            { body: formData },
+          )
+          .json<{
+            attachments: Array<{
+              id: number;
+              url: string;
+              links: {
+                self: { href: string };
+                attachment: { href: string };
+              };
+            }>;
+          }>();
+
+        const attachment = data.attachments[0];
+        const ref = attachment.links.attachment.href;
+        const isImage = /\.(png|jpe?g|gif|svg|webp|bmp|ico)$/i.test(fileName);
+        const markdown = isImage
+          ? `![${fileName}](${ref})`
+          : `[${fileName}](${ref})`;
+
+        return formatResponse({
+          id: attachment.id,
+          url: attachment.url,
+          ref,
+          markdown,
+        });
       } catch (error) {
         return handleToolError(error);
       }
