@@ -335,9 +335,19 @@ export function registerPullRequestTools(
         prId: z.coerce.number().describe("Pull request ID."),
         message: z.string().optional().describe("Custom merge commit message."),
         strategy: z
-          .enum(["merge-commit", "squash", "fast-forward"])
+          .enum([
+            "no-ff",
+            "ff",
+            "ff-only",
+            "squash",
+            "squash-ff-only",
+            "rebase-no-ff",
+            "rebase-ff-only",
+          ])
           .optional()
-          .describe("Merge strategy."),
+          .describe(
+            "Merge strategy ID. no-ff = merge commit, ff = fast-forward, ff-only = fast-forward only, squash = squash, rebase-no-ff = rebase + merge commit, rebase-ff-only = rebase + fast-forward.",
+          ),
       },
       annotations: toolAnnotations({ readOnlyHint: false, destructiveHint: true, idempotentHint: false }),
     },
@@ -354,12 +364,14 @@ export function registerPullRequestTools(
 
         const body: Record<string, unknown> = { version: pr.version };
         if (message) body.message = message;
-        if (strategy) body.strategy = strategy;
+
+        const searchParams: Record<string, string> = {};
+        if (strategy) searchParams.strategyId = strategy;
 
         const data = await clients.api
           .post(
             `projects/${resolvedProject}/repos/${repository}/pull-requests/${prId}/merge`,
-            { json: body },
+            { json: body, searchParams },
           )
           .json();
 
