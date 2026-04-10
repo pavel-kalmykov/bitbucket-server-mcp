@@ -4,7 +4,7 @@ import { z } from "zod";
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import type { ApiClients } from "../client.js";
 import type { ApiCache } from "../utils/cache.js";
-import { formatResponse } from "../utils/response.js";
+import { formatResponse, toolAnnotations } from "../utils/response.js";
 import { handleToolError } from "../utils/errors.js";
 import {
   curateList,
@@ -52,7 +52,7 @@ export function registerRepositoryTools(
             "Comma-separated fields to return. Defaults to: key, id, name, description, type, public. Use '*all' for the full API response.",
           ),
       },
-      annotations: { readOnlyHint: true },
+      annotations: toolAnnotations(),
     },
     async ({ limit = 25, start = 0, fields }) => {
       try {
@@ -104,7 +104,7 @@ export function registerRepositoryTools(
             "Comma-separated fields to return. Defaults to: slug, id, name, description, state, forkable, project (key, name). Use '*all' for the full API response with clone URLs and links.",
           ),
       },
-      annotations: { readOnlyHint: true },
+      annotations: toolAnnotations(),
     },
     async ({ project, limit = 25, start = 0, fields }) => {
       try {
@@ -157,7 +157,7 @@ export function registerRepositoryTools(
           .optional()
           .describe("Max items to return (default: 50)."),
       },
-      annotations: { readOnlyHint: true },
+      annotations: toolAnnotations(),
     },
     async ({ project, repository, path, branch, limit = 50 }) => {
       try {
@@ -202,7 +202,7 @@ export function registerRepositoryTools(
           .optional()
           .describe("Starting line number (default: 0)."),
       },
-      annotations: { readOnlyHint: true },
+      annotations: toolAnnotations(),
     },
     async ({
       project,
@@ -246,7 +246,7 @@ export function registerRepositoryTools(
           .string()
           .describe("Absolute path to the file on the local filesystem."),
       },
-      annotations: { readOnlyHint: false },
+      annotations: toolAnnotations({ readOnlyHint: false, idempotentHint: false }),
     },
     async ({ project, repository, filePath }) => {
       try {

@@ -2,7 +2,7 @@ import { z } from "zod";
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import type { ApiClients } from "../client.js";
 import type { ApiCache } from "../utils/cache.js";
-import { formatResponse } from "../utils/response.js";
+import { formatResponse, toolAnnotations } from "../utils/response.js";
 import { handleToolError } from "../utils/errors.js";
 import { truncateDiff } from "../utils/diff.js";
 import {
@@ -104,6 +104,7 @@ export function registerPullRequestTools(
             "Merge default reviewers into the reviewer list (default: true).",
           ),
       },
+      annotations: toolAnnotations({ readOnlyHint: false, idempotentHint: false }),
     },
     async ({
       project,
@@ -230,7 +231,7 @@ export function registerPullRequestTools(
             "Comma-separated fields to return. Defaults to: id, title, description, state, dates, author (name, displayName, status), branches (displayId), reviewers (name, displayName, status, approved), properties (commentCount, taskCount). Use '*all' for the full API response with all nested objects.",
           ),
       },
-      annotations: { readOnlyHint: true },
+      annotations: toolAnnotations(),
     },
     async ({ project, repository, prId, fields }) => {
       try {
@@ -271,6 +272,7 @@ export function registerPullRequestTools(
           .optional()
           .describe("Replace reviewer list with these usernames."),
       },
+      annotations: toolAnnotations({ readOnlyHint: false }),
     },
     async ({
       project,
@@ -337,6 +339,7 @@ export function registerPullRequestTools(
           .optional()
           .describe("Merge strategy."),
       },
+      annotations: toolAnnotations({ readOnlyHint: false, destructiveHint: true, idempotentHint: false }),
     },
     async ({ project, repository, prId, message, strategy }) => {
       try {
@@ -382,7 +385,7 @@ export function registerPullRequestTools(
         prId: z.coerce.number().describe("Pull request ID."),
         message: z.string().optional().describe("Reason for declining."),
       },
-      annotations: { destructiveHint: true },
+      annotations: toolAnnotations({ readOnlyHint: false, destructiveHint: true, idempotentHint: false }),
     },
     async ({ project, repository, prId, message }) => {
       try {
@@ -452,7 +455,7 @@ export function registerPullRequestTools(
             "Comma-separated fields to return. Defaults to: id, title, description, state, dates, author (name, displayName, status), branches (displayId), reviewers (name, displayName, status, approved), properties (commentCount, taskCount). Use '*all' for the full API response with all nested objects.",
           ),
       },
-      annotations: { readOnlyHint: true },
+      annotations: toolAnnotations(),
     },
     async ({
       project,
@@ -556,7 +559,7 @@ export function registerPullRequestTools(
             "Comma-separated fields to return. Defaults to: id, title, description, state, dates, author (name, displayName, status), branches (displayId), reviewers (name, displayName, status, approved), properties (commentCount, taskCount). Use '*all' for the full API response with all nested objects.",
           ),
       },
-      annotations: { readOnlyHint: true },
+      annotations: toolAnnotations(),
     },
     async ({
       state,
@@ -615,7 +618,7 @@ export function registerPullRequestTools(
           .optional()
           .describe("Filter activity type (default: all)."),
       },
-      annotations: { readOnlyHint: true },
+      annotations: toolAnnotations(),
     },
     async ({ project, repository, prId, filter = "all" }) => {
       try {
@@ -667,7 +670,7 @@ export function registerPullRequestTools(
             "Max lines per file. 0 = no limit. Defaults to BITBUCKET_DIFF_MAX_LINES_PER_FILE.",
           ),
       },
-      annotations: { readOnlyHint: true },
+      annotations: toolAnnotations(),
     },
     async ({
       project,

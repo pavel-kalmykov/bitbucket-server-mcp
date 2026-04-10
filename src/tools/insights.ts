@@ -2,7 +2,7 @@ import { z } from "zod";
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import type { ApiClients } from "../client.js";
 import type { ApiCache } from "../utils/cache.js";
-import { formatResponse } from "../utils/response.js";
+import { formatResponse, toolAnnotations } from "../utils/response.js";
 import { handleToolError } from "../utils/errors.js";
 
 function resolveProject(
@@ -42,7 +42,7 @@ export function registerInsightTools(
         repository: z.string().describe("Repository slug."),
         pullRequestId: z.coerce.number().describe("Pull request ID."),
       },
-      annotations: { readOnlyHint: true },
+      annotations: toolAnnotations(),
     },
     async ({ project, repository, pullRequestId }) => {
       try {

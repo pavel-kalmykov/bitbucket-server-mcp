@@ -2,7 +2,7 @@ import { z } from "zod";
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import type { ApiClients } from "../client.js";
 import type { ApiCache } from "../utils/cache.js";
-import { formatResponse } from "../utils/response.js";
+import { formatResponse, toolAnnotations } from "../utils/response.js";
 import { handleToolError } from "../utils/errors.js";
 
 function resolveProject(
@@ -58,7 +58,7 @@ export function registerSearchTools(
           .optional()
           .describe("Start index for pagination (default: 0)."),
       },
-      annotations: { readOnlyHint: true, openWorldHint: true },
+      annotations: toolAnnotations({ openWorldHint: true }),
     },
     async ({ query, project, repository, type, limit = 25, start = 0 }) => {
       try {
