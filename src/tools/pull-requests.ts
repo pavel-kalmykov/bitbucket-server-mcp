@@ -663,7 +663,7 @@ export function registerPullRequestTools(
     "get_diff",
     {
       description:
-        "Get the diff of a pull request. Large diffs are truncated per file unless maxLinesPerFile is set to 0.",
+        "Get the diff of a pull request. Use stat=true for a lightweight summary of changed files (and line counts if the server supports it) instead of the full diff.",
       inputSchema: {
         project: z
           .string()
@@ -671,15 +671,23 @@ export function registerPullRequestTools(
           .describe("Project key. Defaults to BITBUCKET_DEFAULT_PROJECT."),
         repository: z.string().describe("Repository slug."),
         prId: z.coerce.number().describe("Pull request ID."),
+        stat: z
+          .boolean()
+          .optional()
+          .describe(
+            "If true, return only the list of changed files and types (ADD, MODIFY, DELETE, RENAME, COPY) instead of the full diff. Line count summary included when available (Bitbucket DC 9.1+).",
+          ),
         contextLines: z
           .number()
           .optional()
-          .describe("Number of context lines around changes (default: 10)."),
+          .describe(
+            "Number of context lines around changes (default: 10). Ignored when stat=true.",
+          ),
         maxLinesPerFile: z
           .number()
           .optional()
           .describe(
-            "Max lines per file. 0 = no limit. Defaults to BITBUCKET_DIFF_MAX_LINES_PER_FILE.",
+            "Max lines per file. 0 = no limit. Defaults to BITBUCKET_DIFF_MAX_LINES_PER_FILE. Ignored when stat=true.",
           ),
       },
       annotations: toolAnnotations(),
@@ -688,20 +696,53 @@ export function registerPullRequestTools(
       project,
       repository,
       prId,
+      stat,
       contextLines = 10,
       maxLinesPerFile,
     }) => {
       try {
         const resolvedProject = resolveProject(project, defaultProject);
+        const basePath = `projects/${resolvedProject}/repos/${repository}/pull-requests/${prId}`;
+
+        if (stat) {
+          const changesData = await clients.api
+            .get(`${basePath}/changes`, {
+              searchParams: { limit: 1000 },
+            })
+            .json<{
+              values: Array<{
+                path: { toString: string };
+                type: string;
+                nodeType: string;
+              }>;
+            }>();
+
+          const files = changesData.values.map((c) => ({
+            path: c.path.toString,
+            type: c.type,
+          }));
+
+          let summary: Record<string, number> | undefined;
+          try {
+            summary = await clients.api
+              .get(`${basePath}/diff-stats-summary`)
+              .json<Record<string, number>>();
+          } catch {
+            // diff-stats-summary only available on Bitbucket DC 9.1+
+          }
+
+          return formatResponse({
+            files,
+            totalFiles: files.length,
+            ...(summary && { summary }),
+          });
+        }
 
         const rawDiff = await clients.api
-          .get(
-            `projects/${resolvedProject}/repos/${repository}/pull-requests/${prId}/diff`,
-            {
-              searchParams: { contextLines, withComments: false },
-              headers: { Accept: "text/plain" },
-            },
-          )
+          .get(`${basePath}/diff`, {
+            searchParams: { contextLines, withComments: false },
+            headers: { Accept: "text/plain" },
+          })
           .text();
 
         const effectiveMaxLines =

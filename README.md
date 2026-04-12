@@ -167,7 +167,7 @@ Or build locally: `docker build -t bitbucket-mcp .`
 | `list_pull_requests` | List PRs with filtering by state, author, direction |
 | `get_dashboard_pull_requests` | List PRs across all repos for the authenticated user, filtered by role (`AUTHOR`/`REVIEWER`/`PARTICIPANT`), state, and review status |
 | `get_pr_activity` | Get PR activity timeline, filtered by type (`all`, `reviews`, `comments`) |
-| `get_diff` | Get PR diff with per-file truncation support |
+| `get_diff` | Get PR diff with per-file truncation support. Use `stat: true` for a lightweight summary of changed files instead of the full diff. |
 
 ### Code Review
 
@@ -190,6 +190,7 @@ Or build locally: `docker build -t bitbucket-mcp .`
 |------|-------------|
 | `search` | Search code and files across repositories |
 | `get_code_insights` | Fetch Code Insights reports (SonarQube, security scans) and annotations |
+| `get_build_status` | Get CI build status (state, name, URL) by commit ID or PR. When using prId, resolves the latest commit automatically. |
 
 ### Prompts
 
