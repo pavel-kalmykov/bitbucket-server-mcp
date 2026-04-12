@@ -741,5 +741,63 @@ describe("Pull request tools", () => {
       expect(content[0].text).not.toContain("TRUNCATED");
       expect(content[0].text).toContain("+line999");
     });
+
+    test("should return file list with stat=true", async () => {
+      mockJson(mockClients.api.get, {
+        values: [
+          { path: { toString: "src/server.ts" }, type: "MODIFY", nodeType: "FILE" },
+          { path: { toString: "src/new.ts" }, type: "ADD", nodeType: "FILE" },
+        ],
+      });
+
+      // diff-stats-summary returns 404 on older versions
+      (mockClients.api.get as ReturnType<typeof vi.fn>).mockReturnValueOnce({
+        json: () => Promise.reject(new Error("Not Found")),
+      });
+
+      const result = await client.callTool({
+        name: "get_diff",
+        arguments: {
+          project: "PROJ",
+          repository: "my-repo",
+          prId: 1,
+          stat: true,
+        },
+      });
+
+      const content = result.content as Array<{ type: string; text: string }>;
+      const parsed = JSON.parse(content[0].text);
+
+      expect(parsed.totalFiles).toBe(2);
+      expect(parsed.files[0]).toEqual({ path: "src/server.ts", type: "MODIFY" });
+      expect(parsed.files[1]).toEqual({ path: "src/new.ts", type: "ADD" });
+      expect(parsed.summary).toBeUndefined();
+    });
+
+    test("should include summary when diff-stats-summary is available", async () => {
+      mockJson(mockClients.api.get, {
+        values: [
+          { path: { toString: "src/index.ts" }, type: "MODIFY", nodeType: "FILE" },
+        ],
+      });
+
+      mockJson(mockClients.api.get, { linesAdded: 50, linesRemoved: 10 });
+
+      const result = await client.callTool({
+        name: "get_diff",
+        arguments: {
+          project: "PROJ",
+          repository: "my-repo",
+          prId: 1,
+          stat: true,
+        },
+      });
+
+      const content = result.content as Array<{ type: string; text: string }>;
+      const parsed = JSON.parse(content[0].text);
+
+      expect(parsed.totalFiles).toBe(1);
+      expect(parsed.summary).toEqual({ linesAdded: 50, linesRemoved: 10 });
+    });
   });
 });
