@@ -4,6 +4,7 @@ import { logger } from "./utils/logging.js";
 
 export interface ApiClients {
   api: KyInstance;
+  buildStatus: KyInstance;
   insights: KyInstance;
   search: KyInstance;
   branchUtils: KyInstance;
@@ -56,6 +57,7 @@ export function createApiClients(config: BitbucketConfig): ApiClients {
 
   return {
     api: create("/rest/api/1.0"),
+    buildStatus: create("/rest/build-status/1.0"),
     insights: create("/rest/insights/latest"),
     search: create("/rest/search/latest"),
     branchUtils: create("/rest/branch-utils/1.0"),

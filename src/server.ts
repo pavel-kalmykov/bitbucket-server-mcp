@@ -27,7 +27,8 @@ Workflow tips:
 - get_pr_activity returns reviews, comments, and events; use the filter param to narrow results.
 - manage_comment consolidates create/edit/delete of comments. Use severity: BLOCKER to create tasks. Use state: RESOLVED/OPEN to resolve/reopen.
 - submit_review consolidates approve/unapprove/publish actions.
-- When reviewing PRs: get_diff shows changed hunks with limited context. If you need full file context (surrounding code, function signatures, imports), read the files locally from the PR's source branch using git or filesystem tools.
+- When reviewing PRs: use get_diff with stat=true first to see which files changed, then get the full diff or read files locally for context.
+- get_build_status accepts either a commitId or a prId (resolves the latest commit automatically). Use it to check CI status before approving.
 - upload_attachment uploads a local file and returns a markdown reference to embed in PR comments (images: ![name](ref), files: [name](ref)).
 
 Response curation:
