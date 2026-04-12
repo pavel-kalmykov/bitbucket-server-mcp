@@ -9,7 +9,6 @@ import { registerCommentTools } from "../../tools/comments.js";
 import { registerSearchTools } from "../../tools/search.js";
 import { registerInsightTools } from "../../tools/insights.js";
 import { createMockClients } from "../test-utils.js";
-import type { ApiClients } from "../../client.js";
 import { ApiCache } from "../../utils/cache.js";
 
 describe("Tool annotations", () => {
@@ -64,6 +63,7 @@ describe("Tool annotations", () => {
       "list_branches",
       "list_commits",
       "get_code_insights",
+      "get_build_status",
     ];
 
     test.each(readOnlyTools)("%s is read-only and idempotent", (name) => {

@@ -175,4 +175,68 @@ describe("Insight tools", () => {
       expect(parsed.annotations).toEqual({});
     });
   });
+
+  describe("get_build_status", () => {
+    test("should fetch build status by commit ID", async () => {
+      mockJson(mockClients.buildStatus.get, {
+        values: [
+          {
+            state: "SUCCESSFUL",
+            key: "jenkins-123",
+            name: "Build #123",
+            url: "https://jenkins.example.com/job/123",
+          },
+        ],
+      });
+
+      const result = await client.callTool({
+        name: "get_build_status",
+        arguments: { commitId: "abc123def456" },
+      });
+
+      const content = result.content as Array<{ type: string; text: string }>;
+      const parsed = JSON.parse(content[0].text);
+
+      expect(parsed).toHaveLength(1);
+      expect(parsed[0].state).toBe("SUCCESSFUL");
+      expect(parsed[0].url).toBe("https://jenkins.example.com/job/123");
+      expect(mockClients.buildStatus.get).toHaveBeenCalledWith(
+        "commits/abc123def456",
+      );
+    });
+
+    test("should resolve latest commit from PR and fetch build status", async () => {
+      mockJson(mockClients.api.get, {
+        fromRef: { latestCommit: "resolved999" },
+      });
+
+      mockJson(mockClients.buildStatus.get, {
+        values: [
+          { state: "FAILED", name: "Build #99", url: "https://ci.example.com/99" },
+        ],
+      });
+
+      const result = await client.callTool({
+        name: "get_build_status",
+        arguments: { project: "PROJ", repository: "my-repo", prId: 42 },
+      });
+
+      const content = result.content as Array<{ type: string; text: string }>;
+      const parsed = JSON.parse(content[0].text);
+
+      expect(parsed[0].state).toBe("FAILED");
+      expect(mockClients.buildStatus.get).toHaveBeenCalledWith(
+        "commits/resolved999",
+      );
+    });
+
+    test("should return error when neither commitId nor prId provided", async () => {
+      const result = await client.callTool({
+        name: "get_build_status",
+        arguments: {},
+      });
+
+      expect(result.isError).toBe(true);
+    });
+  });
 });

@@ -78,4 +78,67 @@ export function registerInsightTools(
       }
     },
   );
+
+  server.registerTool(
+    "get_build_status",
+    {
+      description:
+        "Get CI build status for a commit or pull request. When prId is provided, automatically resolves the latest commit. Returns build state (SUCCESSFUL, FAILED, INPROGRESS), name, and URL to the CI build.",
+      inputSchema: {
+        project: z
+          .string()
+          .optional()
+          .describe(
+            "Project key. Defaults to BITBUCKET_DEFAULT_PROJECT. Only needed with prId.",
+          ),
+        repository: z
+          .string()
+          .optional()
+          .describe("Repository slug. Only needed with prId."),
+        prId: z.coerce
+          .number()
+          .optional()
+          .describe(
+            "Pull request ID. If provided, resolves the latest commit automatically.",
+          ),
+        commitId: z
+          .string()
+          .optional()
+          .describe(
+            "Full commit hash. Use this or prId, not both.",
+          ),
+      },
+      annotations: toolAnnotations(),
+    },
+    async ({ project, repository, prId, commitId }) => {
+      try {
+        let resolvedCommit = commitId;
+
+        if (prId) {
+          if (!repository) {
+            throw new Error("repository is required when using prId.");
+          }
+          const resolvedProject = resolveProject(project, defaultProject);
+          const pr = await clients.api
+            .get(
+              `projects/${resolvedProject}/repos/${repository}/pull-requests/${prId}`,
+            )
+            .json<{ fromRef: { latestCommit: string } }>();
+          resolvedCommit = pr.fromRef.latestCommit;
+        }
+
+        if (!resolvedCommit) {
+          throw new Error("Either commitId or prId is required.");
+        }
+
+        const data = await clients.buildStatus
+          .get(`commits/${resolvedCommit}`)
+          .json<{ values: unknown[] }>();
+
+        return formatResponse(data.values);
+      } catch (error) {
+        return handleToolError(error);
+      }
+    },
+  );
 }

@@ -14,6 +14,7 @@ export function createMockClient() {
 export function createMockClients(): ApiClients {
   return {
     api: createMockClient(),
+    buildStatus: createMockClient(),
     insights: createMockClient(),
     search: createMockClient(),
     branchUtils: createMockClient(),
