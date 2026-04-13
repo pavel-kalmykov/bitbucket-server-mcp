@@ -142,7 +142,10 @@ describe("Pull request tools", () => {
       const mockPr = { id: 3, title: "Dedup PR", state: "OPEN" };
 
       mockJson(mockClients.api.get, { id: 10 });
-      mockJson(mockClients.defaultReviewers.get, [{ name: "alice" }, { name: "carol" }]);
+      mockJson(mockClients.defaultReviewers.get, [
+        { name: "alice" },
+        { name: "carol" },
+      ]);
       mockJson(mockClients.api.post, mockPr);
 
       await client.callTool({
@@ -312,20 +315,24 @@ describe("Pull request tools", () => {
       );
     });
 
-    test("should update target branch", async () => {
+    test("should update target branch preserving repository info for cross-repo PRs", async () => {
       const existingPr = {
         id: 10,
         version: 5,
         title: "Title",
         description: "Desc",
-        toRef: { id: "refs/heads/main", displayId: "main" },
+        toRef: {
+          id: "refs/heads/main",
+          displayId: "main",
+          repository: { slug: "upstream-repo", project: { key: "UPSTREAM" } },
+        },
         reviewers: [],
       };
 
       mockJson(mockClients.api.get, existingPr);
       mockJson(mockClients.api.put, {
         ...existingPr,
-        toRef: { id: "refs/heads/develop", displayId: "develop" },
+        toRef: { ...existingPr.toRef, id: "refs/heads/develop" },
       });
 
       await client.callTool({
@@ -342,7 +349,14 @@ describe("Pull request tools", () => {
         expect.any(String),
         expect.objectContaining({
           json: expect.objectContaining({
-            toRef: { id: "refs/heads/develop", displayId: "main" },
+            toRef: {
+              id: "refs/heads/develop",
+              displayId: "main",
+              repository: {
+                slug: "upstream-repo",
+                project: { key: "UPSTREAM" },
+              },
+            },
           }),
         }),
       );
@@ -745,7 +759,11 @@ describe("Pull request tools", () => {
     test("should return file list with stat=true", async () => {
       mockJson(mockClients.api.get, {
         values: [
-          { path: { toString: "src/server.ts" }, type: "MODIFY", nodeType: "FILE" },
+          {
+            path: { toString: "src/server.ts" },
+            type: "MODIFY",
+            nodeType: "FILE",
+          },
           { path: { toString: "src/new.ts" }, type: "ADD", nodeType: "FILE" },
         ],
       });
@@ -769,7 +787,10 @@ describe("Pull request tools", () => {
       const parsed = JSON.parse(content[0].text);
 
       expect(parsed.totalFiles).toBe(2);
-      expect(parsed.files[0]).toEqual({ path: "src/server.ts", type: "MODIFY" });
+      expect(parsed.files[0]).toEqual({
+        path: "src/server.ts",
+        type: "MODIFY",
+      });
       expect(parsed.files[1]).toEqual({ path: "src/new.ts", type: "ADD" });
       expect(parsed.summary).toBeUndefined();
     });
@@ -777,7 +798,11 @@ describe("Pull request tools", () => {
     test("should include summary when diff-stats-summary is available", async () => {
       mockJson(mockClients.api.get, {
         values: [
-          { path: { toString: "src/index.ts" }, type: "MODIFY", nodeType: "FILE" },
+          {
+            path: { toString: "src/index.ts" },
+            type: "MODIFY",
+            nodeType: "FILE",
+          },
         ],
       });
 

@@ -104,7 +104,10 @@ export function registerPullRequestTools(
             "Merge default reviewers into the reviewer list (default: true).",
           ),
       },
-      annotations: toolAnnotations({ readOnlyHint: false, idempotentHint: false }),
+      annotations: toolAnnotations({
+        readOnlyHint: false,
+        idempotentHint: false,
+      }),
     },
     async ({
       project,
@@ -299,7 +302,11 @@ export function registerPullRequestTools(
           title: title ?? current.title,
           description: description ?? current.description,
           toRef: targetBranch
-            ? { ...current.toRef, id: `refs/heads/${targetBranch}` }
+            ? {
+                id: `refs/heads/${targetBranch}`,
+                displayId: current.toRef.displayId,
+                repository: current.toRef.repository,
+              }
             : current.toRef,
           reviewers: reviewers
             ? reviewers.map((name) => ({ user: { name } }))
@@ -349,7 +356,11 @@ export function registerPullRequestTools(
             "Merge strategy ID. no-ff = merge commit, ff = fast-forward, ff-only = fast-forward only, squash = squash, rebase-no-ff = rebase + merge commit, rebase-ff-only = rebase + fast-forward.",
           ),
       },
-      annotations: toolAnnotations({ readOnlyHint: false, destructiveHint: true, idempotentHint: false }),
+      annotations: toolAnnotations({
+        readOnlyHint: false,
+        destructiveHint: true,
+        idempotentHint: false,
+      }),
     },
     async ({ project, repository, prId, message, strategy }) => {
       try {
@@ -397,7 +408,11 @@ export function registerPullRequestTools(
         prId: z.coerce.number().describe("Pull request ID."),
         message: z.string().optional().describe("Reason for declining."),
       },
-      annotations: toolAnnotations({ readOnlyHint: false, destructiveHint: true, idempotentHint: false }),
+      annotations: toolAnnotations({
+        readOnlyHint: false,
+        destructiveHint: true,
+        idempotentHint: false,
+      }),
     },
     async ({ project, repository, prId, message }) => {
       try {
