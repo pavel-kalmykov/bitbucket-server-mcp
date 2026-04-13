@@ -1,3 +1,17 @@
+# [0.2.0](https://github.com/pavel-kalmykov/bitbucket-server-mcp/compare/v0.1.6...v0.2.0) (2026-04-13)
+
+
+### Bug Fixes
+
+* preserve repository info in toRef when updating cross-repo PRs ([4fa3280](https://github.com/pavel-kalmykov/bitbucket-server-mcp/commit/4fa3280a35ea7fae862d654167df026910805344))
+* set executable permissions on husky hooks ([6fa99a0](https://github.com/pavel-kalmykov/bitbucket-server-mcp/commit/6fa99a05f55b4a04a00eaadc82fe7d9cb388e3bd))
+
+
+### Features
+
+* add get_build_status tool for CI build results ([f6a71b7](https://github.com/pavel-kalmykov/bitbucket-server-mcp/commit/f6a71b7a22ba3c5b56305f33e0a55341804f01eb))
+* add stat mode to get_diff for lightweight change summary ([4c7753c](https://github.com/pavel-kalmykov/bitbucket-server-mcp/commit/4c7753c34fb201763b2980a9de106e5060b6fc22))
+
 ## [0.1.6](https://github.com/pavel-kalmykov/bitbucket-server-mcp/compare/v0.1.5...v0.1.6) (2026-04-10)
 
 
