@@ -11,6 +11,8 @@ export function createMockClients(): MockApiClients {
   return {
     api: mock<KyInstance>(),
     buildStatus: mock<KyInstance>(),
+    commentLikes: mock<KyInstance>(),
+    emoticons: mock<KyInstance>(),
     insights: mock<KyInstance>(),
     search: mock<KyInstance>(),
     branchUtils: mock<KyInstance>(),
