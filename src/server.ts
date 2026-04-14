@@ -61,18 +61,46 @@ export function createServer(options?: BitbucketServerOptions) {
 
   initLogging(server);
 
-  registerRepositoryTools(server, clients, cache, config.defaultProject);
-  registerBranchTools(server, clients, cache, config.defaultProject);
+  const filteredServer = new Proxy(server, {
+    get(target, prop, receiver) {
+      if (prop === "registerTool") {
+        return (...args: [string, ...unknown[]]) => {
+          const [name, toolConfig] = args;
+          if (config.enabledTools && !config.enabledTools.includes(name)) {
+            return;
+          }
+          const annotations = (toolConfig as Record<string, unknown>)
+            ?.annotations as { readOnlyHint?: boolean } | undefined;
+          if (config.readOnly && annotations?.readOnlyHint === false) {
+            return;
+          }
+          const method = Reflect.get(target, prop, receiver) as (
+            ...a: unknown[]
+          ) => unknown;
+          return method.apply(target, args);
+        };
+      }
+      return Reflect.get(target, prop, receiver);
+    },
+  });
+
+  registerRepositoryTools(
+    filteredServer,
+    clients,
+    cache,
+    config.defaultProject,
+  );
+  registerBranchTools(filteredServer, clients, cache, config.defaultProject);
   registerPullRequestTools(
-    server,
+    filteredServer,
     clients,
     cache,
     config.defaultProject,
     config.maxLinesPerFile,
   );
-  registerCommentTools(server, clients, cache, config.defaultProject);
-  registerSearchTools(server, clients, cache, config.defaultProject);
-  registerInsightTools(server, clients, cache, config.defaultProject);
+  registerCommentTools(filteredServer, clients, cache, config.defaultProject);
+  registerSearchTools(filteredServer, clients, cache, config.defaultProject);
+  registerInsightTools(filteredServer, clients, cache, config.defaultProject);
 
   registerResources(server, clients, cache);
   registerPrompts(server);
