@@ -1,3 +1,10 @@
+# [0.3.0](https://github.com/pavel-kalmykov/bitbucket-server-mcp/compare/v0.2.1...v0.3.0) (2026-04-14)
+
+
+### Features
+
+* enforce readOnly and enabledTools config options ([a351592](https://github.com/pavel-kalmykov/bitbucket-server-mcp/commit/a351592c8b4b5f16b4de579c97060d60fb5eeea0))
+
 ## [0.2.1](https://github.com/pavel-kalmykov/bitbucket-server-mcp/compare/v0.2.0...v0.2.1) (2026-04-14)
 
 # [0.2.0](https://github.com/pavel-kalmykov/bitbucket-server-mcp/compare/v0.1.6...v0.2.0) (2026-04-13)
