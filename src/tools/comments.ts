@@ -28,10 +28,10 @@ export function registerCommentTools(
     "manage_comment",
     {
       description:
-        'Create, edit, or delete a pull request comment. Use action "create" for new comments (general, inline, threaded, or tasks), "edit" to update text/severity, and "delete" to remove a comment.',
+        'Manage pull request comments. Actions: "create" (general, inline, threaded, or tasks), "edit" (update text/severity/state), "delete", "react" (add emoji reaction), "unreact" (remove reaction).',
       inputSchema: {
         action: z
-          .enum(["create", "edit", "delete"])
+          .enum(["create", "edit", "delete", "react", "unreact"])
           .describe("Operation to perform on the comment."),
         project: z
           .string()
@@ -81,8 +81,17 @@ export function registerCommentTools(
           .enum(["ADDED", "REMOVED"])
           .optional()
           .describe("Whether the line is added or removed (create only)."),
+        emoticon: z
+          .string()
+          .optional()
+          .describe(
+            "Emoticon shortcut for react/unreact (e.g. thumbsup, heart, tada). Use search_emoticons to find available options.",
+          ),
       },
-      annotations: toolAnnotations({ readOnlyHint: false, idempotentHint: false }),
+      annotations: toolAnnotations({
+        readOnlyHint: false,
+        idempotentHint: false,
+      }),
     },
     async ({
       action,
@@ -98,6 +107,7 @@ export function registerCommentTools(
       filePath,
       line,
       lineType,
+      emoticon,
     }) => {
       try {
         const resolvedProject = resolveProject(project, defaultProject);
@@ -138,6 +148,16 @@ export function registerCommentTools(
           return formatResponse(data);
         }
 
+        if (action === "react" || action === "unreact") {
+          const reactionPath = `projects/${resolvedProject}/repos/${repository}/pull-requests/${prId}/comments/${commentId}/reactions/${emoticon}`;
+          if (action === "react") {
+            await clients.commentLikes.put(reactionPath);
+          } else {
+            await clients.commentLikes.delete(reactionPath);
+          }
+          return formatResponse({ [action]: true, commentId, emoticon });
+        }
+
         // delete
         await clients.api.delete(`${basePath}/${commentId}`, {
           searchParams: { version: version! },
@@ -173,7 +193,10 @@ export function registerCommentTools(
           .optional()
           .describe("Participant status to set (for publish action)."),
       },
-      annotations: toolAnnotations({ readOnlyHint: false, idempotentHint: false }),
+      annotations: toolAnnotations({
+        readOnlyHint: false,
+        idempotentHint: false,
+      }),
     },
     async ({
       action,
@@ -207,6 +230,31 @@ export function registerCommentTools(
           .put(`${prPath}/review`, { json: body })
           .json();
         return formatResponse(data);
+      } catch (error) {
+        return handleToolError(error);
+      }
+    },
+  );
+
+  server.registerTool(
+    "search_emoticons",
+    {
+      description:
+        "Search available emoticons for comment reactions. Returns matching shortcut names to use with manage_comment react/unreact.",
+      inputSchema: {
+        query: z.string().describe("Search term (e.g. thumb, fire, heart)."),
+      },
+      annotations: toolAnnotations(),
+    },
+    async ({ query }) => {
+      try {
+        const data = await clients.emoticons
+          .get("search", { searchParams: { query } })
+          .json<{
+            values: Array<{ shortcut: string; url: string }>;
+          }>();
+
+        return formatResponse(data.values.map((e) => e.shortcut));
       } catch (error) {
         return handleToolError(error);
       }
