@@ -161,6 +161,90 @@ describe("Comment tools", () => {
       );
     });
 
+    test("should create inline comment with custom diffType, fileType, and lineType", async () => {
+      const mockResponse = {
+        id: 6,
+        text: "Old version issue",
+        anchor: {
+          path: "old.ts",
+          diffType: "COMMIT",
+          fileType: "FROM",
+          lineType: "CONTEXT",
+        },
+        version: 0,
+      };
+
+      mockJson(mockClients.api.post, mockResponse);
+
+      const result = await client.callTool({
+        name: "manage_comment",
+        arguments: {
+          action: "create",
+          repository: "my-repo",
+          prId: 42,
+          text: "Old version issue",
+          filePath: "old.ts",
+          line: 5,
+          lineType: "CONTEXT",
+          diffType: "COMMIT",
+          fileType: "FROM",
+        },
+      });
+
+      expect(result.isError).toBeFalsy();
+
+      expect(mockClients.api.post).toHaveBeenCalledWith(
+        "projects/DEFAULT/repos/my-repo/pull-requests/42/comments",
+        expect.objectContaining({
+          json: expect.objectContaining({
+            anchor: {
+              path: "old.ts",
+              lineType: "CONTEXT",
+              line: 5,
+              diffType: "COMMIT",
+              fileType: "FROM",
+            },
+          }),
+        }),
+      );
+    });
+
+    test("should default diffType and fileType when not provided", async () => {
+      const mockResponse = {
+        id: 7,
+        text: "Default anchor",
+        anchor: {},
+        version: 0,
+      };
+
+      mockJson(mockClients.api.post, mockResponse);
+
+      await client.callTool({
+        name: "manage_comment",
+        arguments: {
+          action: "create",
+          repository: "my-repo",
+          prId: 42,
+          text: "Default anchor",
+          filePath: "src/index.ts",
+          line: 1,
+          lineType: "ADDED",
+        },
+      });
+
+      expect(mockClients.api.post).toHaveBeenCalledWith(
+        expect.any(String),
+        expect.objectContaining({
+          json: expect.objectContaining({
+            anchor: expect.objectContaining({
+              diffType: "EFFECTIVE",
+              fileType: "TO",
+            }),
+          }),
+        }),
+      );
+    });
+
     test("should create a task comment with severity BLOCKER", async () => {
       const mockResponse = {
         id: 4,
