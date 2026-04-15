@@ -1,3 +1,10 @@
+# [0.6.0](https://github.com/pavel-kalmykov/bitbucket-server-mcp/compare/v0.5.0...v0.6.0) (2026-04-15)
+
+
+### Features
+
+* expose diffType, fileType, and lineType options for inline comments ([4112aa2](https://github.com/pavel-kalmykov/bitbucket-server-mcp/commit/4112aa2b161e002e1122d652c3cd3e7a08ea936c))
+
 # [0.5.0](https://github.com/pavel-kalmykov/bitbucket-server-mcp/compare/v0.4.1...v0.5.0) (2026-04-15)
 
 
