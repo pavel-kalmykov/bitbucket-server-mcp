@@ -8,7 +8,7 @@
 [![codecov](https://codecov.io/gh/pavel-kalmykov/bitbucket-server-mcp-server/graph/badge.svg)](https://codecov.io/gh/pavel-kalmykov/bitbucket-server-mcp-server)
 [![Node](https://img.shields.io/node/v/@pavel-kalmykov/bitbucket-server-mcp)](https://nodejs.org)
 [![License](https://img.shields.io/npm/l/@pavel-kalmykov/bitbucket-server-mcp)](LICENSE)
-[![Bitbucket Server](https://img.shields.io/badge/Bitbucket_Server_%2F_DC-7.x%2B-0052CC?logo=bitbucket)](https://www.atlassian.com/software/bitbucket/enterprise)
+[![Bitbucket Server](https://img.shields.io/badge/Bitbucket_Server_%2F_DC-8.5%2B-0052CC?logo=bitbucket)](https://www.atlassian.com/software/bitbucket/enterprise)
 
 </div>
 
@@ -33,10 +33,11 @@ claude mcp add bitbucket \
 
 ## Requirements
 
-One of:
-- [Node.js](https://nodejs.org) >= 22.14 (via `npx`)
-- [Bun](https://bun.sh) (via `bunx`)
-- [Docker](https://www.docker.com)
+- **Bitbucket Server / Data Center 8.5+** (may work on 7.x but untested)
+- One of:
+  - [Node.js](https://nodejs.org) >= 22.14 (via `npx`)
+  - [Bun](https://bun.sh) (via `bunx`)
+  - [Docker](https://www.docker.com)
 
 ## Installation
 
@@ -154,6 +155,7 @@ Or build locally: `docker build -t bitbucket-mcp .`
 | `browse_repository` | Browse files and directories |
 | `get_file_content` | Read file contents with pagination |
 | `upload_attachment` | Upload a local file and get a markdown reference for PR comments |
+| `get_server_info` | Get Bitbucket Server version and properties |
 
 ### Pull Requests
 

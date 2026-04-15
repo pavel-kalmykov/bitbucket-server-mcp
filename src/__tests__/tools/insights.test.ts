@@ -176,6 +176,38 @@ describe("Insight tools", () => {
       expect(result.isError).toBe(true);
     });
 
+    test("should skip reports without a key", async () => {
+      mockJson(mockClients.insights.get, {
+        values: [
+          { key: "sonar", title: "SonarQube", result: "PASS" },
+          { title: "No Key Report", result: "PASS" },
+        ],
+      });
+
+      mockClients.insights.get.mockImplementation(
+        (url: string | URL | Request) => {
+          if (String(url).includes("/reports/sonar/annotations")) {
+            return fakeResponse({
+              json: () => Promise.resolve({ values: [{ message: "Bug" }] }),
+            });
+          }
+          return fakeResponse({ json: () => Promise.resolve({ values: [] }) });
+        },
+      );
+
+      const result = await client.callTool({
+        name: "get_code_insights",
+        arguments: { project: "TEST", repository: "my-repo", pullRequestId: 1 },
+      });
+
+      const content = result.content as Array<{ type: string; text: string }>;
+      const parsed = JSON.parse(content[0].text);
+
+      expect(parsed.reports).toHaveLength(2);
+      expect(parsed.annotations["sonar"]).toHaveLength(1);
+      expect(parsed.annotations).not.toHaveProperty("undefined");
+    });
+
     test("should handle empty reports list", async () => {
       mockJson(mockClients.insights.get, { values: [] });
 
