@@ -19,16 +19,18 @@ interface CommentActionContext {
   severity?: "NORMAL" | "BLOCKER";
   filePath?: string;
   line?: number;
-  lineType?: "ADDED" | "REMOVED";
+  lineType?: "ADDED" | "REMOVED" | "CONTEXT";
+  diffType?: "EFFECTIVE" | "RANGE" | "COMMIT";
+  fileType?: "TO" | "FROM";
   emoticon?: string;
 }
 
 interface CommentAnchor {
   path: string;
-  lineType?: "ADDED" | "REMOVED";
+  lineType?: "ADDED" | "REMOVED" | "CONTEXT";
   line?: number;
-  diffType: "EFFECTIVE";
-  fileType: "TO";
+  diffType: "EFFECTIVE" | "RANGE" | "COMMIT";
+  fileType: "TO" | "FROM";
 }
 
 interface CreateCommentBody {
@@ -60,6 +62,8 @@ const commentActions: Record<
     filePath,
     line,
     lineType,
+    diffType,
+    fileType,
   }) => {
     const body: CreateCommentBody = {
       text,
@@ -71,8 +75,8 @@ const commentActions: Record<
           path: filePath,
           lineType,
           line,
-          diffType: "EFFECTIVE" as const,
-          fileType: "TO" as const,
+          diffType: diffType ?? "EFFECTIVE",
+          fileType: fileType ?? "TO",
         },
       }),
     };
@@ -192,9 +196,23 @@ export function registerCommentTools(ctx: ToolContext) {
           .optional()
           .describe("Line number for inline comments (create only)."),
         lineType: z
-          .enum(["ADDED", "REMOVED"])
+          .enum(["ADDED", "REMOVED", "CONTEXT"])
           .optional()
-          .describe("Whether the line is added or removed (create only)."),
+          .describe(
+            "Type of line being commented on. ADDED = new line, REMOVED = deleted line, CONTEXT = unchanged line visible in the diff.",
+          ),
+        diffType: z
+          .enum(["EFFECTIVE", "RANGE", "COMMIT"])
+          .optional()
+          .describe(
+            "Which diff to anchor the comment on. EFFECTIVE = overall PR diff (default). COMMIT = a single commit's diff. RANGE = diff between two specific commits.",
+          ),
+        fileType: z
+          .enum(["TO", "FROM"])
+          .optional()
+          .describe(
+            "Which side of the diff. TO = new version (default). FROM = old version (useful for renames).",
+          ),
         emoticon: z
           .string()
           .optional()
@@ -227,6 +245,8 @@ export function registerCommentTools(ctx: ToolContext) {
           filePath: params.filePath,
           line: params.line,
           lineType: params.lineType,
+          diffType: params.diffType,
+          fileType: params.fileType,
           emoticon: params.emoticon,
         });
       } catch (error) {
