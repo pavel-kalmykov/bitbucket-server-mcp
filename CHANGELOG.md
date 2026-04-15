@@ -1,3 +1,11 @@
+# [0.5.0](https://github.com/pavel-kalmykov/bitbucket-server-mcp/compare/v0.4.1...v0.5.0) (2026-04-15)
+
+
+### Features
+
+* add get_server_info tool and update requirements to 8.5+ ([3db9d0c](https://github.com/pavel-kalmykov/bitbucket-server-mcp/commit/3db9d0cc8cad587c12018b2598cc54f61e2e43c1))
+* generate API types from official Bitbucket OpenAPI spec ([2afc992](https://github.com/pavel-kalmykov/bitbucket-server-mcp/commit/2afc992422a3ddb8c128b6501dd9db9e850aef76))
+
 ## [0.4.1](https://github.com/pavel-kalmykov/bitbucket-server-mcp/compare/v0.4.0...v0.4.1) (2026-04-15)
 
 # [0.4.0](https://github.com/pavel-kalmykov/bitbucket-server-mcp/compare/v0.3.0...v0.4.0) (2026-04-14)
