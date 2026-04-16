@@ -1,4 +1,6 @@
-import { writeFile, mkdir } from "node:fs/promises";
+import { writeFile, mkdtemp, rm } from "node:fs/promises";
+import { join } from "node:path";
+import { tmpdir } from "node:os";
 import { describe, test, expect, beforeEach, afterEach } from "vitest";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
@@ -181,10 +183,18 @@ describe("Repository tools", () => {
   });
 
   describe("upload_attachment", () => {
+    let tmpDir: string;
+
+    beforeEach(async () => {
+      tmpDir = await mkdtemp(join(tmpdir(), "bitbucket-mcp-test-"));
+    });
+
+    afterEach(async () => {
+      await rm(tmpDir, { recursive: true, force: true });
+    });
+
     test("should upload a local file and return image markdown reference", async () => {
-      const tmpDir = "/tmp/bitbucket-mcp-test";
-      await mkdir(tmpDir, { recursive: true });
-      await writeFile(`${tmpDir}/screenshot.png`, "fake-png-content");
+      await writeFile(join(tmpDir, "screenshot.png"), "fake-png-content");
 
       const mockResponse = {
         attachments: [
@@ -208,7 +218,7 @@ describe("Repository tools", () => {
         arguments: {
           project: "TEST",
           repository: "my-repo",
-          filePath: `${tmpDir}/screenshot.png`,
+          filePath: join(tmpDir, "screenshot.png"),
         },
       });
 
@@ -225,9 +235,7 @@ describe("Repository tools", () => {
     });
 
     test("should use link markdown for non-image files", async () => {
-      const tmpDir = "/tmp/bitbucket-mcp-test";
-      await mkdir(tmpDir, { recursive: true });
-      await writeFile(`${tmpDir}/report.pdf`, "fake-pdf-content");
+      await writeFile(join(tmpDir, "report.pdf"), "fake-pdf-content");
 
       const mockResponse = {
         attachments: [
@@ -249,7 +257,7 @@ describe("Repository tools", () => {
         arguments: {
           project: "TEST",
           repository: "my-repo",
-          filePath: `${tmpDir}/report.pdf`,
+          filePath: join(tmpDir, "report.pdf"),
         },
       });
 

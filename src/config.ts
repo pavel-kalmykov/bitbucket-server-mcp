@@ -13,10 +13,8 @@ function parseCustomHeaders(raw?: string): Record<string, string> {
 }
 
 export function parseConfig(options?: BitbucketServerOptions): BitbucketConfig {
-  const baseUrl = (options?.baseUrl ?? process.env.BITBUCKET_URL ?? "").replace(
-    /\/+$/,
-    "",
-  );
+  let baseUrl = options?.baseUrl ?? process.env.BITBUCKET_URL ?? "";
+  while (baseUrl.endsWith("/")) baseUrl = baseUrl.slice(0, -1);
   const token = options?.token ?? process.env.BITBUCKET_TOKEN;
   const username = options?.username ?? process.env.BITBUCKET_USERNAME;
   const password = options?.password ?? process.env.BITBUCKET_PASSWORD;
