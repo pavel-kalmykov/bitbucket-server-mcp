@@ -14,6 +14,7 @@
 [![codecov](https://codecov.io/gh/pavel-kalmykov/bitbucket-server-mcp-server/graph/badge.svg)](https://codecov.io/gh/pavel-kalmykov/bitbucket-server-mcp-server)
 [![Mutation testing](https://img.shields.io/badge/mutation_testing-52%25-orange)](stryker.config.mjs)
 [![OpenSSF Scorecard](https://api.scorecard.dev/projects/github.com/pavel-kalmykov/bitbucket-server-mcp/badge)](https://scorecard.dev/viewer/?uri=github.com/pavel-kalmykov/bitbucket-server-mcp)
+[![OpenSSF Best Practices](https://www.bestpractices.dev/projects/12565/badge)](https://www.bestpractices.dev/projects/12565)
 
 </div>
 
