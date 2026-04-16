@@ -2,6 +2,7 @@ import { describe, test, expect, beforeEach, afterEach } from "vitest";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { InMemoryTransport } from "@modelcontextprotocol/sdk/inMemory.js";
+import type { Input } from "ky";
 import { registerBranchTools } from "../../tools/branches.js";
 import {
   type MockApiClients,
@@ -67,7 +68,7 @@ describe("Branch tools", () => {
         id: "refs/heads/main",
       };
 
-      mockClients.api.get.mockImplementation((url: string | URL | Request) => {
+      mockClients.api.get.mockImplementation((url: Input) => {
         if (String(url).includes("default-branch")) {
           return fakeResponse({
             json: () => Promise.resolve(defaultBranchResponse),
@@ -91,7 +92,7 @@ describe("Branch tools", () => {
     });
 
     test("should use default project when not provided", async () => {
-      mockClients.api.get.mockImplementation((url: string | URL | Request) => {
+      mockClients.api.get.mockImplementation((url: Input) => {
         if (String(url).includes("default-branch")) {
           return fakeResponse({ json: () => Promise.resolve(null) });
         }
@@ -134,7 +135,7 @@ describe("Branch tools", () => {
         extraField: "also kept",
       };
 
-      mockClients.api.get.mockImplementation((url: string | URL | Request) => {
+      mockClients.api.get.mockImplementation((url: Input) => {
         if (String(url).includes("default-branch")) {
           return fakeResponse({
             json: () => Promise.resolve(defaultBranchResponse),
@@ -162,7 +163,7 @@ describe("Branch tools", () => {
         isLastPage: true,
       };
 
-      mockClients.api.get.mockImplementation((url: string | URL | Request) => {
+      mockClients.api.get.mockImplementation((url: Input) => {
         if (String(url).includes("default-branch")) {
           return fakeResponse({
             json: () => Promise.reject(new Error("Not found")),

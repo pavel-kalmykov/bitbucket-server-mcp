@@ -19,8 +19,10 @@ export function createApiClients(config: BitbucketConfig): ApiClients {
   if (config.token) {
     authHeaders["Authorization"] = `Bearer ${config.token}`;
   } else if (config.username && config.password) {
-    authHeaders["Authorization"] =
-      `Basic ${Buffer.from(`${config.username}:${config.password}`).toString("base64")}`;
+    const credentials = Buffer.from(
+      `${config.username}:${config.password}`,
+    ).toString("base64");
+    authHeaders["Authorization"] = `Basic ${credentials}`;
   }
 
   const allHeaders = { ...authHeaders, ...config.customHeaders };
