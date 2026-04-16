@@ -60,7 +60,7 @@ describe("Search tools", () => {
         isLastPage: true,
       };
 
-      mockJson(mockClients.search.get, mockResponse);
+      mockJson(mockClients.search.post, mockResponse);
 
       const result = await client.callTool({
         name: "search",
@@ -73,13 +73,13 @@ describe("Search tools", () => {
       expect(parsed.values).toHaveLength(1);
       expect(parsed.values[0].file.path).toBe("src/index.ts");
 
-      expect(mockClients.search.get).toHaveBeenCalledWith("search", {
-        searchParams: { query: "createClient", limit: 25, start: 0 },
+      expect(mockClients.search.post).toHaveBeenCalledWith("search", {
+        json: { query: "createClient", entities: { code: { start: 0, limit: 25 } } },
       });
     });
 
     test("should prepend project filter when project is provided", async () => {
-      mockJson(mockClients.search.get, {
+      mockJson(mockClients.search.post, {
         values: [],
         size: 0,
         isLastPage: true,
@@ -90,13 +90,13 @@ describe("Search tools", () => {
         arguments: { query: "TODO", project: "MYPROJ" },
       });
 
-      expect(mockClients.search.get).toHaveBeenCalledWith("search", {
-        searchParams: { query: "project:MYPROJ TODO", limit: 25, start: 0 },
+      expect(mockClients.search.post).toHaveBeenCalledWith("search", {
+        json: { query: "project:MYPROJ TODO", entities: { code: { start: 0, limit: 25 } } },
       });
     });
 
     test("should prepend repo filter when repository is provided", async () => {
-      mockJson(mockClients.search.get, {
+      mockJson(mockClients.search.post, {
         values: [],
         size: 0,
         isLastPage: true,
@@ -107,17 +107,16 @@ describe("Search tools", () => {
         arguments: { query: "TODO", project: "MYPROJ", repository: "my-repo" },
       });
 
-      expect(mockClients.search.get).toHaveBeenCalledWith("search", {
-        searchParams: {
+      expect(mockClients.search.post).toHaveBeenCalledWith("search", {
+        json: {
           query: "repo:MYPROJ/my-repo TODO",
-          limit: 25,
-          start: 0,
+          entities: { code: { start: 0, limit: 25 } },
         },
       });
     });
 
     test("should use default project for repo filter when project is not provided", async () => {
-      mockJson(mockClients.search.get, {
+      mockJson(mockClients.search.post, {
         values: [],
         size: 0,
         isLastPage: true,
@@ -128,17 +127,16 @@ describe("Search tools", () => {
         arguments: { query: "TODO", repository: "my-repo" },
       });
 
-      expect(mockClients.search.get).toHaveBeenCalledWith("search", {
-        searchParams: {
+      expect(mockClients.search.post).toHaveBeenCalledWith("search", {
+        json: {
           query: "repo:DEFAULT/my-repo TODO",
-          limit: 25,
-          start: 0,
+          entities: { code: { start: 0, limit: 25 } },
         },
       });
     });
 
     test("should wrap query in quotes when type is file", async () => {
-      mockJson(mockClients.search.get, {
+      mockJson(mockClients.search.post, {
         values: [],
         size: 0,
         isLastPage: true,
@@ -149,13 +147,13 @@ describe("Search tools", () => {
         arguments: { query: "index.ts", type: "file" },
       });
 
-      expect(mockClients.search.get).toHaveBeenCalledWith("search", {
-        searchParams: { query: '"index.ts"', limit: 25, start: 0 },
+      expect(mockClients.search.post).toHaveBeenCalledWith("search", {
+        json: { query: '"index.ts"', entities: { code: { start: 0, limit: 25 } } },
       });
     });
 
     test("should apply both repo filter and file type together", async () => {
-      mockJson(mockClients.search.get, {
+      mockJson(mockClients.search.post, {
         values: [],
         size: 0,
         isLastPage: true,
@@ -171,17 +169,16 @@ describe("Search tools", () => {
         },
       });
 
-      expect(mockClients.search.get).toHaveBeenCalledWith("search", {
-        searchParams: {
+      expect(mockClients.search.post).toHaveBeenCalledWith("search", {
+        json: {
           query: '"repo:PROJ/svc config.yaml"',
-          limit: 25,
-          start: 0,
+          entities: { code: { start: 0, limit: 25 } },
         },
       });
     });
 
     test("should pass custom limit and start", async () => {
-      mockJson(mockClients.search.get, {
+      mockJson(mockClients.search.post, {
         values: [],
         size: 0,
         isLastPage: true,
@@ -192,14 +189,14 @@ describe("Search tools", () => {
         arguments: { query: "test", limit: 50, start: 10 },
       });
 
-      expect(mockClients.search.get).toHaveBeenCalledWith("search", {
-        searchParams: { query: "test", limit: 50, start: 10 },
+      expect(mockClients.search.post).toHaveBeenCalledWith("search", {
+        json: { query: "test", entities: { code: { start: 10, limit: 50 } } },
       });
     });
 
     test("should handle errors", async () => {
       // mockJson can't be used here: the json() call must reject, not resolve
-      mockClients.search.get.mockReturnValue(
+      mockClients.search.post.mockReturnValue(
         fakeResponse({
           json: () => Promise.reject(new Error("Network error")),
         }),
