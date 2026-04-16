@@ -68,4 +68,39 @@ describe("Resources", () => {
     expect(data).toHaveLength(2);
     expect(data[0].key).toBe("PROJ");
   });
+
+  test("should return cached projects on second read", async () => {
+    mockJson(mockClients.api.get, {
+      values: [{ key: "CACHED", name: "Cached Project" }],
+      size: 1,
+    });
+
+    // First read populates cache
+    await client.readResource({ uri: "bitbucket://projects" });
+    // Second read should use cache, not call API again
+    const result = await client.readResource({ uri: "bitbucket://projects" });
+
+    expect(mockClients.api.get).toHaveBeenCalledTimes(1);
+
+    const content = result.contents[0] as { text: string };
+    const data = JSON.parse(content.text);
+    expect(data[0].key).toBe("CACHED");
+  });
+
+  test("should return resource URI and mimeType correctly", async () => {
+    mockJson(mockClients.api.get, { values: [], size: 0 });
+
+    const result = await client.readResource({ uri: "bitbucket://projects" });
+    expect(result.contents[0].uri).toBe("bitbucket://projects");
+    expect(result.contents[0].mimeType).toBe("application/json");
+  });
+
+  test("should return empty array when no projects exist", async () => {
+    mockJson(mockClients.api.get, { values: [], size: 0 });
+
+    const result = await client.readResource({ uri: "bitbucket://projects" });
+    const content = result.contents[0] as { text: string };
+    const data = JSON.parse(content.text);
+    expect(data).toEqual([]);
+  });
 });
