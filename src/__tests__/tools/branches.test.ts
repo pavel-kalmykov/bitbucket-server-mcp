@@ -297,7 +297,7 @@ describe("Branch tools", () => {
     });
   });
 
-  describe("list_branches (decision table: filterText x pagination)", () => {
+  describe("list_branches (filterText + pagination params forwarding)", () => {
     test.each([
       { filterText: "feature", limit: 10, start: 0 },
       { filterText: "fix", limit: 25, start: 50 },

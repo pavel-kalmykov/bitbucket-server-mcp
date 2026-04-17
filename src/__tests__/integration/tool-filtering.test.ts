@@ -163,24 +163,23 @@ describe("readOnly + enabledTools combined (decision table)", () => {
     }
   });
 
-  test("readOnly=true + only-write enabledTools produces empty tool list", async () => {
+  test("readOnly=true + only-write enabledTools exposes no tools", async () => {
     const conn = await connectServer({
       readOnly: true,
       enabledTools: ["create_pull_request", "merge_pull_request"],
     })();
     try {
-      // Listing tools may fail when no tools are registered (no capability).
-      // Either case is acceptable as long as no write tools leak through.
-      await expect(
-        (async () => {
-          const { tools } = await conn.client.listTools();
-          return tools.map((t) => t.name);
-        })(),
-      )
-        .resolves.toEqual([])
-        .catch(() => {
-          // Server advertises no tools capability — also acceptable.
-        });
+      let toolNames: string[] | undefined;
+      try {
+        const { tools } = await conn.client.listTools();
+        toolNames = tools.map((t) => t.name);
+      } catch {
+        // If the server advertises no tools capability, listTools() rejects
+        // with "Method not found". That's a legitimate way to express "no
+        // tools", so we treat it as equivalent to an empty list.
+        toolNames = [];
+      }
+      expect(toolNames).toEqual([]);
     } finally {
       await conn.client.close();
       await conn.serverTransport.close();

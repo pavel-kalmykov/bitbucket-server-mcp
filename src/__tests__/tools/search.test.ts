@@ -188,7 +188,7 @@ describe("Search tools", () => {
       const item = parsed.values[0];
 
       expect(item.file).toBe("src/index.ts");
-      expect(item.hitContexts).toBeDefined();
+      expect(item.hitContexts).toEqual([[{ line: 1, text: "const x = 1;" }]]);
       expect(item.repository.slug).toBe("my-repo");
       expect(item.repository.scmId).toBeUndefined();
       expect(item.repository.hierarchyId).toBeUndefined();
@@ -236,7 +236,7 @@ describe("Search tools", () => {
       { limit: 1, start: 0 },
       { limit: 100, start: 1000 },
     ])(
-      "pagination boundary limit=$limit start=$start",
+      "forwards pagination params limit=$limit start=$start",
       async ({ limit, start }) => {
         mockJson(h.mockClients.search.post, {
           code: { values: [], isLastPage: true },

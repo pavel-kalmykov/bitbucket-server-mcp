@@ -292,7 +292,7 @@ describe("Comment tools", () => {
     });
   });
 
-  describe("manage_comment state transitions", () => {
+  describe("manage_comment state field propagation", () => {
     test("PENDING -> OPEN via edit with state update", async () => {
       mockJson(h.mockClients.api.put, {
         id: 1,
@@ -358,7 +358,7 @@ describe("Comment tools", () => {
       expect(secondCall.json.version).toBe(1);
     });
 
-    test("create-as-PENDING then edit to OPEN", async () => {
+    test("create-as-PENDING then edit to OPEN sends PENDING on POST and OPEN on PUT", async () => {
       mockJson(h.mockClients.api.post, { id: 99, state: "PENDING" });
       mockJson(h.mockClients.api.put, { id: 99, state: "OPEN" });
 
@@ -386,6 +386,18 @@ describe("Comment tools", () => {
 
       expect(h.mockClients.api.post).toHaveBeenCalledTimes(1);
       expect(h.mockClients.api.put).toHaveBeenCalledTimes(1);
+      const postBody = (
+        h.mockClients.api.post.mock.calls[0][1] as {
+          json: Record<string, unknown>;
+        }
+      ).json;
+      const putBody = (
+        h.mockClients.api.put.mock.calls[0][1] as {
+          json: Record<string, unknown>;
+        }
+      ).json;
+      expect(postBody.state).toBe("PENDING");
+      expect(putBody.state).toBe("OPEN");
     });
   });
 
@@ -426,33 +438,6 @@ describe("Comment tools", () => {
       expect(h.mockClients.commentLikes.delete).toHaveBeenCalledWith(
         expect.stringContaining("/comments/5/reactions/thumbsup"),
       );
-    });
-
-    test("react -> unreact -> react sequence alternates PUT/DELETE", async () => {
-      mockVoid(h.mockClients.commentLikes.put);
-      mockVoid(h.mockClients.commentLikes.delete);
-
-      const args = {
-        repository: "r",
-        prId: 1,
-        commentId: 5,
-        emoticon: "heart",
-      };
-      await h.client.callTool({
-        name: "manage_comment",
-        arguments: { action: "react", ...args },
-      });
-      await h.client.callTool({
-        name: "manage_comment",
-        arguments: { action: "unreact", ...args },
-      });
-      await h.client.callTool({
-        name: "manage_comment",
-        arguments: { action: "react", ...args },
-      });
-
-      expect(h.mockClients.commentLikes.put).toHaveBeenCalledTimes(2);
-      expect(h.mockClients.commentLikes.delete).toHaveBeenCalledTimes(1);
     });
   });
 

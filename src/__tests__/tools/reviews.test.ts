@@ -146,8 +146,8 @@ describe("Review tools", () => {
     });
   });
 
-  describe("submit_review state transitions", () => {
-    test("approve -> unapprove calls POST then DELETE on /approve", async () => {
+  describe("submit_review action-to-verb mapping over sequences", () => {
+    test("approve then unapprove issues POST then DELETE in that order", async () => {
       mockJson(h.mockClients.api.post, { approved: true, status: "APPROVED" });
       mockVoid(h.mockClients.api.delete);
 
@@ -160,6 +160,9 @@ describe("Review tools", () => {
         arguments: { action: "unapprove", repository: "r", prId: 1 },
       });
 
+      const postOrder = h.mockClients.api.post.mock.invocationCallOrder[0];
+      const deleteOrder = h.mockClients.api.delete.mock.invocationCallOrder[0];
+      expect(postOrder).toBeLessThan(deleteOrder);
       expect(h.mockClients.api.post).toHaveBeenCalledWith(
         "projects/DEFAULT/repos/r/pull-requests/1/approve",
         { json: {} },
@@ -169,7 +172,7 @@ describe("Review tools", () => {
       );
     });
 
-    test("unapprove -> approve -> unapprove sequence uses correct verbs", async () => {
+    test("unapprove, approve, unapprove issues DELETE, POST, DELETE in order", async () => {
       mockVoid(h.mockClients.api.delete);
       mockJson(h.mockClients.api.post, { approved: true });
 
@@ -186,8 +189,12 @@ describe("Review tools", () => {
         arguments: { action: "unapprove", repository: "r", prId: 1 },
       });
 
-      expect(h.mockClients.api.delete).toHaveBeenCalledTimes(2);
-      expect(h.mockClients.api.post).toHaveBeenCalledTimes(1);
+      const deleteOrders = h.mockClients.api.delete.mock.invocationCallOrder;
+      const postOrders = h.mockClients.api.post.mock.invocationCallOrder;
+      expect(deleteOrders).toHaveLength(2);
+      expect(postOrders).toHaveLength(1);
+      expect(deleteOrders[0]).toBeLessThan(postOrders[0]);
+      expect(postOrders[0]).toBeLessThan(deleteOrders[1]);
     });
   });
 

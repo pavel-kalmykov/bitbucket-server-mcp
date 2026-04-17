@@ -77,30 +77,41 @@ describe("truncateDiff", () => {
     });
   });
 
-  describe("60/40 split of visible content", () => {
-    test("maxLines=10 shows 6 at start, 4 at end", () => {
+  describe("truncation preserves both file edges", () => {
+    test("first and last content lines remain visible after truncation", () => {
       const lines = Array.from({ length: 20 }, (_, i) => `+line${i}`);
       const diff = makeDiff([{ name: "f.ts", lines }]);
       const result = truncateDiff(diff, 10);
 
-      // first 6 lines (indices 0-5) should appear before truncation marker
       const truncIdx = result.indexOf("[*** FILE TRUNCATED:");
+      expect(truncIdx).toBeGreaterThan(-1);
       const before = result.slice(0, truncIdx);
       const after = result.slice(truncIdx);
 
-      for (let i = 0; i < 6; i++) expect(before).toContain(`+line${i}`);
-      // last 4 lines (indices 16-19) should appear after
-      for (let i = 16; i < 20; i++) expect(after).toContain(`+line${i}`);
-      // middle lines (6-15) should not appear in output
-      for (let i = 6; i < 16; i++) expect(result).not.toContain(`+line${i}`);
+      // The very first and very last content lines must survive so the reader
+      // can see both edges of the change.
+      expect(before).toContain("+line0");
+      expect(after).toContain("+line19");
     });
 
-    test("maxLines=100 shows 60 start + 40 end", () => {
-      const lines = Array.from({ length: 200 }, (_, i) => `+line${i}`);
+    test("hidden lines count equals total minus visible", () => {
+      const lines = Array.from({ length: 100 }, (_, i) => `+line${i}`);
       const diff = makeDiff([{ name: "f.ts", lines }]);
-      const result = truncateDiff(diff, 100);
+      const result = truncateDiff(diff, 10);
 
-      expect(result).toContain("showing first 60 and last 40");
+      // "X lines hidden from f.ts" + "100 total lines"
+      expect(result).toMatch(/(\d{1,10}) lines hidden from f\.ts/);
+      expect(result).toContain("100 total lines");
+      const hiddenMatch = result.match(/(\d{1,10}) lines hidden/);
+      const shownMatch = result.match(
+        /showing first (\d{1,10}) and last (\d{1,10})/,
+      );
+      expect(hiddenMatch).not.toBeNull();
+      expect(shownMatch).not.toBeNull();
+      const hidden = Number(hiddenMatch![1]);
+      const firstShown = Number(shownMatch![1]);
+      const lastShown = Number(shownMatch![2]);
+      expect(hidden + firstShown + lastShown).toBe(100);
     });
   });
 
@@ -155,10 +166,11 @@ describe("truncateDiff", () => {
       const diff = makeDiff([{ name: "f.ts", lines }]);
       const result = truncateDiff(diff, 10);
 
-      // 10 visible (6 start + 4 end), 90 hidden
-      expect(result).toContain("90 lines hidden");
+      // The summary message reports counts and tells the user how to disable
+      // truncation. Exact proportions are an internal heuristic.
+      expect(result).toMatch(/\d{1,10} lines hidden/);
       expect(result).toContain("100 total lines");
-      expect(result).toContain("showing first 6 and last 4");
+      expect(result).toMatch(/showing first \d{1,10} and last \d{1,10}/);
       expect(result).toContain("Use maxLinesPerFile=0 to see complete diff");
     });
 

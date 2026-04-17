@@ -134,7 +134,7 @@ describe("parseConfig", () => {
     });
   });
 
-  describe("cacheTtlMs (boundary values)", () => {
+  describe("cacheTtlMs", () => {
     beforeEach(() => {
       process.env.BITBUCKET_URL = "https://git.example.com";
       process.env.BITBUCKET_TOKEN = "t";
