@@ -36,19 +36,56 @@ describe("Prompts", () => {
     expect(names).toContain("review-pr");
   });
 
-  test("review-pr should return workflow steps without arguments", async () => {
+  test("review-pr should return exactly one user message", async () => {
     const result = await client.getPrompt({
       name: "review-pr",
       arguments: {},
     });
-
     expect(result.messages).toHaveLength(1);
-    const text = (result.messages[0].content as { text: string }).text;
-    expect(text).toContain("get_pull_request");
-    expect(text).toContain("get_diff");
-    expect(text).toContain("manage_comment");
-    expect(text).toContain("submit_review");
-    expect(text).toContain("PENDING");
-    expect(text).toContain("APPROVED");
+    expect(result.messages[0].role).toBe("user");
+    expect(result.messages[0].content.type).toBe("text");
+  });
+
+  describe("review-pr prompt content", () => {
+    let text: string;
+
+    beforeAll(async () => {
+      const result = await client.getPrompt({
+        name: "review-pr",
+        arguments: {},
+      });
+      text = (result.messages[0].content as { text: string }).text;
+    });
+
+    test.each([
+      "get_pull_request",
+      "get_diff",
+      "get_pr_activity",
+      "get_build_status",
+      "get_code_insights",
+      "manage_comment",
+      "submit_review",
+    ])("mentions tool '%s'", (tool) => {
+      expect(text).toContain(tool);
+    });
+
+    test.each([
+      "PENDING",
+      "APPROVED",
+      "NEEDS_WORK",
+      "BLOCKER",
+      "stat=true",
+      "contextLines",
+      "filePath/line",
+      "parentId",
+    ])("mentions concept '%s'", (concept) => {
+      expect(text).toContain(concept);
+    });
+
+    test("has numbered steps from 1 to 9", () => {
+      for (let i = 1; i <= 9; i++) {
+        expect(text).toMatch(new RegExp(`^${i}\\.`, "m"));
+      }
+    });
   });
 });

@@ -338,4 +338,93 @@ describe("Branch tools", () => {
       );
     });
   });
+
+  describe("list_branches (decision table: filterText x pagination)", () => {
+    test.each([
+      { filterText: "feature", limit: 10, start: 0 },
+      { filterText: "fix", limit: 25, start: 50 },
+      { filterText: undefined, limit: 1000, start: 0 },
+    ])(
+      "passes filterText=$filterText, limit=$limit, start=$start",
+      async ({ filterText, limit, start }) => {
+        mockJson(mockClients.api.get, { values: [], isLastPage: true });
+
+        await client.callTool({
+          name: "list_branches",
+          arguments: { repository: "r", filterText, limit, start },
+        });
+
+        const callArgs = mockClients.api.get.mock.calls.find((c) =>
+          String(c[0]).endsWith("/branches"),
+        );
+        const searchParams = (
+          callArgs?.[1] as { searchParams: Record<string, unknown> }
+        ).searchParams;
+        expect(searchParams.limit).toBe(limit);
+        expect(searchParams.start).toBe(start);
+        if (filterText !== undefined) {
+          expect(searchParams.filterText).toBe(filterText);
+        }
+      },
+    );
+  });
+
+  describe("list_commits author filter (equivalence: case + partial match)", () => {
+    const commitWithAuthor = (name: string, displayName?: string) => ({
+      id: `sha${name}`,
+      displayId: name,
+      message: "c",
+      authorTimestamp: 1,
+      author: { name, displayName, emailAddress: `${name}@x.com` },
+    });
+
+    test.each<{ filter: string; expected: string[] }>([
+      { filter: "alice", expected: ["alice"] },
+      { filter: "ALICE", expected: ["alice"] }, // case-insensitive
+      { filter: "Ali", expected: ["alice"] }, // partial match
+      { filter: "Bob", expected: ["bob"] },
+      { filter: "xyz", expected: [] }, // no match
+    ])("filter '$filter' returns $expected", async ({ filter, expected }) => {
+      mockJson(mockClients.api.get, {
+        values: [
+          commitWithAuthor("alice"),
+          commitWithAuthor("bob"),
+          commitWithAuthor("charlie"),
+        ],
+        isLastPage: true,
+      });
+
+      const result = await client.callTool({
+        name: "list_commits",
+        arguments: {
+          repository: "r",
+          author: filter,
+          fields: "author.name",
+        },
+      });
+
+      const content = result.content as Array<{ type: string; text: string }>;
+      const parsed = JSON.parse(content[0].text);
+      const names = (parsed.commits as Array<{ author: { name: string } }>).map(
+        (c) => c.author.name,
+      );
+      expect(names).toEqual(expected);
+    });
+
+    test("matches on displayName too", async () => {
+      mockJson(mockClients.api.get, {
+        values: [commitWithAuthor("user1", "Alice Smith")],
+        isLastPage: true,
+      });
+
+      const result = await client.callTool({
+        name: "list_commits",
+        arguments: { repository: "r", author: "smith" },
+      });
+
+      const content = result.content as Array<{ type: string; text: string }>;
+      const parsed = JSON.parse(content[0].text);
+      expect(parsed.commits).toHaveLength(1);
+    });
+  });
 });

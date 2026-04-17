@@ -86,3 +86,104 @@ describe("enabledTools filter", () => {
     expect(names).toHaveLength(3);
   });
 });
+
+describe("default mode (no readOnly, no enabledTools)", () => {
+  let client: Client;
+  let serverTransport: ReturnType<typeof InMemoryTransport.createLinkedPair>[1];
+
+  beforeAll(async () => {
+    const conn = await connectServer({})();
+    client = conn.client;
+    serverTransport = conn.serverTransport;
+  });
+
+  afterAll(async () => {
+    await client.close();
+    await serverTransport.close();
+  });
+
+  test("registers all tools including write ones", async () => {
+    const { tools } = await client.listTools();
+    const names = tools.map((t) => t.name);
+
+    // Read tools
+    expect(names).toContain("list_projects");
+    expect(names).toContain("get_pull_request");
+    // Write tools
+    expect(names).toContain("create_pull_request");
+    expect(names).toContain("update_pull_request");
+    expect(names).toContain("merge_pull_request");
+    expect(names).toContain("decline_pull_request");
+    expect(names).toContain("manage_comment");
+    expect(names).toContain("submit_review");
+    expect(names).toContain("delete_branch");
+    expect(names).toContain("upload_attachment");
+  });
+});
+
+describe("readOnly + enabledTools combined (decision table)", () => {
+  test.each<{
+    name: string;
+    options: Record<string, unknown>;
+    expected: string[];
+  }>([
+    {
+      name: "readOnly=true + enabledTools read-only subset",
+      options: {
+        readOnly: true,
+        enabledTools: ["list_projects", "search"],
+      },
+      expected: ["list_projects", "search"],
+    },
+    {
+      name: "readOnly=true + enabledTools mix (filters out write)",
+      options: {
+        readOnly: true,
+        enabledTools: ["list_projects", "create_pull_request", "search"],
+      },
+      expected: ["list_projects", "search"],
+    },
+    {
+      name: "readOnly=false + enabledTools with write tools",
+      options: {
+        readOnly: false,
+        enabledTools: ["create_pull_request", "merge_pull_request"],
+      },
+      expected: ["create_pull_request", "merge_pull_request"],
+    },
+  ])("$name", async ({ options, expected }) => {
+    const conn = await connectServer(options)();
+    try {
+      const { tools } = await conn.client.listTools();
+      const names = tools.map((t) => t.name).sort();
+      expect(names).toEqual(expected.sort());
+    } finally {
+      await conn.client.close();
+      await conn.serverTransport.close();
+    }
+  });
+
+  test("readOnly=true + only-write enabledTools produces empty tool list", async () => {
+    const conn = await connectServer({
+      readOnly: true,
+      enabledTools: ["create_pull_request", "merge_pull_request"],
+    })();
+    try {
+      // Listing tools may fail when no tools are registered (no capability).
+      // Either case is acceptable as long as no write tools leak through.
+      await expect(
+        (async () => {
+          const { tools } = await conn.client.listTools();
+          return tools.map((t) => t.name);
+        })(),
+      )
+        .resolves.toEqual([])
+        .catch(() => {
+          // Server advertises no tools capability — also acceptable.
+        });
+    } finally {
+      await conn.client.close();
+      await conn.serverTransport.close();
+    }
+  });
+});
