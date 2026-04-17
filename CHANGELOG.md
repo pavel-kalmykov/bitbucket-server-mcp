@@ -1,3 +1,11 @@
+## [0.6.3](https://github.com/pavel-kalmykov/bitbucket-server-mcp/compare/v0.6.2...v0.6.3) (2026-04-17)
+
+
+### Bug Fixes
+
+* **tests:** restore fc.dictionary in custom-headers property test ([4651f41](https://github.com/pavel-kalmykov/bitbucket-server-mcp/commit/4651f413d742241110af6cb4d117b8b7a7d89ca6))
+* **tests:** use fc.dictionary to avoid duplicate keys in property test ([329ebcd](https://github.com/pavel-kalmykov/bitbucket-server-mcp/commit/329ebcdd352fabd5b83fb6bfc4236e12b863561b))
+
 ## [0.6.2](https://github.com/pavel-kalmykov/bitbucket-server-mcp/compare/v0.6.1...v0.6.2) (2026-04-17)
 
 
