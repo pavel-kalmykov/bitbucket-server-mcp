@@ -6,145 +6,273 @@ describe("parseConfig", () => {
 
   beforeEach(() => {
     process.env = { ...originalEnv };
+    delete process.env.BITBUCKET_URL;
+    delete process.env.BITBUCKET_TOKEN;
+    delete process.env.BITBUCKET_USERNAME;
+    delete process.env.BITBUCKET_PASSWORD;
+    delete process.env.BITBUCKET_DEFAULT_PROJECT;
+    delete process.env.BITBUCKET_READ_ONLY;
+    delete process.env.BITBUCKET_DIFF_MAX_LINES_PER_FILE;
+    delete process.env.BITBUCKET_CUSTOM_HEADERS;
+    delete process.env.BITBUCKET_ENABLED_TOOLS;
+    delete process.env.BITBUCKET_CACHE_TTL;
   });
 
   afterEach(() => {
     process.env = originalEnv;
   });
 
-  test("should parse minimal config from env vars", () => {
-    process.env.BITBUCKET_URL = "https://git.example.com";
-    process.env.BITBUCKET_TOKEN = "test-token";
-
-    const config = parseConfig();
-
-    expect(config.baseUrl).toBe("https://git.example.com");
-    expect(config.token).toBe("test-token");
-    expect(config.readOnly).toBe(false);
-  });
-
-  test("should parse basic auth from env vars", () => {
-    process.env.BITBUCKET_URL = "https://git.example.com";
-    process.env.BITBUCKET_USERNAME = "user";
-    process.env.BITBUCKET_PASSWORD = "pass";
-    delete process.env.BITBUCKET_TOKEN;
-
-    const config = parseConfig();
-
-    expect(config.username).toBe("user");
-    expect(config.password).toBe("pass");
-    expect(config.token).toBeUndefined();
-  });
-
-  test("should parse all optional fields", () => {
-    process.env.BITBUCKET_URL = "https://git.example.com";
-    process.env.BITBUCKET_TOKEN = "tok";
-    process.env.BITBUCKET_DEFAULT_PROJECT = "PROJ";
-    process.env.BITBUCKET_READ_ONLY = "true";
-    process.env.BITBUCKET_DIFF_MAX_LINES_PER_FILE = "500";
-    process.env.BITBUCKET_CUSTOM_HEADERS = "X-ZTA=abc,X-Foo=bar";
-    process.env.BITBUCKET_ENABLED_TOOLS = "list_projects,get_pull_request";
-
-    const config = parseConfig();
-
-    expect(config.defaultProject).toBe("PROJ");
-    expect(config.readOnly).toBe(true);
-    expect(config.maxLinesPerFile).toBe(500);
-    expect(config.customHeaders).toEqual({ "X-ZTA": "abc", "X-Foo": "bar" });
-    expect(config.enabledTools).toEqual(["list_projects", "get_pull_request"]);
-  });
-
-  test("should accept options override over env vars", () => {
-    process.env.BITBUCKET_URL = "https://from-env.com";
-    process.env.BITBUCKET_TOKEN = "env-token";
-
-    const config = parseConfig({
-      baseUrl: "https://from-options.com",
-      token: "options-token",
+  describe("baseUrl (equivalence: env / options, boundary: trailing slashes)", () => {
+    test.each([
+      ["https://git.example.com", "https://git.example.com"],
+      ["https://git.example.com/", "https://git.example.com"],
+      ["https://git.example.com///", "https://git.example.com"],
+      ["https://git.example.com/////////", "https://git.example.com"],
+      ["http://localhost:7990", "http://localhost:7990"],
+    ])("strips trailing slashes from '%s'", (input, expected) => {
+      process.env.BITBUCKET_URL = input;
+      process.env.BITBUCKET_TOKEN = "t";
+      expect(parseConfig().baseUrl).toBe(expected);
     });
 
-    expect(config.baseUrl).toBe("https://from-options.com");
-    expect(config.token).toBe("options-token");
+    test("options.baseUrl overrides BITBUCKET_URL", () => {
+      process.env.BITBUCKET_URL = "https://from-env.com";
+      process.env.BITBUCKET_TOKEN = "t";
+      expect(parseConfig({ baseUrl: "https://from-opt.com" }).baseUrl).toBe(
+        "https://from-opt.com",
+      );
+    });
+
+    test("throws when missing from both env and options", () => {
+      expect(() => parseConfig()).toThrow(/BITBUCKET_URL/);
+    });
+
+    test("throws when env is empty string", () => {
+      process.env.BITBUCKET_URL = "";
+      expect(() => parseConfig()).toThrow(/BITBUCKET_URL/);
+    });
   });
 
-  test("should throw if baseUrl is missing", () => {
-    delete process.env.BITBUCKET_URL;
+  describe("authentication (decision table)", () => {
+    beforeEach(() => {
+      process.env.BITBUCKET_URL = "https://git.example.com";
+    });
 
-    expect(() => parseConfig()).toThrow();
+    test.each<{
+      name: string;
+      env: Record<string, string | undefined>;
+      shouldThrow: boolean;
+    }>([
+      { name: "token only", env: { BITBUCKET_TOKEN: "t" }, shouldThrow: false },
+      {
+        name: "user + pass",
+        env: { BITBUCKET_USERNAME: "u", BITBUCKET_PASSWORD: "p" },
+        shouldThrow: false,
+      },
+      {
+        name: "all three",
+        env: {
+          BITBUCKET_TOKEN: "t",
+          BITBUCKET_USERNAME: "u",
+          BITBUCKET_PASSWORD: "p",
+        },
+        shouldThrow: false,
+      },
+      {
+        name: "user only (no pass)",
+        env: { BITBUCKET_USERNAME: "u" },
+        shouldThrow: true,
+      },
+      {
+        name: "pass only (no user)",
+        env: { BITBUCKET_PASSWORD: "p" },
+        shouldThrow: true,
+      },
+      { name: "none", env: {}, shouldThrow: true },
+    ])("$name: throws=$shouldThrow", ({ env, shouldThrow }) => {
+      Object.assign(process.env, env);
+      if (shouldThrow) {
+        expect(() => parseConfig()).toThrow(/Authentication/);
+      } else {
+        expect(() => parseConfig()).not.toThrow();
+      }
+    });
+
+    test("options override env for token", () => {
+      process.env.BITBUCKET_TOKEN = "env-token";
+      expect(parseConfig({ token: "opt-token" }).token).toBe("opt-token");
+    });
   });
 
-  test("should throw if no auth method is provided", () => {
-    process.env.BITBUCKET_URL = "https://git.example.com";
-    delete process.env.BITBUCKET_TOKEN;
-    delete process.env.BITBUCKET_USERNAME;
-    delete process.env.BITBUCKET_PASSWORD;
+  describe("readOnly (BITBUCKET_READ_ONLY is strict 'true')", () => {
+    beforeEach(() => {
+      process.env.BITBUCKET_URL = "https://git.example.com";
+      process.env.BITBUCKET_TOKEN = "t";
+    });
 
-    expect(() => parseConfig()).toThrow();
+    test.each([
+      ["true", true],
+      ["false", false],
+      ["True", false],
+      ["TRUE", false],
+      ["1", false],
+      ["yes", false],
+      ["", false],
+      ["  true  ", false],
+    ])("'%s' parses to %s", (envValue, expected) => {
+      process.env.BITBUCKET_READ_ONLY = envValue;
+      expect(parseConfig().readOnly).toBe(expected);
+    });
+
+    test("defaults to false when env not set", () => {
+      expect(parseConfig().readOnly).toBe(false);
+    });
+
+    test("options.readOnly overrides env", () => {
+      process.env.BITBUCKET_READ_ONLY = "true";
+      expect(parseConfig({ readOnly: false }).readOnly).toBe(false);
+    });
   });
 
-  test("should strip trailing slash from baseUrl", () => {
-    process.env.BITBUCKET_URL = "https://git.example.com/";
-    process.env.BITBUCKET_TOKEN = "tok";
+  describe("cacheTtlMs (boundary values)", () => {
+    beforeEach(() => {
+      process.env.BITBUCKET_URL = "https://git.example.com";
+      process.env.BITBUCKET_TOKEN = "t";
+    });
 
-    const config = parseConfig();
+    test("defaults to 5 minutes (300_000 ms) when neither env nor option", () => {
+      expect(parseConfig().cacheTtlMs).toBe(300_000);
+    });
 
-    expect(config.baseUrl).toBe("https://git.example.com");
+    test.each([
+      ["0", 0],
+      ["1", 1_000],
+      ["60", 60_000],
+      ["3600", 3_600_000],
+    ])("env '%s' seconds -> %d ms", (envValue, expected) => {
+      process.env.BITBUCKET_CACHE_TTL = envValue;
+      expect(parseConfig().cacheTtlMs).toBe(expected);
+    });
+
+    test("options.cacheTtlMs overrides env", () => {
+      process.env.BITBUCKET_CACHE_TTL = "60";
+      expect(parseConfig({ cacheTtlMs: 10_000 }).cacheTtlMs).toBe(10_000);
+    });
+
+    test("options.cacheTtlMs=0 is respected (disables cache)", () => {
+      expect(parseConfig({ cacheTtlMs: 0 }).cacheTtlMs).toBe(0);
+    });
   });
 
-  test("should default readOnly to false", () => {
-    process.env.BITBUCKET_URL = "https://git.example.com";
-    process.env.BITBUCKET_TOKEN = "tok";
+  describe("maxLinesPerFile", () => {
+    beforeEach(() => {
+      process.env.BITBUCKET_URL = "https://git.example.com";
+      process.env.BITBUCKET_TOKEN = "t";
+    });
 
-    const config = parseConfig();
+    test("undefined when neither env nor option", () => {
+      expect(parseConfig().maxLinesPerFile).toBeUndefined();
+    });
 
-    expect(config.readOnly).toBe(false);
+    test.each([
+      ["0", 0],
+      ["1", 1],
+      ["500", 500],
+      ["10000", 10000],
+    ])("env '%s' -> %d", (envValue, expected) => {
+      process.env.BITBUCKET_DIFF_MAX_LINES_PER_FILE = envValue;
+      expect(parseConfig().maxLinesPerFile).toBe(expected);
+    });
+
+    test("options.maxLinesPerFile overrides env", () => {
+      process.env.BITBUCKET_DIFF_MAX_LINES_PER_FILE = "100";
+      expect(parseConfig({ maxLinesPerFile: 50 }).maxLinesPerFile).toBe(50);
+    });
   });
 
-  test('should parse BITBUCKET_READ_ONLY only when exactly "true"', () => {
-    process.env.BITBUCKET_URL = "https://git.example.com";
-    process.env.BITBUCKET_TOKEN = "tok";
-    process.env.BITBUCKET_READ_ONLY = "yes";
+  describe("customHeaders (equivalence: env string format)", () => {
+    beforeEach(() => {
+      process.env.BITBUCKET_URL = "https://git.example.com";
+      process.env.BITBUCKET_TOKEN = "t";
+    });
 
-    const config = parseConfig();
+    test("empty object when env not set and no option", () => {
+      expect(parseConfig().customHeaders).toEqual({});
+    });
 
-    expect(config.readOnly).toBe(false);
+    test.each<[string, Record<string, string>]>([
+      ["X-Foo=bar", { "X-Foo": "bar" }],
+      ["X-A=1,X-B=2", { "X-A": "1", "X-B": "2" }],
+      ["X-A = 1 , X-B = 2", { "X-A": "1", "X-B": "2" }], // trims spaces
+      ["", {}],
+      ["X-NoValue=", { "X-NoValue": "" }],
+      ["NoEqualsSign", {}], // no '=' -> ignored
+      ["=value-only", {}], // idx=0 -> ignored
+    ])("env '%s' -> %j", (envValue, expected) => {
+      process.env.BITBUCKET_CUSTOM_HEADERS = envValue;
+      expect(parseConfig().customHeaders).toEqual(expected);
+    });
+
+    test("options.customHeaders overrides env", () => {
+      process.env.BITBUCKET_CUSTOM_HEADERS = "X-Env=e";
+      expect(
+        parseConfig({ customHeaders: { "X-Opt": "o" } }).customHeaders,
+      ).toEqual({ "X-Opt": "o" });
+    });
+
+    test("handles custom header values containing colons", () => {
+      process.env.BITBUCKET_CUSTOM_HEADERS = "X-Auth=Bearer token:with:colons";
+      expect(parseConfig().customHeaders).toEqual({
+        "X-Auth": "Bearer token:with:colons",
+      });
+    });
   });
 
-  test("should default cacheTtlMs to 5 minutes", () => {
-    process.env.BITBUCKET_URL = "https://git.example.com";
-    process.env.BITBUCKET_TOKEN = "tok";
+  describe("enabledTools", () => {
+    beforeEach(() => {
+      process.env.BITBUCKET_URL = "https://git.example.com";
+      process.env.BITBUCKET_TOKEN = "t";
+    });
 
-    const config = parseConfig();
+    test("undefined when env not set and no option", () => {
+      expect(parseConfig().enabledTools).toBeUndefined();
+    });
 
-    expect(config.cacheTtlMs).toBe(5 * 60 * 1000);
+    test.each<[string, string[]]>([
+      ["list_projects", ["list_projects"]],
+      ["a,b,c", ["a", "b", "c"]],
+      [" a , b , c ", ["a", "b", "c"]], // trims spaces
+    ])("env '%s' -> %j", (envValue, expected) => {
+      process.env.BITBUCKET_ENABLED_TOOLS = envValue;
+      expect(parseConfig().enabledTools).toEqual(expected);
+    });
+
+    test("options.enabledTools overrides env", () => {
+      process.env.BITBUCKET_ENABLED_TOOLS = "a,b";
+      expect(parseConfig({ enabledTools: ["c"] }).enabledTools).toEqual(["c"]);
+    });
   });
 
-  test("should parse BITBUCKET_CACHE_TTL in seconds", () => {
-    process.env.BITBUCKET_URL = "https://git.example.com";
-    process.env.BITBUCKET_TOKEN = "tok";
-    process.env.BITBUCKET_CACHE_TTL = "120";
+  describe("defaultProject", () => {
+    beforeEach(() => {
+      process.env.BITBUCKET_URL = "https://git.example.com";
+      process.env.BITBUCKET_TOKEN = "t";
+    });
 
-    const config = parseConfig();
+    test("undefined when not set", () => {
+      expect(parseConfig().defaultProject).toBeUndefined();
+    });
 
-    expect(config.cacheTtlMs).toBe(120_000);
-  });
+    test("reads from env", () => {
+      process.env.BITBUCKET_DEFAULT_PROJECT = "PROJ";
+      expect(parseConfig().defaultProject).toBe("PROJ");
+    });
 
-  test("should disable cache when BITBUCKET_CACHE_TTL is 0", () => {
-    process.env.BITBUCKET_URL = "https://git.example.com";
-    process.env.BITBUCKET_TOKEN = "tok";
-    process.env.BITBUCKET_CACHE_TTL = "0";
-
-    const config = parseConfig();
-
-    expect(config.cacheTtlMs).toBe(0);
-  });
-
-  test("should accept cacheTtlMs from options", () => {
-    process.env.BITBUCKET_URL = "https://git.example.com";
-    process.env.BITBUCKET_TOKEN = "tok";
-
-    const config = parseConfig({ cacheTtlMs: 10_000 });
-
-    expect(config.cacheTtlMs).toBe(10_000);
+    test("options overrides env", () => {
+      process.env.BITBUCKET_DEFAULT_PROJECT = "ENV_PROJ";
+      expect(parseConfig({ defaultProject: "OPT_PROJ" }).defaultProject).toBe(
+        "OPT_PROJ",
+      );
+    });
   });
 });

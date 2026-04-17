@@ -876,5 +876,130 @@ describe("Pull request tools", () => {
       expect(parsed.totalFiles).toBe(1);
       expect(parsed.summary).toEqual({ linesAdded: 50, linesRemoved: 10 });
     });
+
+    test("appends filePath to URL when provided", async () => {
+      mockText(mockClients.api.get, "diff content");
+
+      await client.callTool({
+        name: "get_diff",
+        arguments: {
+          project: "PROJ",
+          repository: "my-repo",
+          prId: 1,
+          filePath: "src/index.ts",
+        },
+      });
+
+      expect(mockClients.api.get).toHaveBeenCalledWith(
+        "projects/PROJ/repos/my-repo/pull-requests/1/diff/src/index.ts",
+        expect.anything(),
+      );
+    });
+  });
+
+  describe("merge_pull_request (decision table: mergeStrategy)", () => {
+    test.each([
+      "no-ff",
+      "ff",
+      "ff-only",
+      "squash",
+      "squash-ff-only",
+      "rebase-no-ff",
+      "rebase-ff-only",
+    ])("sends strategyId=%s as search param", async (strategy) => {
+      mockJson(mockClients.api.get, { version: 5 });
+      mockJson(mockClients.api.post, { state: "MERGED" });
+
+      await client.callTool({
+        name: "merge_pull_request",
+        arguments: {
+          project: "PROJ",
+          repository: "my-repo",
+          prId: 10,
+          strategy: strategy,
+        },
+      });
+
+      expect(mockClients.api.post).toHaveBeenCalledWith(
+        "projects/PROJ/repos/my-repo/pull-requests/10/merge",
+        expect.objectContaining({
+          searchParams: expect.objectContaining({ strategyId: strategy }),
+        }),
+      );
+    });
+
+    test("omits strategyId when strategy not provided", async () => {
+      mockJson(mockClients.api.get, { version: 1 });
+      mockJson(mockClients.api.post, { state: "MERGED" });
+
+      await client.callTool({
+        name: "merge_pull_request",
+        arguments: { project: "PROJ", repository: "my-repo", prId: 10 },
+      });
+
+      const [, opts] = mockClients.api.post.mock.calls[0] as [
+        string,
+        { searchParams?: Record<string, unknown> },
+      ];
+      expect(opts?.searchParams?.strategyId).toBeUndefined();
+    });
+  });
+
+  describe("list_pull_requests (decision table: state x direction x order)", () => {
+    test.each([
+      { state: "OPEN", direction: "INCOMING", order: "NEWEST" },
+      { state: "MERGED", direction: "OUTGOING", order: "OLDEST" },
+      { state: "DECLINED", direction: "INCOMING", order: "NEWEST" },
+      { state: "ALL", direction: "OUTGOING", order: "OLDEST" },
+    ])("combines $state/$direction/$order", async (args) => {
+      mockJson(mockClients.api.get, {
+        values: [],
+        size: 0,
+        isLastPage: true,
+      });
+
+      await client.callTool({
+        name: "list_pull_requests",
+        arguments: { repository: "r", ...args },
+      });
+
+      expect(mockClients.api.get).toHaveBeenCalledWith(
+        expect.stringContaining("/pull-requests"),
+        expect.objectContaining({
+          searchParams: expect.objectContaining({
+            state: args.state,
+            direction: args.direction,
+            order: args.order,
+          }),
+        }),
+      );
+    });
+  });
+
+  describe("pagination boundary (limit/start)", () => {
+    test.each([
+      { limit: 0, start: 0 },
+      { limit: 1, start: 0 },
+      { limit: 100, start: 1000 },
+      { limit: 1000, start: 99999 },
+    ])("list_pull_requests passes limit=$limit start=$start", async (args) => {
+      mockJson(mockClients.api.get, {
+        values: [],
+        size: 0,
+        isLastPage: true,
+      });
+
+      await client.callTool({
+        name: "list_pull_requests",
+        arguments: { repository: "r", ...args },
+      });
+
+      expect(mockClients.api.get).toHaveBeenCalledWith(
+        expect.any(String),
+        expect.objectContaining({
+          searchParams: expect.objectContaining(args),
+        }),
+      );
+    });
   });
 });

@@ -103,4 +103,27 @@ describe("Resources", () => {
     const data = JSON.parse(content.text);
     expect(data).toEqual([]);
   });
+
+  test("fetches projects with limit=1000 search param", async () => {
+    mockJson(mockClients.api.get, { values: [] });
+    await client.readResource({ uri: "bitbucket://projects" });
+    expect(mockClients.api.get).toHaveBeenCalledWith(
+      "projects",
+      expect.objectContaining({
+        searchParams: expect.objectContaining({ limit: 1000 }),
+      }),
+    );
+  });
+
+  test("returns pretty-printed JSON (2-space indent)", async () => {
+    mockJson(mockClients.api.get, {
+      values: [{ key: "P", name: "n" }],
+      size: 1,
+    });
+    const result = await client.readResource({ uri: "bitbucket://projects" });
+    const text = (result.contents[0] as { text: string }).text;
+    // Pretty-printed JSON has newlines and spaces
+    expect(text).toContain("\n");
+    expect(text).toMatch(/^\[\n {2}\{/);
+  });
 });

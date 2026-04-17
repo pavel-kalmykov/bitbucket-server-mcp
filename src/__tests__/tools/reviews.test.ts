@@ -139,4 +139,131 @@ describe("Review tools", () => {
       );
     });
   });
+
+  describe("submit_review publish (decision table: commentText x participantStatus)", () => {
+    test.each<{
+      name: string;
+      args: Record<string, unknown>;
+      expectedBody: Record<string, unknown>;
+    }>([
+      {
+        name: "comment only, no status",
+        args: { commentText: "note" },
+        expectedBody: { commentText: "note" },
+      },
+      {
+        name: "status only, no comment",
+        args: { participantStatus: "APPROVED" },
+        expectedBody: { commentText: null, participantStatus: "APPROVED" },
+      },
+      {
+        name: "status NEEDS_WORK only",
+        args: { participantStatus: "NEEDS_WORK" },
+        expectedBody: { commentText: null, participantStatus: "NEEDS_WORK" },
+      },
+      {
+        name: "both provided",
+        args: { commentText: "looks good", participantStatus: "APPROVED" },
+        expectedBody: {
+          commentText: "looks good",
+          participantStatus: "APPROVED",
+        },
+      },
+      {
+        name: "neither provided",
+        args: {},
+        expectedBody: { commentText: null },
+      },
+    ])("$name", async ({ args, expectedBody }) => {
+      mockJson(mockClients.api.put, { status: "APPROVED" });
+      await client.callTool({
+        name: "submit_review",
+        arguments: {
+          action: "publish",
+          repository: "r",
+          prId: 1,
+          ...args,
+        },
+      });
+
+      expect(mockClients.api.put).toHaveBeenCalledWith(
+        "projects/DEFAULT/repos/r/pull-requests/1/review",
+        { json: expectedBody },
+      );
+    });
+  });
+
+  describe("submit_review state transitions", () => {
+    test("approve -> unapprove calls POST then DELETE on /approve", async () => {
+      mockJson(mockClients.api.post, { approved: true, status: "APPROVED" });
+      mockVoid(mockClients.api.delete);
+
+      await client.callTool({
+        name: "submit_review",
+        arguments: { action: "approve", repository: "r", prId: 1 },
+      });
+      await client.callTool({
+        name: "submit_review",
+        arguments: { action: "unapprove", repository: "r", prId: 1 },
+      });
+
+      expect(mockClients.api.post).toHaveBeenCalledWith(
+        "projects/DEFAULT/repos/r/pull-requests/1/approve",
+        { json: {} },
+      );
+      expect(mockClients.api.delete).toHaveBeenCalledWith(
+        "projects/DEFAULT/repos/r/pull-requests/1/approve",
+      );
+    });
+
+    test("unapprove -> approve -> unapprove sequence uses correct verbs", async () => {
+      mockVoid(mockClients.api.delete);
+      mockJson(mockClients.api.post, { approved: true });
+
+      await client.callTool({
+        name: "submit_review",
+        arguments: { action: "unapprove", repository: "r", prId: 1 },
+      });
+      await client.callTool({
+        name: "submit_review",
+        arguments: { action: "approve", repository: "r", prId: 1 },
+      });
+      await client.callTool({
+        name: "submit_review",
+        arguments: { action: "unapprove", repository: "r", prId: 1 },
+      });
+
+      expect(mockClients.api.delete).toHaveBeenCalledTimes(2);
+      expect(mockClients.api.post).toHaveBeenCalledTimes(1);
+    });
+  });
+
+  describe("submit_review URL construction (grey box)", () => {
+    test.each([
+      { project: "TEST", repository: "r1", prId: 1 },
+      { project: "OTHER", repository: "another-repo", prId: 999 },
+    ])("approve on $project/$repository/$prId", async (args) => {
+      mockJson(mockClients.api.post, { approved: true });
+      await client.callTool({
+        name: "submit_review",
+        arguments: { action: "approve", ...args },
+      });
+      expect(mockClients.api.post).toHaveBeenCalledWith(
+        `projects/${args.project}/repos/${args.repository}/pull-requests/${args.prId}/approve`,
+        { json: {} },
+      );
+    });
+
+    test("uses default project when project omitted", async () => {
+      mockJson(mockClients.api.post, { approved: true });
+      await client.callTool({
+        name: "submit_review",
+        arguments: { action: "approve", repository: "r", prId: 1 },
+      });
+      expect(mockClients.api.post).toHaveBeenCalledWith(
+        "projects/DEFAULT/repos/r/pull-requests/1/approve",
+        { json: {} },
+      );
+    });
+  });
 });

@@ -285,5 +285,47 @@ describe("Insight tools", () => {
 
       expect(result.isError).toBe(true);
     });
+
+    test("should return error when prId provided but no repository", async () => {
+      const result = await client.callTool({
+        name: "get_build_status",
+        arguments: { prId: 42 },
+      });
+
+      expect(result.isError).toBe(true);
+      const text = (result.content as Array<{ text: string }>)[0].text;
+      expect(text).toContain("repository is required");
+    });
+
+    test("should return empty array when commit has no build statuses", async () => {
+      mockJson(mockClients.buildStatus.get, { values: [] });
+
+      const result = await client.callTool({
+        name: "get_build_status",
+        arguments: { commitId: "abc123" },
+      });
+
+      const content = result.content as Array<{ type: string; text: string }>;
+      const parsed = JSON.parse(content[0].text);
+      expect(parsed).toEqual([]);
+    });
+
+    test.each(["SUCCESSFUL", "FAILED", "INPROGRESS"])(
+      "returns build status %s correctly",
+      async (state) => {
+        mockJson(mockClients.buildStatus.get, {
+          values: [{ state, name: "build", url: "https://ci.example.com" }],
+        });
+
+        const result = await client.callTool({
+          name: "get_build_status",
+          arguments: { commitId: "abc" },
+        });
+
+        const content = result.content as Array<{ type: string; text: string }>;
+        const parsed = JSON.parse(content[0].text);
+        expect(parsed[0].state).toBe(state);
+      },
+    );
   });
 });
