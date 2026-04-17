@@ -76,7 +76,10 @@ describe("Search tools", () => {
       expect(parsed.values[0].file).toBe("src/index.ts");
 
       expect(mockClients.search.post).toHaveBeenCalledWith("search", {
-        json: { query: "createClient", entities: { code: { start: 0, limit: 25 } } },
+        json: {
+          query: "createClient",
+          entities: { code: { start: 0, limit: 25 } },
+        },
       });
     });
 
@@ -91,7 +94,10 @@ describe("Search tools", () => {
       });
 
       expect(mockClients.search.post).toHaveBeenCalledWith("search", {
-        json: { query: "project:MYPROJ TODO", entities: { code: { start: 0, limit: 25 } } },
+        json: {
+          query: "project:MYPROJ TODO",
+          entities: { code: { start: 0, limit: 25 } },
+        },
       });
     });
 
@@ -142,7 +148,10 @@ describe("Search tools", () => {
       });
 
       expect(mockClients.search.post).toHaveBeenCalledWith("search", {
-        json: { query: '"index.ts"', entities: { code: { start: 0, limit: 25 } } },
+        json: {
+          query: '"index.ts"',
+          entities: { code: { start: 0, limit: 25 } },
+        },
       });
     });
 
@@ -267,6 +276,64 @@ describe("Search tools", () => {
       });
 
       expect(result.isError).toBe(true);
+    });
+
+    test.each([
+      { limit: 0, start: 0 },
+      { limit: 1, start: 0 },
+      { limit: 100, start: 1000 },
+    ])(
+      "pagination boundary limit=$limit start=$start",
+      async ({ limit, start }) => {
+        mockJson(mockClients.search.post, {
+          code: { values: [], isLastPage: true },
+        });
+
+        await client.callTool({
+          name: "search",
+          arguments: { query: "q", limit, start },
+        });
+
+        expect(mockClients.search.post).toHaveBeenCalledWith("search", {
+          json: {
+            query: "q",
+            entities: { code: { start, limit } },
+          },
+        });
+      },
+    );
+
+    test("should throw when repository provided but no project and no default", async () => {
+      // Re-register with a context that has no defaultProject
+      const { server: bareServer } = (() => {
+        const s = new McpServer({ name: "bare", version: "1.0.0" });
+        const bareClients = createMockClients();
+        const bareCache = new ApiCache({ defaultTtlMs: 100 });
+        registerSearchTools(
+          new ToolContext({
+            server: s,
+            clients: bareClients,
+            cache: bareCache,
+          }),
+        );
+        return { server: s };
+      })();
+
+      const [ct, st] = InMemoryTransport.createLinkedPair();
+      const bareClient = new Client(
+        { name: "c", version: "1.0" },
+        { capabilities: {} },
+      );
+      await Promise.all([bareServer.connect(st), bareClient.connect(ct)]);
+
+      const result = await bareClient.callTool({
+        name: "search",
+        arguments: { query: "q", repository: "r" },
+      });
+
+      expect(result.isError).toBe(true);
+      await bareClient.close();
+      await st.close();
     });
   });
 });

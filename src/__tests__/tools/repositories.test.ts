@@ -542,6 +542,58 @@ describe("Repository tools", () => {
       expect(parsed.repositories[0]).toHaveProperty("extra");
     });
 
+    test.each([
+      { limit: 0, start: 0 },
+      { limit: 1, start: 0 },
+      { limit: 1000, start: 0 },
+      { limit: 25, start: 99999 },
+    ])(
+      "list_repositories passes limit=$limit start=$start (boundary)",
+      async ({ limit, start }) => {
+        mockJson(mockClients.api.get, {
+          values: [],
+          size: 0,
+          isLastPage: true,
+        });
+        await client.callTool({
+          name: "list_repositories",
+          arguments: { project: "P", limit, start },
+        });
+        expect(mockClients.api.get).toHaveBeenCalledWith(
+          "projects/P/repos",
+          expect.objectContaining({
+            searchParams: expect.objectContaining({ limit, start }),
+          }),
+        );
+      },
+    );
+
+    test.each([
+      { limit: 0, start: 0 },
+      { limit: 1, start: 0 },
+      { limit: 1000, start: 0 },
+      { limit: 25, start: 99999 },
+    ])(
+      "list_projects passes limit=$limit start=$start (boundary)",
+      async ({ limit, start }) => {
+        mockJson(mockClients.api.get, {
+          values: [],
+          size: 0,
+          isLastPage: true,
+        });
+        await client.callTool({
+          name: "list_projects",
+          arguments: { limit, start },
+        });
+        expect(mockClients.api.get).toHaveBeenCalledWith(
+          "projects",
+          expect.objectContaining({
+            searchParams: expect.objectContaining({ limit, start }),
+          }),
+        );
+      },
+    );
+
     test("should handle errors gracefully", async () => {
       mockClients.api.get.mockReturnValue(
         fakeResponse({ json: () => Promise.reject(new Error("Not Found")) }),
