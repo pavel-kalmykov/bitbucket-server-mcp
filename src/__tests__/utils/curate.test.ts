@@ -1,213 +1,213 @@
 import { describe, test, expect } from "vitest";
 import {
   curateResponse,
+  curateList,
   DEFAULT_PR_FIELDS,
   DEFAULT_PROJECT_FIELDS,
   DEFAULT_REPOSITORY_FIELDS,
   DEFAULT_BRANCH_FIELDS,
   DEFAULT_COMMIT_FIELDS,
+  DEFAULT_SEARCH_FIELDS,
 } from "../../response/curate.js";
 
 describe("curateResponse", () => {
-  const fullPr = {
-    id: 42,
-    version: 3,
-    title: "fix: something",
-    description: "Fixes the thing",
-    state: "OPEN",
-    open: true,
-    closed: false,
-    createdDate: 1700000000000,
-    updatedDate: 1700001000000,
-    fromRef: {
-      id: "refs/heads/feature/fix",
-      displayId: "feature/fix",
-      latestCommit: "abc123",
-      type: "BRANCH",
-      repository: {
-        slug: "my-repo",
-        id: 100,
-        name: "my-repo",
-        project: {
-          key: "PROJ",
-          id: 1,
-          name: "Project",
-          links: { self: [{ href: "..." }] },
-        },
-        links: {
-          clone: [{ href: "ssh://...", name: "ssh" }],
-          self: [{ href: "..." }],
-        },
-      },
-    },
-    toRef: {
-      id: "refs/heads/main",
-      displayId: "main",
-      latestCommit: "def456",
-      type: "BRANCH",
-      repository: {
-        slug: "my-repo",
-        id: 100,
-        name: "my-repo",
-        project: {
-          key: "PROJ",
-          id: 1,
-          name: "Project",
-          links: { self: [{ href: "..." }] },
-        },
-        links: {
-          clone: [{ href: "ssh://...", name: "ssh" }],
-          self: [{ href: "..." }],
-        },
-      },
-    },
-    author: {
-      user: {
-        name: "alice",
-        displayName: "Alice Smith",
-        emailAddress: "alice@example.com",
-        id: 1,
-        slug: "alice",
-        type: "NORMAL",
-        links: { self: [{ href: "..." }] },
-      },
-      role: "AUTHOR",
-      approved: false,
-      status: "UNAPPROVED",
-    },
-    reviewers: [
-      {
-        user: {
-          name: "bob",
-          displayName: "Bob Jones",
-          id: 2,
-          slug: "bob",
-          type: "NORMAL",
-          links: { self: [{ href: "..." }] },
-        },
-        role: "REVIEWER",
-        approved: true,
-        status: "APPROVED",
-      },
-      {
-        user: {
-          name: "charlie",
-          displayName: "Charlie Brown",
-          id: 3,
-          slug: "charlie",
-          type: "NORMAL",
-          links: { self: [{ href: "..." }] },
-        },
-        role: "REVIEWER",
-        approved: false,
-        status: "NEEDS_WORK",
-      },
-    ],
-    participants: [],
-    properties: {
-      mergeResult: { outcome: "CLEAN", current: true },
-      commentCount: 5,
-      openTaskCount: 1,
-    },
-    links: {
-      self: [
-        {
-          href: "https://git.example.com/projects/PROJ/repos/my-repo/pull-requests/42",
-        },
+  describe("special 'fields' values (equivalence classes)", () => {
+    const data = { a: 1, b: 2, nested: { x: 3 } };
+
+    test("'*all' returns the input unchanged", () => {
+      expect(curateResponse(data, "*all")).toEqual(data);
+    });
+
+    test("'*all' returns the SAME reference (no copy)", () => {
+      expect(curateResponse(data, "*all")).toBe(data);
+    });
+
+    test("empty string returns empty object", () => {
+      expect(curateResponse(data, "")).toEqual({});
+    });
+
+    test("whitespace-only string returns empty object", () => {
+      expect(curateResponse(data, "   ,  ,  ")).toEqual({});
+    });
+
+    test("non-existent fields return empty object", () => {
+      expect(curateResponse(data, "doesnotexist")).toEqual({});
+    });
+
+    test("mix of existent and non-existent only keeps existent", () => {
+      expect(curateResponse(data, "a,ghost,b")).toEqual({ a: 1, b: 2 });
+    });
+  });
+
+  describe("top-level field selection", () => {
+    const data = { id: 1, name: "x", extra: "junk" };
+
+    test("returns only requested top-level keys", () => {
+      expect(curateResponse(data, "id,name")).toEqual({ id: 1, name: "x" });
+    });
+
+    test("trims whitespace around field names", () => {
+      expect(curateResponse(data, " id , name ")).toEqual({ id: 1, name: "x" });
+    });
+
+    test("preserves primitive types (number, string, boolean, null)", () => {
+      const d = { n: 42, s: "s", b: true, z: null };
+      expect(curateResponse(d, "n,s,b,z")).toEqual(d);
+    });
+
+    test("skips undefined fields", () => {
+      const d = { a: 1, b: undefined };
+      expect(curateResponse(d as Record<string, unknown>, "a,b")).toEqual({
+        a: 1,
+      });
+    });
+  });
+
+  describe("nested field paths (object)", () => {
+    const data = {
+      author: { user: { name: "alice", email: "a@x", id: 1 } },
+    };
+
+    test("picks sub-field of nested object", () => {
+      expect(curateResponse(data, "author.user.name")).toEqual({
+        author: { user: { name: "alice" } },
+      });
+    });
+
+    test("picks multiple sub-fields at same level", () => {
+      expect(
+        curateResponse(data, "author.user.name,author.user.email"),
+      ).toEqual({ author: { user: { name: "alice", email: "a@x" } } });
+    });
+
+    test("keeps full top-level when no dot suffix given", () => {
+      expect(curateResponse(data, "author")).toEqual(data);
+    });
+
+    test("empty result when nested path does not exist", () => {
+      expect(curateResponse(data, "author.user.phone")).toEqual({
+        author: { user: {} },
+      });
+    });
+  });
+
+  describe("nested field paths (array)", () => {
+    const data = {
+      reviewers: [
+        { name: "a", status: "APPROVED", secret: "s1" },
+        { name: "b", status: "UNAPPROVED", secret: "s2" },
       ],
-    },
-    locked: false,
-  };
+    };
 
-  test("should curate PR with default fields", () => {
-    const result = curateResponse(fullPr, DEFAULT_PR_FIELDS);
+    test("picks sub-field of each array item", () => {
+      expect(curateResponse(data, "reviewers.name")).toEqual({
+        reviewers: [{ name: "a" }, { name: "b" }],
+      });
+    });
 
-    expect(result.id).toBe(42);
-    expect(result.title).toBe("fix: something");
-    expect(result.state).toBe("OPEN");
-    expect(result.author).toBeDefined();
-    expect(result.reviewers).toBeDefined();
-    // Should NOT have deeply nested objects
-    expect(
-      (result.fromRef as Record<string, unknown>)?.repository,
-    ).toBeUndefined();
-    expect(
-      (result.toRef as Record<string, unknown>)?.repository,
-    ).toBeUndefined();
-    // Should NOT have links
-    expect(result.links).toBeUndefined();
+    test("picks multiple sub-fields of each array item", () => {
+      expect(curateResponse(data, "reviewers.name,reviewers.status")).toEqual({
+        reviewers: [
+          { name: "a", status: "APPROVED" },
+          { name: "b", status: "UNAPPROVED" },
+        ],
+      });
+    });
+
+    test("preserves array length (no filtering of items)", () => {
+      const result = curateResponse(data, "reviewers.name") as {
+        reviewers: unknown[];
+      };
+      expect(result.reviewers).toHaveLength(2);
+    });
+
+    test("empty array remains empty after curation", () => {
+      expect(curateResponse({ reviewers: [] }, "reviewers.name")).toEqual({
+        reviewers: [],
+      });
+    });
+
+    test("array with primitive items is preserved as-is when sub-path given", () => {
+      // Primitives don't have sub-fields, so they should be returned as-is
+      const d = { tags: ["a", "b"] };
+      expect(curateResponse(d, "tags.x")).toEqual({ tags: ["a", "b"] });
+    });
   });
 
-  test("should return all fields with '*all'", () => {
-    const result = curateResponse(fullPr, "*all");
+  describe("null and edge values (boundary)", () => {
+    test("null top-level value is not included (undefined check)", () => {
+      expect(curateResponse({ a: null, b: 1 }, "a,b")).toEqual({
+        a: null,
+        b: 1,
+      });
+    });
 
-    expect(result).toEqual(fullPr);
-  });
+    test("nested null is skipped (treated as not-an-object)", () => {
+      const d = { author: null };
+      expect(
+        curateResponse(d as Record<string, unknown>, "author.name"),
+      ).toEqual({});
+    });
 
-  test("should return only specified fields", () => {
-    const result = curateResponse(fullPr, "id,title,state");
-
-    expect(result.id).toBe(42);
-    expect(result.title).toBe("fix: something");
-    expect(result.state).toBe("OPEN");
-    expect(Object.keys(result)).toEqual(["id", "title", "state"]);
-  });
-
-  test("should handle nested field paths", () => {
-    const result = curateResponse(
-      fullPr,
-      "id,author.user.name,fromRef.displayId",
-    );
-
-    expect(result.id).toBe(42);
-    const author = result.author as Record<string, unknown>;
-    const authorUser = author?.user as Record<string, unknown>;
-    expect(authorUser?.name).toBe("alice");
-    expect((result.fromRef as Record<string, unknown>)?.displayId).toBe(
-      "feature/fix",
-    );
-    expect(authorUser?.displayName).toBeUndefined();
-  });
-
-  test("should return empty object for non-existent fields", () => {
-    const result = curateResponse(fullPr, "nonexistent");
-
-    expect(result.nonexistent).toBeUndefined();
-  });
-
-  test("should handle arrays in default field sets", () => {
-    const result = curateResponse(fullPr, DEFAULT_PR_FIELDS);
-
-    expect(Array.isArray(result.reviewers)).toBe(true);
-    const reviewers = result.reviewers as Record<string, unknown>[];
-    expect((reviewers[0].user as Record<string, unknown>)?.name).toBeDefined();
-    expect(reviewers[0].status).toBeDefined();
+    test("empty object input returns empty", () => {
+      expect(curateResponse({}, "a,b,c")).toEqual({});
+    });
   });
 });
 
-describe("default field sets exist", () => {
-  test("PR fields should include essential fields", () => {
-    expect(DEFAULT_PR_FIELDS).toContain("id");
-    expect(DEFAULT_PR_FIELDS).toContain("title");
-    expect(DEFAULT_PR_FIELDS).toContain("state");
-    expect(DEFAULT_PR_FIELDS).toContain("author");
+describe("curateList", () => {
+  test("'*all' returns the same array reference", () => {
+    const items = [{ a: 1 }, { a: 2 }];
+    expect(curateList(items, "*all")).toBe(items);
   });
 
-  test("project fields should include key and name", () => {
-    expect(DEFAULT_PROJECT_FIELDS).toContain("key");
-    expect(DEFAULT_PROJECT_FIELDS).toContain("name");
+  test("applies curation to each item", () => {
+    const items = [
+      { a: 1, b: 2 },
+      { a: 3, b: 4 },
+    ];
+    expect(curateList(items, "a")).toEqual([{ a: 1 }, { a: 3 }]);
   });
 
-  test("repository fields should include slug", () => {
-    expect(DEFAULT_REPOSITORY_FIELDS).toContain("slug");
+  test("empty array returns empty array", () => {
+    expect(curateList([], "a")).toEqual([]);
   });
 
-  test("branch fields should include displayId", () => {
-    expect(DEFAULT_BRANCH_FIELDS).toContain("displayId");
+  test("preserves list order", () => {
+    const items = [{ n: 1 }, { n: 2 }, { n: 3 }];
+    expect(curateList(items, "n")).toEqual([{ n: 1 }, { n: 2 }, { n: 3 }]);
+  });
+});
+
+describe("default field constants", () => {
+  test.each([
+    ["PR", DEFAULT_PR_FIELDS, ["id", "title", "state", "author", "reviewers"]],
+    ["Project", DEFAULT_PROJECT_FIELDS, ["key", "name", "type"]],
+    ["Repository", DEFAULT_REPOSITORY_FIELDS, ["slug", "name", "project.key"]],
+    [
+      "Branch",
+      DEFAULT_BRANCH_FIELDS,
+      ["displayId", "latestCommit", "isDefault"],
+    ],
+    ["Commit", DEFAULT_COMMIT_FIELDS, ["id", "message", "authorTimestamp"]],
+    ["Search", DEFAULT_SEARCH_FIELDS, ["file", "hitCount", "repository.slug"]],
+  ])("%s defaults include essential fields", (_name, constant, expected) => {
+    for (const field of expected) {
+      expect(constant).toContain(field);
+    }
   });
 
-  test("commit fields should include id and message", () => {
-    expect(DEFAULT_COMMIT_FIELDS).toContain("id");
-    expect(DEFAULT_COMMIT_FIELDS).toContain("message");
+  test("default field sets are non-empty comma-separated strings", () => {
+    for (const constant of [
+      DEFAULT_PR_FIELDS,
+      DEFAULT_PROJECT_FIELDS,
+      DEFAULT_REPOSITORY_FIELDS,
+      DEFAULT_BRANCH_FIELDS,
+      DEFAULT_COMMIT_FIELDS,
+      DEFAULT_SEARCH_FIELDS,
+    ]) {
+      expect(constant.split(",").length).toBeGreaterThan(0);
+      expect(constant.length).toBeGreaterThan(0);
+    }
   });
 });

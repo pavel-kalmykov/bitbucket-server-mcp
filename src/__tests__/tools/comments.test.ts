@@ -372,4 +372,218 @@ describe("Comment tools", () => {
       );
     });
   });
+
+  describe("manage_comment state transitions", () => {
+    test("PENDING -> OPEN via edit with state update", async () => {
+      mockJson(mockClients.api.put, {
+        id: 1,
+        text: "now visible",
+        state: "OPEN",
+      });
+
+      await client.callTool({
+        name: "manage_comment",
+        arguments: {
+          action: "edit",
+          repository: "r",
+          prId: 1,
+          commentId: 1,
+          version: 0,
+          text: "now visible",
+          state: "OPEN",
+        },
+      });
+
+      expect(mockClients.api.put).toHaveBeenCalledWith(
+        "projects/DEFAULT/repos/r/pull-requests/1/comments/1",
+        expect.objectContaining({
+          json: expect.objectContaining({ state: "OPEN" }),
+        }),
+      );
+    });
+
+    test("OPEN -> RESOLVED -> OPEN cycle uses PUT with correct state", async () => {
+      mockJson(mockClients.api.put, { id: 1, state: "RESOLVED" });
+      await client.callTool({
+        name: "manage_comment",
+        arguments: {
+          action: "edit",
+          repository: "r",
+          prId: 1,
+          commentId: 1,
+          version: 0,
+          state: "RESOLVED",
+        },
+      });
+      await client.callTool({
+        name: "manage_comment",
+        arguments: {
+          action: "edit",
+          repository: "r",
+          prId: 1,
+          commentId: 1,
+          version: 1,
+          state: "OPEN",
+        },
+      });
+
+      expect(mockClients.api.put).toHaveBeenCalledTimes(2);
+      const firstCall = mockClients.api.put.mock.calls[0][1] as {
+        json: Record<string, unknown>;
+      };
+      const secondCall = mockClients.api.put.mock.calls[1][1] as {
+        json: Record<string, unknown>;
+      };
+      expect(firstCall.json.state).toBe("RESOLVED");
+      expect(firstCall.json.version).toBe(0);
+      expect(secondCall.json.state).toBe("OPEN");
+      expect(secondCall.json.version).toBe(1);
+    });
+
+    test("create-as-PENDING then edit to OPEN", async () => {
+      mockJson(mockClients.api.post, { id: 99, state: "PENDING" });
+      mockJson(mockClients.api.put, { id: 99, state: "OPEN" });
+
+      await client.callTool({
+        name: "manage_comment",
+        arguments: {
+          action: "create",
+          repository: "r",
+          prId: 1,
+          text: "draft",
+          state: "PENDING",
+        },
+      });
+      await client.callTool({
+        name: "manage_comment",
+        arguments: {
+          action: "edit",
+          repository: "r",
+          prId: 1,
+          commentId: 99,
+          version: 0,
+          state: "OPEN",
+        },
+      });
+
+      expect(mockClients.api.post).toHaveBeenCalledTimes(1);
+      expect(mockClients.api.put).toHaveBeenCalledTimes(1);
+    });
+  });
+
+  describe("manage_comment react/unreact", () => {
+    test("react sends PUT to comment-likes /reactions/{emoticon}", async () => {
+      mockVoid(mockClients.commentLikes.put);
+
+      await client.callTool({
+        name: "manage_comment",
+        arguments: {
+          action: "react",
+          repository: "r",
+          prId: 1,
+          commentId: 5,
+          emoticon: "thumbsup",
+        },
+      });
+
+      expect(mockClients.commentLikes.put).toHaveBeenCalledWith(
+        expect.stringContaining("/comments/5/reactions/thumbsup"),
+      );
+    });
+
+    test("unreact sends DELETE to the same URL", async () => {
+      mockVoid(mockClients.commentLikes.delete);
+
+      await client.callTool({
+        name: "manage_comment",
+        arguments: {
+          action: "unreact",
+          repository: "r",
+          prId: 1,
+          commentId: 5,
+          emoticon: "thumbsup",
+        },
+      });
+
+      expect(mockClients.commentLikes.delete).toHaveBeenCalledWith(
+        expect.stringContaining("/comments/5/reactions/thumbsup"),
+      );
+    });
+
+    test("react -> unreact -> react sequence alternates PUT/DELETE", async () => {
+      mockVoid(mockClients.commentLikes.put);
+      mockVoid(mockClients.commentLikes.delete);
+
+      const args = {
+        repository: "r",
+        prId: 1,
+        commentId: 5,
+        emoticon: "heart",
+      };
+      await client.callTool({
+        name: "manage_comment",
+        arguments: { action: "react", ...args },
+      });
+      await client.callTool({
+        name: "manage_comment",
+        arguments: { action: "unreact", ...args },
+      });
+      await client.callTool({
+        name: "manage_comment",
+        arguments: { action: "react", ...args },
+      });
+
+      expect(mockClients.commentLikes.put).toHaveBeenCalledTimes(2);
+      expect(mockClients.commentLikes.delete).toHaveBeenCalledTimes(1);
+    });
+  });
+
+  describe("search_emoticons", () => {
+    test("returns list of matching emoticon shortcuts", async () => {
+      mockJson(mockClients.emoticons.get, {
+        values: [
+          { shortcut: "thumbsup", displayName: "Thumbs up" },
+          { shortcut: "thumbsdown", displayName: "Thumbs down" },
+        ],
+      });
+
+      const result = await client.callTool({
+        name: "search_emoticons",
+        arguments: { query: "thumbs" },
+      });
+
+      const content = result.content as Array<{ type: string; text: string }>;
+      const parsed = JSON.parse(content[0].text);
+      expect(parsed).toEqual(["thumbsup", "thumbsdown"]);
+    });
+
+    test("passes query as search param", async () => {
+      mockJson(mockClients.emoticons.get, { values: [] });
+
+      await client.callTool({
+        name: "search_emoticons",
+        arguments: { query: "heart" },
+      });
+
+      expect(mockClients.emoticons.get).toHaveBeenCalledWith(
+        "search",
+        expect.objectContaining({
+          searchParams: expect.objectContaining({ query: "heart" }),
+        }),
+      );
+    });
+
+    test("returns empty list when no matches", async () => {
+      mockJson(mockClients.emoticons.get, { values: [] });
+
+      const result = await client.callTool({
+        name: "search_emoticons",
+        arguments: { query: "xyz" },
+      });
+
+      const content = result.content as Array<{ type: string; text: string }>;
+      const parsed = JSON.parse(content[0].text);
+      expect(parsed).toEqual([]);
+    });
+  });
 });
