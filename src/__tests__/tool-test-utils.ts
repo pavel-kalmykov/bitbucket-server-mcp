@@ -4,7 +4,7 @@ import { InMemoryTransport } from "@modelcontextprotocol/sdk/inMemory.js";
 import { afterEach, beforeEach, expect } from "vitest";
 import type { MockProxy } from "vitest-mock-extended";
 import type { KyInstance } from "ky";
-import { ToolContext } from "../tools/shared.js";
+import { ToolContext, type ToolContextParams } from "../tools/shared.js";
 import { ApiCache } from "../http/cache.js";
 import { type MockApiClients, createMockClients } from "./test-utils.js";
 
@@ -15,17 +15,39 @@ export interface ToolTestContext {
 }
 
 /**
+ * Build a standalone ToolContext for unit tests that do not need an MCP
+ * client/server pair. Mirrors the construction inside `setupToolHarness` so
+ * both entry points stay in sync.
+ */
+export function createTestToolContext(
+  overrides: Partial<ToolContextParams> = {},
+): ToolContext {
+  return new ToolContext({
+    server: new McpServer({ name: "test", version: "1.0.0" }),
+    clients: createMockClients(),
+    cache: new ApiCache({ defaultTtlMs: 100 }),
+    ...overrides,
+  });
+}
+
+/**
  * Spin up a fresh McpServer + Client pair with mocked API clients for each test.
  * The caller registers its tools against `harness.ctx` inside the register callback.
  *
+ * IMPORTANT: must be called at describe() scope. It registers `beforeEach` and
+ * `afterEach` hooks as a side effect; calling it from a helper or outside a
+ * describe block would bind those hooks to the wrong scope (or to root scope).
+ *
  * Usage:
- *   const harness = setupToolHarness({
- *     register: (ctx) => registerBranchTools(ctx),
- *     defaultProject: "DEFAULT",
+ *   describe("Branch tools", () => {
+ *     const h = setupToolHarness({
+ *       register: registerBranchTools,
+ *       defaultProject: "DEFAULT",
+ *     });
+ *     // inside tests:
+ *     h.client.callTool(...)
+ *     h.mockClients.api.get.mockReturnValueOnce(...)
  *   });
- *   // inside tests:
- *   harness.client.callTool(...)
- *   harness.mockClients.api.get.mockReturnValueOnce(...)
  */
 export function setupToolHarness(options: {
   register: (ctx: ToolContext) => void;
@@ -45,16 +67,14 @@ export function setupToolHarness(options: {
   };
 
   beforeEach(async () => {
-    state.server = new McpServer({ name: "test", version: "1.0.0" });
     state.mockClients = createMockClients();
-    const cache = new ApiCache({ defaultTtlMs: options.cacheTtlMs ?? 100 });
-    state.ctx = new ToolContext({
-      server: state.server,
+    state.ctx = createTestToolContext({
       clients: state.mockClients,
-      cache,
+      cache: new ApiCache({ defaultTtlMs: options.cacheTtlMs ?? 100 }),
       defaultProject: options.defaultProject,
       maxLinesPerFile: options.maxLinesPerFile,
     });
+    state.server = state.ctx.server;
     options.register(state.ctx);
 
     const [clientTransport, sTransport] = InMemoryTransport.createLinkedPair();
@@ -72,6 +92,7 @@ export function setupToolHarness(options: {
   afterEach(async () => {
     await state.client?.close();
     await state.serverTransport?.close();
+    await state.server?.close?.();
   });
 
   // Proxy so `harness.client` always points to the current-test instance.
@@ -134,9 +155,24 @@ export async function callRaw(
 }
 
 /**
+ * Helpers below are sugar over `expect(fn).toHaveBeenCalledWith(url, expect.objectContaining({...}))`.
+ * They cover the three common request shapes (plain options, searchParams, json body).
+ *
+ * When to fall back to a raw `toHaveBeenCalledWith`:
+ *   - combined search params AND headers (build the matcher inline)
+ *   - non-JSON bodies like FormData (use `expectCalledWith(fn, url, { body: expect.any(FormData) })`)
+ *   - `.not.toHaveBeenCalled()` and similar negative assertions
+ *
+ * For strict equality on the json body (catches unexpected extra keys) use
+ * `expectCalledWithStrictJson`; the default `expectCalledWithJson` only asserts
+ * a subset so tool tests can lock the fields they care about.
+ */
+
+/**
  * Assert that a ky mock was called with the given URL and (optionally) options
- * matching `expect.objectContaining(opts)`. Shortens the common pattern of
- * `toHaveBeenCalledWith(url, expect.objectContaining({...}))`.
+ * matching `expect.objectContaining(opts)`. Values inside `opts` are matched
+ * verbatim (use `expect.objectContaining`, `expect.any`, etc. explicitly when
+ * needed for nested partial matches).
  */
 export function expectCalledWith<
   F extends MockProxy<KyInstance>[keyof KyInstance],
@@ -175,11 +211,11 @@ export function expectCalledWithSearchParams<
 }
 
 /**
- * Assert that a ky mock was called with a URL and `json` body containing all
- * of `body`. Shortens:
- *   toHaveBeenCalledWith(url, expect.objectContaining({
- *     json: expect.objectContaining({...})
- *   }))
+ * Assert that a ky mock was called with a URL and `json` body partially
+ * matching `body`. Uses `expect.objectContaining` on the body so extra keys
+ * sent by the code under test are ignored. Prefer `expectCalledWithStrictJson`
+ * when the test should fail if the production code starts sending additional
+ * fields (leak-sensitive endpoints, contract-shaped payloads).
  */
 export function expectCalledWithJson<
   F extends MockProxy<KyInstance>[keyof KyInstance],
@@ -194,4 +230,19 @@ export function expectCalledWithJson<
       json: expect.objectContaining(body),
     }),
   );
+}
+
+/**
+ * Stricter variant of `expectCalledWithJson`: asserts that `json` equals
+ * `body` exactly. Use for endpoints where an extra unexpected field would be
+ * a regression (e.g. credentials/config keys leaking into a request body).
+ */
+export function expectCalledWithStrictJson<
+  F extends MockProxy<KyInstance>[keyof KyInstance],
+>(
+  fn: F,
+  url: string | ReturnType<typeof expect.stringContaining>,
+  body: Record<string, unknown>,
+): void {
+  expect(fn).toHaveBeenCalledWith(url, expect.objectContaining({ json: body }));
 }

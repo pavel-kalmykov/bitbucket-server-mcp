@@ -1,9 +1,10 @@
 import { describe, test, expect } from "vitest";
+import { http, HttpResponse } from "msw";
 import { createApiClients } from "../../http/client.js";
 import type { BitbucketConfig } from "../../types.js";
 import { setupHttpCapture } from "../http-test-utils.js";
 
-const { captured, server, http, HttpResponse } = setupHttpCapture();
+const { captured, server } = setupHttpCapture();
 
 function baseConfig(overrides: Partial<BitbucketConfig> = {}): BitbucketConfig {
   return {

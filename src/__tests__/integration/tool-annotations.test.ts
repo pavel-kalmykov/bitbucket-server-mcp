@@ -77,9 +77,7 @@ describe("Tool annotations", () => {
     ];
 
     test.each(readOnlyTools)("%s is read-only and idempotent", (name) => {
-      const a = tools.get(name);
-      expect(a).toBeDefined();
-      expect(a).toMatchObject({
+      expect(tools.get(name)).toMatchObject({
         readOnlyHint: true,
         destructiveHint: false,
         idempotentHint: true,
@@ -96,9 +94,7 @@ describe("Tool annotations", () => {
     ];
 
     test.each(writeTools)("%s is writable and non-idempotent", (name) => {
-      const a = tools.get(name);
-      expect(a).toBeDefined();
-      expect(a).toMatchObject({
+      expect(tools.get(name)).toMatchObject({
         readOnlyHint: false,
         destructiveHint: false,
         idempotentHint: false,
@@ -122,9 +118,7 @@ describe("Tool annotations", () => {
     ];
 
     test.each(destructiveTools)("%s is destructive", (name) => {
-      const a = tools.get(name);
-      expect(a).toBeDefined();
-      expect(a).toMatchObject({
+      expect(tools.get(name)).toMatchObject({
         readOnlyHint: false,
         destructiveHint: true,
       });

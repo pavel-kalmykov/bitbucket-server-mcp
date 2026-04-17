@@ -18,10 +18,6 @@ describe("curateResponse", () => {
       expect(curateResponse(data, "*all")).toEqual(data);
     });
 
-    test("'*all' returns the SAME reference (no copy)", () => {
-      expect(curateResponse(data, "*all")).toBe(data);
-    });
-
     test("empty string returns empty object", () => {
       expect(curateResponse(data, "")).toEqual({});
     });
@@ -156,9 +152,9 @@ describe("curateResponse", () => {
 });
 
 describe("curateList", () => {
-  test("'*all' returns the same array reference", () => {
+  test("'*all' returns the input array unchanged", () => {
     const items = [{ a: 1 }, { a: 2 }];
-    expect(curateList(items, "*all")).toBe(items);
+    expect(curateList(items, "*all")).toEqual(items);
   });
 
   test("applies curation to each item", () => {

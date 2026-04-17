@@ -785,7 +785,7 @@ describe("Pull request tools", () => {
     });
   });
 
-  describe("merge_pull_request (decision table: mergeStrategy)", () => {
+  describe("merge_pull_request (equivalence classes over strategy enum)", () => {
     test.each([
       "no-ff",
       "ff",
@@ -832,7 +832,7 @@ describe("Pull request tools", () => {
     });
   });
 
-  describe("list_pull_requests (decision table: state x direction x order)", () => {
+  describe("list_pull_requests (each-value coverage of state/direction/order)", () => {
     test.each([
       { state: "OPEN", direction: "INCOMING", order: "NEWEST" },
       { state: "MERGED", direction: "OUTGOING", order: "OLDEST" },
@@ -858,7 +858,7 @@ describe("Pull request tools", () => {
     });
   });
 
-  describe("pagination boundary (limit/start)", () => {
+  describe("pagination params forwarding (limit/start)", () => {
     test.each([
       { limit: 0, start: 0 },
       { limit: 1, start: 0 },

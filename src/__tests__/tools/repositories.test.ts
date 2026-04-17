@@ -469,7 +469,7 @@ describe("Repository tools", () => {
       { limit: 1000, start: 0 },
       { limit: 25, start: 99999 },
     ])(
-      "list_repositories passes limit=$limit start=$start (boundary)",
+      "list_repositories forwards limit=$limit start=$start",
       async ({ limit, start }) => {
         mockJson(h.mockClients.api.get, {
           values: [],
@@ -494,7 +494,7 @@ describe("Repository tools", () => {
       { limit: 1000, start: 0 },
       { limit: 25, start: 99999 },
     ])(
-      "list_projects passes limit=$limit start=$start (boundary)",
+      "list_projects forwards limit=$limit start=$start",
       async ({ limit, start }) => {
         mockJson(h.mockClients.api.get, {
           values: [],
