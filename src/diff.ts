@@ -1,17 +1,48 @@
-function truncateFileSection(
-  fileLines: string[],
+interface FileSection {
+  fileName: string;
+  headerLines: string[];
+  hunkContent: string[];
+}
+
+function parseDiff(lines: string[]): FileSection[] {
+  const sections: FileSection[] = [];
+  let current: FileSection = { fileName: "", headerLines: [], hunkContent: [] };
+  let inHunk = false;
+
+  for (const line of lines) {
+    if (line.startsWith("diff --git ")) {
+      sections.push(current);
+      const match = line.match(/diff --git a\/(.+) b\/(.+)/);
+      current = {
+        fileName: match ? match[2] : "unknown",
+        headerLines: [line],
+        hunkContent: [],
+      };
+      inHunk = false;
+    } else if (line.startsWith("@@")) {
+      inHunk = true;
+      current.hunkContent.push(line);
+    } else if (inHunk) {
+      current.hunkContent.push(line);
+    } else {
+      current.headerLines.push(line);
+    }
+  }
+
+  sections.push(current);
+  return sections;
+}
+
+function truncateHunkContent(
+  hunkContent: string[],
   fileName: string,
   maxLines: number,
 ): string[] {
-  if (fileLines.length <= maxLines) {
-    return fileLines;
-  }
-
-  const contentLines = fileLines.filter((line) => !line.startsWith("@@"));
-  const hunkHeaders = fileLines.filter((line) => line.startsWith("@@"));
+  const contentLines = hunkContent.filter((line) => !line.startsWith("@@"));
+  const hunkHeaders = hunkContent.filter((line) => line.startsWith("@@"));
 
   if (contentLines.length <= maxLines) {
-    return fileLines;
+    return hunkContent;
   }
 
   const showAtStart = Math.floor(maxLines * 0.6);
@@ -39,53 +70,16 @@ export function truncateDiff(
   }
 
   const lines = diffContent.split("\n");
-  const result: string[] = [];
-  let currentFileLines: string[] = [];
-  let currentFileName = "";
-  let inFileContent = false;
+  const sections = parseDiff(lines);
 
-  for (const line of lines) {
-    if (line.startsWith("diff --git ")) {
-      if (currentFileLines.length > 0) {
-        result.push(
-          ...truncateFileSection(
-            currentFileLines,
-            currentFileName,
-            maxLinesPerFile,
-          ),
-        );
-        currentFileLines = [];
-      }
-
-      const match = line.match(/diff --git a\/(.+) b\/(.+)/);
-      currentFileName = match ? match[2] : "unknown";
-      inFileContent = false;
-      result.push(line);
-    } else if (
-      line.startsWith("index ") ||
-      line.startsWith("+++") ||
-      line.startsWith("---")
-    ) {
-      result.push(line);
-    } else if (line.startsWith("@@")) {
-      inFileContent = true;
-      currentFileLines.push(line);
-    } else if (inFileContent) {
-      currentFileLines.push(line);
-    } else {
-      result.push(line);
-    }
-  }
-
-  if (currentFileLines.length > 0) {
-    result.push(
-      ...truncateFileSection(
-        currentFileLines,
-        currentFileName,
+  return sections
+    .flatMap((section) => [
+      ...section.headerLines,
+      ...truncateHunkContent(
+        section.hunkContent,
+        section.fileName,
         maxLinesPerFile,
       ),
-    );
-  }
-
-  return result.join("\n");
+    ])
+    .join("\n");
 }
