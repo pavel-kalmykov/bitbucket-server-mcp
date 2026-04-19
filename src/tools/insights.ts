@@ -35,21 +35,22 @@ export function registerInsightTools(ctx: ToolContext) {
 
         const reports = reportsData.values;
 
-        const annotations: Record<string, unknown[]> = {};
-
-        for (const report of reports) {
-          if (!report.key) continue;
-          try {
-            const annotationsData = await clients.insights
-              .get(`${basePath}/reports/${report.key}/annotations`, {
-                searchParams: {},
-              })
-              .json<{ values: unknown[] }>();
-            annotations[report.key] = annotationsData.values;
-          } catch {
-            annotations[report.key] = [];
-          }
-        }
+        const annotations = Object.fromEntries(
+          await Promise.all(
+            reports
+              .filter((r): r is InsightReport & { key: string } => !!r.key)
+              .map(async (r) => {
+                const values = await clients.insights
+                  .get(`${basePath}/reports/${r.key}/annotations`, {
+                    searchParams: {},
+                  })
+                  .json<{ values: unknown[] }>()
+                  .then((d) => d.values)
+                  .catch((): unknown[] => []);
+                return [r.key, values] as const;
+              }),
+          ),
+        );
 
         return formatResponse({ reports, annotations });
       } catch (error) {

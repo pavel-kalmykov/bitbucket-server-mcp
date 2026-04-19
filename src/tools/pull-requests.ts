@@ -482,11 +482,10 @@ export function registerPullRequestTools(ctx: ToolContext) {
           const authorLower = author.toLowerCase();
           pullRequests = pullRequests.filter((pr) => {
             const u = pr.author?.user;
-            if (!u) return false;
             return (
-              u.name?.toLowerCase() === authorLower ||
-              u.slug?.toLowerCase() === authorLower ||
-              u.displayName?.toLowerCase().includes(authorLower)
+              u?.name?.toLowerCase() === authorLower ||
+              u?.slug?.toLowerCase() === authorLower ||
+              u?.displayName?.toLowerCase().includes(authorLower)
             );
           });
         }

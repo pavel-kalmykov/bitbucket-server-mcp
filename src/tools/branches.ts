@@ -161,11 +161,10 @@ export function registerBranchTools(ctx: ToolContext) {
           const authorLower = author.toLowerCase();
           commits = commits.filter((commit) => {
             const a = commit.author;
-            if (!a) return false;
             return (
-              a.name?.toLowerCase().includes(authorLower) ||
-              a.slug?.toLowerCase().includes(authorLower) ||
-              a.displayName?.toLowerCase().includes(authorLower)
+              a?.name?.toLowerCase().includes(authorLower) ||
+              a?.slug?.toLowerCase().includes(authorLower) ||
+              a?.displayName?.toLowerCase().includes(authorLower)
             );
           });
         }
