@@ -12,6 +12,7 @@ describe("Pull request tools", () => {
   const h = setupToolHarness({
     register: registerPullRequestTools,
     defaultProject: "DEFAULT",
+    maxLinesPerFile: 5,
   });
 
   // ── create_pull_request ────────────────────────────────────────────
@@ -145,9 +146,47 @@ describe("Pull request tools", () => {
         includeDefaultReviewers: false,
       });
 
-      // Should not have called get for repo IDs or default reviewers
       expect(h.mockClients.api.get).not.toHaveBeenCalled();
       expect(h.mockClients.defaultReviewers.get).not.toHaveBeenCalled();
+    });
+
+    test("should include description in body when provided", async () => {
+      mockJson(h.mockClients.api.post, { id: 5, state: "OPEN" });
+
+      await callAndParse(h.client, "create_pull_request", {
+        project: "PROJ",
+        repository: "my-repo",
+        title: "With desc",
+        description: "PR description",
+        sourceBranch: "feature/x",
+        targetBranch: "main",
+        includeDefaultReviewers: false,
+      });
+
+      expectCalledWithJson(
+        h.mockClients.api.post,
+        "projects/PROJ/repos/my-repo/pull-requests",
+        { description: "PR description" },
+      );
+    });
+
+    test("should send empty reviewers array when none provided", async () => {
+      mockJson(h.mockClients.api.post, { id: 6, state: "OPEN" });
+
+      await callAndParse(h.client, "create_pull_request", {
+        project: "PROJ",
+        repository: "my-repo",
+        title: "No reviewers",
+        sourceBranch: "feature/x",
+        targetBranch: "main",
+        includeDefaultReviewers: false,
+      });
+
+      expectCalledWithJson(
+        h.mockClients.api.post,
+        "projects/PROJ/repos/my-repo/pull-requests",
+        { reviewers: [] },
+      );
     });
   });
 
@@ -283,6 +322,10 @@ describe("Pull request tools", () => {
         targetBranch: "develop",
       });
 
+      expect(h.mockClients.api.get).toHaveBeenCalledWith(
+        "projects/PROJ/repos/my-repo/pull-requests/10",
+      );
+
       expectCalledWithJson(h.mockClients.api.put, expect.any(String), {
         toRef: {
           id: "refs/heads/develop",
@@ -292,6 +335,59 @@ describe("Pull request tools", () => {
             project: { key: "UPSTREAM" },
           },
         },
+      });
+    });
+
+    test("should preserve title and description when only reviewers updated", async () => {
+      const existingPr = {
+        id: 10,
+        version: 5,
+        title: "Original",
+        description: "Original desc",
+        toRef: { id: "refs/heads/main", displayId: "main" },
+        reviewers: [],
+      };
+
+      mockJson(h.mockClients.api.get, existingPr);
+      mockJson(h.mockClients.api.put, existingPr);
+
+      await callAndParse(h.client, "update_pull_request", {
+        project: "PROJ",
+        repository: "my-repo",
+        prId: 10,
+        reviewers: ["alice"],
+      });
+
+      expectCalledWithJson(h.mockClients.api.put, expect.any(String), {
+        title: "Original",
+        description: "Original desc",
+        reviewers: [{ user: { name: "alice" } }],
+      });
+    });
+
+    test("should update description without changing title", async () => {
+      const existingPr = {
+        id: 11,
+        version: 3,
+        title: "Keep me",
+        description: "Old desc",
+        toRef: { id: "refs/heads/main", displayId: "main" },
+        reviewers: [],
+      };
+
+      mockJson(h.mockClients.api.get, existingPr);
+      mockJson(h.mockClients.api.put, existingPr);
+
+      await callAndParse(h.client, "update_pull_request", {
+        project: "PROJ",
+        repository: "my-repo",
+        prId: 11,
+        description: "New desc",
+      });
+
+      expectCalledWithJson(h.mockClients.api.put, expect.any(String), {
+        title: "Keep me",
+        description: "New desc",
       });
     });
   });
@@ -320,6 +416,10 @@ describe("Pull request tools", () => {
         },
       );
       expect(parsed.state).toBe("MERGED");
+
+      expect(h.mockClients.api.get).toHaveBeenCalledWith(
+        "projects/PROJ/repos/my-repo/pull-requests/5",
+      );
 
       expect(h.mockClients.api.post).toHaveBeenCalledWith(
         "projects/PROJ/repos/my-repo/pull-requests/5/merge",
@@ -353,7 +453,7 @@ describe("Pull request tools", () => {
       );
     });
 
-    test("should merge without strategy (server default)", async () => {
+    test("should merge without strategy or message", async () => {
       const mockPr = { id: 5, version: 12, state: "OPEN" };
       const mergedPr = { id: 5, version: 13, state: "MERGED" };
 
@@ -366,11 +466,17 @@ describe("Pull request tools", () => {
         prId: 5,
       });
 
-      expectCalledWithJson(
-        h.mockClients.api.post,
+      expect(h.mockClients.api.post).toHaveBeenCalledWith(
         "projects/PROJ/repos/my-repo/pull-requests/5/merge",
-        { version: 12 },
+        expect.objectContaining({
+          json: { version: 12 },
+          searchParams: {},
+        }),
       );
+
+      const callArgs = h.mockClients.api.post.mock.calls[0];
+      const body = (callArgs?.[1] as { json: object }).json;
+      expect(Object.keys(body)).toEqual(["version"]);
     });
   });
 
@@ -400,6 +506,27 @@ describe("Pull request tools", () => {
         h.mockClients.api.post,
         "projects/PROJ/repos/my-repo/pull-requests/7/decline",
         { version: 4, comment: "Not needed" },
+      );
+
+      expect(h.mockClients.api.get).toHaveBeenCalledWith(
+        "projects/PROJ/repos/my-repo/pull-requests/7",
+      );
+    });
+
+    test("should decline without message (no comment in body)", async () => {
+      mockJson(h.mockClients.api.get, { id: 8, version: 2, state: "OPEN" });
+      mockJson(h.mockClients.api.post, { id: 8, state: "DECLINED" });
+
+      await callAndParse(h.client, "decline_pull_request", {
+        project: "PROJ",
+        repository: "my-repo",
+        prId: 8,
+      });
+
+      expectCalledWithJson(
+        h.mockClients.api.post,
+        "projects/PROJ/repos/my-repo/pull-requests/8/decline",
+        { version: 2 },
       );
     });
   });
@@ -475,6 +602,83 @@ describe("Pull request tools", () => {
       expect(parsed.pullRequests).toHaveLength(1);
       expect(parsed.pullRequests[0].id).toBe(1);
     });
+
+    test("should match author by displayName substring (case-insensitive)", async () => {
+      mockJson(h.mockClients.api.get, {
+        values: [
+          {
+            id: 1,
+            author: {
+              user: {
+                name: "jsmith",
+                slug: "jsmith",
+                displayName: "John Smith",
+              },
+            },
+          },
+          {
+            id: 2,
+            author: {
+              user: { name: "alice", slug: "alice", displayName: "Alice" },
+            },
+          },
+        ],
+        size: 2,
+        isLastPage: true,
+      });
+
+      const parsed = await callAndParse<{
+        pullRequests: Array<{ id: number }>;
+      }>(h.client, "list_pull_requests", {
+        repository: "r",
+        author: "john",
+      });
+      expect(parsed.pullRequests).toHaveLength(1);
+      expect(parsed.pullRequests[0].id).toBe(1);
+    });
+
+    test("should exclude PRs without author when filtering by author", async () => {
+      mockJson(h.mockClients.api.get, {
+        values: [
+          { id: 1, author: { user: { name: "alice" } } },
+          { id: 2 },
+          { id: 3, author: {} },
+        ],
+        size: 3,
+        isLastPage: true,
+      });
+
+      const parsed = await callAndParse<{
+        pullRequests: Array<{ id: number }>;
+      }>(h.client, "list_pull_requests", {
+        repository: "r",
+        author: "alice",
+      });
+      expect(parsed.pullRequests).toHaveLength(1);
+    });
+
+    test("should match author by slug", async () => {
+      mockJson(h.mockClients.api.get, {
+        values: [
+          {
+            id: 1,
+            author: {
+              user: { name: "alice", slug: "alice-dev", displayName: "A" },
+            },
+          },
+        ],
+        size: 1,
+        isLastPage: true,
+      });
+
+      const parsed = await callAndParse<{
+        pullRequests: Array<{ id: number }>;
+      }>(h.client, "list_pull_requests", {
+        repository: "r",
+        author: "alice-dev",
+      });
+      expect(parsed.pullRequests).toHaveLength(1);
+    });
   });
 
   // ── get_dashboard_pull_requests ────────────────────────────────────
@@ -505,6 +709,28 @@ describe("Pull request tools", () => {
         { state: "OPEN", role: "REVIEWER", limit: 10 },
       );
     });
+
+    test("should forward closedSince and participantStatus", async () => {
+      mockJson(h.mockClients.api.get, {
+        values: [],
+        size: 0,
+        isLastPage: true,
+      });
+
+      await h.client.callTool({
+        name: "get_dashboard_pull_requests",
+        arguments: {
+          closedSince: 1700000000000,
+          participantStatus: "APPROVED",
+        },
+      });
+
+      expectCalledWithSearchParams(
+        h.mockClients.api.get,
+        "dashboard/pull-requests",
+        { closedSince: 1700000000000, participantStatus: "APPROVED" },
+      );
+    });
   });
 
   // ── get_pr_activity ────────────────────────────────────────────────
@@ -533,6 +759,31 @@ describe("Pull request tools", () => {
       });
       expect(parsed.activities).toHaveLength(3);
       expect(parsed.isLastPage).toBe(true);
+    });
+
+    test("should forward limit and start as searchParams", async () => {
+      mockJson(h.mockClients.api.get, {
+        values: [],
+        size: 0,
+        isLastPage: true,
+      });
+
+      await h.client.callTool({
+        name: "get_pr_activity",
+        arguments: {
+          project: "PROJ",
+          repository: "my-repo",
+          prId: 1,
+          limit: 50,
+          start: 10,
+        },
+      });
+
+      expectCalledWithSearchParams(
+        h.mockClients.api.get,
+        expect.stringContaining("/activities"),
+        { limit: 50, start: 10 },
+      );
     });
 
     test("should filter to reviews only", async () => {
@@ -626,6 +877,56 @@ describe("Pull request tools", () => {
       expect(parsed.activities[0].user.name).toBe("alice");
       expect(parsed.activities[1].user.name).toBe("bob");
     });
+
+    test("should combine filter and excludeUsers together", async () => {
+      mockJson(h.mockClients.api.get, {
+        values: [
+          { action: "APPROVED", user: { name: "bot" } },
+          { action: "APPROVED", user: { name: "alice" } },
+          { action: "COMMENTED", user: { name: "bob" } },
+          { action: "REVIEWED", user: { name: "carol" } },
+        ],
+        size: 4,
+        isLastPage: true,
+      });
+
+      const parsed = await callAndParse<{
+        activities: Array<{ action: string; user: { name: string } }>;
+      }>(h.client, "get_pr_activity", {
+        project: "PROJ",
+        repository: "my-repo",
+        prId: 1,
+        filter: "reviews",
+        excludeUsers: ["bot"],
+      });
+      expect(parsed.activities).toHaveLength(2);
+      const actions = parsed.activities.map((a) => a.action);
+      expect(actions).not.toContain("COMMENTED");
+    });
+
+    test("should exclude user matching on comment.author when user is missing", async () => {
+      mockJson(h.mockClients.api.get, {
+        values: [
+          {
+            action: "COMMENTED",
+            comment: { author: { name: "bot" } },
+          },
+          { action: "COMMENTED", user: { name: "alice" } },
+        ],
+        size: 2,
+        isLastPage: true,
+      });
+
+      const parsed = await callAndParse<{
+        activities: Array<{ user?: { name: string } }>;
+      }>(h.client, "get_pr_activity", {
+        project: "PROJ",
+        repository: "my-repo",
+        prId: 1,
+        excludeUsers: ["bot"],
+      });
+      expect(parsed.activities).toHaveLength(1);
+    });
   });
 
   // ── get_diff ───────────────────────────────────────────────────────
@@ -683,6 +984,10 @@ describe("Pull request tools", () => {
     test("should not truncate when maxLinesPerFile is 0", async () => {
       const rawDiff =
         "diff --git a/big.ts b/big.ts\n" +
+        "index abc..def 100644\n" +
+        "--- a/big.ts\n" +
+        "+++ b/big.ts\n" +
+        "@@ -1 +1 @@\n" +
         Array.from({ length: 1000 }, (_, i) => `+line${i}`).join("\n");
 
       mockText(h.mockClients.api.get, rawDiff);
@@ -698,9 +1003,29 @@ describe("Pull request tools", () => {
       });
 
       const content = result.content as Array<{ type: string; text: string }>;
-      // With maxLinesPerFile=0, no truncation should happen
       expect(content[0].text).not.toContain("TRUNCATED");
       expect(content[0].text).toContain("+line999");
+    });
+
+    test("should use ctx.maxLinesPerFile when param not provided", async () => {
+      const rawDiff = [
+        "diff --git a/f.ts b/f.ts",
+        "index abc..def 100644",
+        "--- a/f.ts",
+        "+++ b/f.ts",
+        "@@ -1 +1 @@",
+        ...Array.from({ length: 20 }, (_, i) => `+line${i}`),
+      ].join("\n");
+
+      mockText(h.mockClients.api.get, rawDiff);
+
+      const result = await h.client.callTool({
+        name: "get_diff",
+        arguments: { project: "PROJ", repository: "my-repo", prId: 1 },
+      });
+
+      const content = result.content as Array<{ type: string; text: string }>;
+      expect(content[0].text).toContain("TRUNCATED");
     });
 
     test("should return file list with stat=true", async () => {
@@ -715,7 +1040,6 @@ describe("Pull request tools", () => {
         ],
       });
 
-      // diff-stats-summary returns 404 on older versions
       mockError(h.mockClients.api.get, new Error("Not Found"));
 
       const parsed = await callAndParse<{
@@ -736,6 +1060,12 @@ describe("Pull request tools", () => {
       });
       expect(parsed.files[1]).toEqual({ path: "src/new.ts", type: "ADD" });
       expect(parsed.summary).toBeUndefined();
+
+      expectCalledWithSearchParams(
+        h.mockClients.api.get,
+        expect.stringContaining("/changes"),
+        { limit: 1000 },
+      );
     });
 
     test("should include summary when diff-stats-summary is available", async () => {
@@ -763,6 +1093,10 @@ describe("Pull request tools", () => {
 
       expect(parsed.totalFiles).toBe(1);
       expect(parsed.summary).toEqual({ linesAdded: 50, linesRemoved: 10 });
+
+      expect(h.mockClients.api.get).toHaveBeenCalledWith(
+        "projects/PROJ/repos/my-repo/pull-requests/1/diff-stats-summary",
+      );
     });
 
     test("appends filePath to URL when provided", async () => {
@@ -854,6 +1188,25 @@ describe("Pull request tools", () => {
         h.mockClients.api.get,
         expect.stringContaining("/pull-requests"),
         { state: args.state, direction: args.direction, order: args.order },
+      );
+    });
+
+    test("sends withAttributes=false and withProperties=false by default", async () => {
+      mockJson(h.mockClients.api.get, {
+        values: [],
+        size: 0,
+        isLastPage: true,
+      });
+
+      await h.client.callTool({
+        name: "list_pull_requests",
+        arguments: { repository: "r" },
+      });
+
+      expectCalledWithSearchParams(
+        h.mockClients.api.get,
+        expect.stringContaining("/pull-requests"),
+        { withAttributes: false, withProperties: false },
       );
     });
   });

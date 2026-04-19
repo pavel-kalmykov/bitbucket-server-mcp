@@ -40,6 +40,49 @@ describe("Comment tools", () => {
       });
     });
 
+    test("create without optional fields omits them from serialized body", async () => {
+      mockJson(h.mockClients.api.post, { id: 10, text: "minimal" });
+
+      await h.client.callTool({
+        name: "manage_comment",
+        arguments: {
+          action: "create",
+          repository: "my-repo",
+          prId: 42,
+          text: "minimal",
+        },
+      });
+
+      const json = (
+        h.mockClients.api.post.mock.calls[0][1] as {
+          json: Record<string, unknown>;
+        }
+      ).json;
+      const serialized = JSON.stringify(json);
+      expect(serialized).not.toContain("parent");
+      expect(serialized).not.toContain("severity");
+      expect(serialized).not.toContain("anchor");
+    });
+
+    test("create with parentId includes parent in body", async () => {
+      mockJson(h.mockClients.api.post, { id: 11, text: "reply" });
+
+      await h.client.callTool({
+        name: "manage_comment",
+        arguments: {
+          action: "create",
+          repository: "my-repo",
+          prId: 42,
+          text: "reply",
+          parentId: 5,
+        },
+      });
+
+      expectCalledWithJson(h.mockClients.api.post, commentUrl, {
+        parent: { id: 5 },
+      });
+    });
+
     test("should create a draft comment with state PENDING", async () => {
       const mockResponse = {
         id: 2,
@@ -240,6 +283,34 @@ describe("Comment tools", () => {
       });
     });
 
+    test("edit without state/severity omits them from body", async () => {
+      mockJson(h.mockClients.api.put, {
+        id: 1,
+        text: "clean edit",
+        version: 1,
+      });
+
+      await h.client.callTool({
+        name: "manage_comment",
+        arguments: {
+          action: "edit",
+          repository: "my-repo",
+          prId: 42,
+          commentId: 1,
+          version: 0,
+          text: "clean edit",
+        },
+      });
+
+      const body = (
+        h.mockClients.api.put.mock.calls[0][1] as {
+          json: Record<string, unknown>;
+        }
+      ).json;
+      expect(body).not.toHaveProperty("severity");
+      expect(body).not.toHaveProperty("state");
+    });
+
     test("should resolve a comment", async () => {
       const mockResponse = {
         id: 1,
@@ -402,10 +473,10 @@ describe("Comment tools", () => {
   });
 
   describe("manage_comment react/unreact", () => {
-    test("react sends PUT to comment-likes /reactions/{emoticon}", async () => {
+    test("react returns { react: true, commentId, emoticon }", async () => {
       mockVoid(h.mockClients.commentLikes.put);
 
-      await h.client.callTool({
+      const result = await h.client.callTool({
         name: "manage_comment",
         arguments: {
           action: "react",
@@ -419,12 +490,20 @@ describe("Comment tools", () => {
       expect(h.mockClients.commentLikes.put).toHaveBeenCalledWith(
         expect.stringContaining("/comments/5/reactions/thumbsup"),
       );
+      const parsed = JSON.parse(
+        (result.content as Array<{ text: string }>)[0].text,
+      );
+      expect(parsed).toEqual({
+        react: true,
+        commentId: 5,
+        emoticon: "thumbsup",
+      });
     });
 
-    test("unreact sends DELETE to the same URL", async () => {
+    test("unreact returns { unreact: true, commentId, emoticon }", async () => {
       mockVoid(h.mockClients.commentLikes.delete);
 
-      await h.client.callTool({
+      const result = await h.client.callTool({
         name: "manage_comment",
         arguments: {
           action: "unreact",
@@ -438,6 +517,14 @@ describe("Comment tools", () => {
       expect(h.mockClients.commentLikes.delete).toHaveBeenCalledWith(
         expect.stringContaining("/comments/5/reactions/thumbsup"),
       );
+      const parsed = JSON.parse(
+        (result.content as Array<{ text: string }>)[0].text,
+      );
+      expect(parsed).toEqual({
+        unreact: true,
+        commentId: 5,
+        emoticon: "thumbsup",
+      });
     });
   });
 

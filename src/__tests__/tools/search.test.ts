@@ -1,11 +1,10 @@
 import { describe, test, expect } from "vitest";
-import { Client } from "@modelcontextprotocol/sdk/client/index.js";
-import { InMemoryTransport } from "@modelcontextprotocol/sdk/inMemory.js";
 import { registerSearchTools } from "../../tools/search.js";
-import { mockError, mockJson } from "../test-utils.js";
+import { mockJson, mockError } from "../test-utils.js";
 import {
   callAndParse,
   callRaw,
+  connectMcp,
   createTestToolContext,
   setupToolHarness,
 } from "../tool-test-utils.js";
@@ -259,30 +258,17 @@ describe("Search tools", () => {
     );
 
     test("should throw when repository provided but no project and no default", async () => {
-      // Per-test context override: the describe-level harness sets
-      // defaultProject="DEFAULT"; this test needs a context without one.
       const ctx = createTestToolContext({ defaultProject: undefined });
       registerSearchTools(ctx);
 
-      const [ct, st] = InMemoryTransport.createLinkedPair();
-      const bareClient = new Client(
-        { name: "c", version: "1.0" },
-        { capabilities: {} },
-      );
-      await Promise.all([ctx.server.connect(st), bareClient.connect(ct)]);
+      await using conn = await connectMcp(ctx.server);
 
-      try {
-        const result = await bareClient.callTool({
-          name: "search",
-          arguments: { query: "q", repository: "r" },
-        });
+      const result = await conn.client.callTool({
+        name: "search",
+        arguments: { query: "q", repository: "r" },
+      });
 
-        expect(result.isError).toBe(true);
-      } finally {
-        await bareClient.close();
-        await st.close();
-        await ctx.server.close?.();
-      }
+      expect(result.isError).toBe(true);
     });
   });
 });

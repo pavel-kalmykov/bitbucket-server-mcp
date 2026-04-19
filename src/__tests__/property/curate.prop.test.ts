@@ -33,7 +33,7 @@ describe("curateResponse (property-based)", () => {
     const requestedKeys = keys.slice(0, Math.ceil(keys.length / 2));
     const result = curateResponse(data, requestedKeys.join(","));
     // Bidirectional: requested keys must be present, and nothing else.
-    expect(Object.keys(result).sort()).toEqual([...requestedKeys].sort());
+    expect(new Set(Object.keys(result))).toEqual(new Set(requestedKeys));
   });
 
   test.prop([arbitraryObject])(

@@ -112,6 +112,20 @@ describe("truncateDiff", () => {
       const firstShown = Number(shownMatch![1]);
       const lastShown = Number(shownMatch![2]);
       expect(hidden + firstShown + lastShown).toBe(100);
+      expect(firstShown + lastShown).toBeLessThanOrEqual(10);
+    });
+
+    test("truncated output shows fewer content lines than the original", () => {
+      const lines = Array.from({ length: 100 }, (_, i) => `+line${i}`);
+      const diff = makeDiff([{ name: "f.ts", lines }]);
+      const result = truncateDiff(diff, 10);
+
+      const resultLines = result.split("\n");
+      const contentResultLines = resultLines.filter((l) =>
+        l.startsWith("+line"),
+      );
+      expect(contentResultLines.length).toBeLessThan(100);
+      expect(contentResultLines.length).toBeLessThanOrEqual(10);
     });
   });
 
@@ -127,6 +141,17 @@ describe("truncateDiff", () => {
       const result = truncateDiff(diff, 5);
       expect(result).toContain("@@ -1,5 +1,5 @@");
       expect(result).toContain("@@ -20,5 +20,5 @@");
+    });
+
+    test("hunk headers appear exactly once, not duplicated", () => {
+      const lines = [
+        "@@ -1,5 +1,5 @@",
+        ...Array.from({ length: 15 }, (_, i) => `+line${i}`),
+      ];
+      const diff = makeDiff([{ name: "f.ts", lines }]);
+      const result = truncateDiff(diff, 5);
+      const count = (result.match(/@@ -1,5 \+1,5 @@/g) ?? []).length;
+      expect(count).toBe(1);
     });
   });
 
@@ -160,18 +185,80 @@ describe("truncateDiff", () => {
     });
   });
 
+  describe("pre-hunk metadata lines are preserved", () => {
+    test("old mode, new mode, similarity, rename lines appear in output", () => {
+      const diff = [
+        "diff --git a/renamed.ts b/renamed.ts",
+        "old mode 100644",
+        "new mode 100755",
+        "similarity index 90%",
+        "rename from old.ts",
+        "rename to renamed.ts",
+        "@@ -1,3 +1,3 @@",
+        " ctx",
+        "-old",
+        "+new",
+      ].join("\n");
+      const result = truncateDiff(diff, 100);
+      expect(result).toContain("old mode 100644");
+      expect(result).toContain("new mode 100755");
+      expect(result).toContain("similarity index 90%");
+      expect(result).toContain("rename from old.ts");
+      expect(result).toContain("rename to renamed.ts");
+      expect(result).toContain("-old");
+      expect(result).toContain("+new");
+    });
+
+    test("malformed diff --git falls back to unknown filename in truncation message", () => {
+      const diff = [
+        "diff --git malformed",
+        "@@ -1 +1 @@",
+        ...Array.from({ length: 20 }, (_, i) => `+line${i}`),
+      ].join("\n");
+      const result = truncateDiff(diff, 5);
+      expect(result).toContain("hidden from unknown");
+    });
+  });
+
+  describe("mode-only diff without hunks", () => {
+    test("passes metadata to result unchanged", () => {
+      const diff = [
+        "diff --git a/script.sh b/script.sh",
+        "old mode 100644",
+        "new mode 100755",
+      ].join("\n");
+      const result = truncateDiff(diff, 100);
+      expect(result).toBe(diff);
+    });
+  });
+
   describe("truncation message content", () => {
     test("includes counts and the override instruction", () => {
       const lines = Array.from({ length: 100 }, (_, i) => `+line${i}`);
       const diff = makeDiff([{ name: "f.ts", lines }]);
       const result = truncateDiff(diff, 10);
 
-      // The summary message reports counts and tells the user how to disable
-      // truncation. Exact proportions are an internal heuristic.
       expect(result).toMatch(/\d{1,10} lines hidden/);
       expect(result).toContain("100 total lines");
       expect(result).toMatch(/showing first \d{1,10} and last \d{1,10}/);
       expect(result).toContain("Use maxLinesPerFile=0 to see complete diff");
+    });
+
+    test("truncation marker is delimited by blank lines", () => {
+      const lines = Array.from({ length: 100 }, (_, i) => `+line${i}`);
+      const diff = makeDiff([{ name: "f.ts", lines }]);
+      const result = truncateDiff(diff, 10);
+      const resultLines = result.split("\n");
+      const truncIdx = resultLines.findIndex((l) =>
+        l.startsWith("[*** FILE TRUNCATED:"),
+      );
+      expect(truncIdx).toBeGreaterThan(0);
+      expect(resultLines[truncIdx - 1]).toBe("");
+      const lastMarkerIdx = resultLines.findIndex((l) =>
+        l.startsWith("[*** Use maxLinesPerFile"),
+      );
+      expect(lastMarkerIdx).toBeGreaterThan(truncIdx);
+      expect(resultLines[lastMarkerIdx + 1]).toBe("");
     });
 
     test("unknown filename falls back when diff header is malformed", () => {
@@ -181,6 +268,54 @@ describe("truncateDiff", () => {
       // We just verify it doesn't throw and returns something.
       const result = truncateDiff(diff, 100);
       expect(typeof result).toBe("string");
+    });
+  });
+
+  describe("line classification: pre-hunk metadata goes to result before content", () => {
+    test("old mode line appears in output before any hunk content", () => {
+      const diff = [
+        "diff --git a/f.ts b/f.ts",
+        "old mode 100644",
+        "new mode 100755",
+        "@@ -1 +1 @@",
+        ...Array.from({ length: 20 }, (_, i) => `+line${i}`),
+      ].join("\n");
+      const result = truncateDiff(diff, 5);
+      const oldModeIdx = result.indexOf("old mode");
+      const hunkIdx = result.indexOf("@@ -1");
+      expect(oldModeIdx).toBeGreaterThan(-1);
+      expect(hunkIdx).toBeGreaterThan(-1);
+      expect(oldModeIdx).toBeLessThan(hunkIdx);
+    });
+  });
+
+  describe("multi-file isolation", () => {
+    test("lines between two files go to correct sections", () => {
+      const diff = [
+        "diff --git a/first.ts b/first.ts",
+        "@@ -1 +1 @@",
+        "+file1-content",
+        "diff --git a/second.ts b/second.ts",
+        "@@ -1 +1 @@",
+        "+file2-content",
+      ].join("\n");
+      const result = truncateDiff(diff, 100);
+      expect(result).toContain("+file1-content");
+      expect(result).toContain("+file2-content");
+    });
+
+    test("pre-hunk lines after first file go to result, not currentFileLines", () => {
+      const diff = [
+        "diff --git a/first.ts b/first.ts",
+        "@@ -1 +1 @@",
+        "+content",
+        "diff --git a/second.ts b/second.ts",
+        "similarity index 90%",
+        "@@ -1 +1 @@",
+        "+more",
+      ].join("\n");
+      const result = truncateDiff(diff, 100);
+      expect(result).toContain("similarity index 90%");
     });
   });
 });
