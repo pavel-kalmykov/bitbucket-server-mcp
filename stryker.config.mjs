@@ -4,7 +4,7 @@ const config = {
   checkers: ["typescript"],
   tsconfigFile: "tsconfig.json",
   mutate: ["src/**/*.ts", "!src/__tests__/**", "!src/generated/**"],
-  reporters: ["html", "clear-text", "progress", "dashboard"],
+  reporters: ["html", "json", "clear-text", "progress", "dashboard"],
   coverageAnalysis: "perTest",
   incremental: true,
   incrementalFile: "reports/stryker-incremental.json",
