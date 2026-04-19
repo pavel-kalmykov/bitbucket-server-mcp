@@ -1,5 +1,4 @@
 import { describe, test, expect } from "vitest";
-import type { Input } from "ky";
 import { registerInsightTools } from "../../tools/insights.js";
 import { fakeResponse, mockError, mockJson } from "../test-utils.js";
 import { callAndParse, setupToolHarness } from "../tool-test-utils.js";
@@ -41,22 +40,16 @@ describe("Insight tools", () => {
         ],
       };
 
-      h.mockClients.insights.get.mockImplementation((url: Input) => {
-        if (String(url).endsWith("/reports")) {
-          return fakeResponse({ json: () => Promise.resolve(mockReports) });
-        }
-        if (String(url).includes("/reports/sonar/annotations")) {
-          return fakeResponse({
-            json: () => Promise.resolve(sonarAnnotations),
-          });
-        }
-        if (String(url).includes("/reports/coverage/annotations")) {
-          return fakeResponse({
-            json: () => Promise.resolve(coverageAnnotations),
-          });
-        }
-        return fakeResponse({ json: () => Promise.resolve({ values: [] }) });
-      });
+      h.mockClients.insights.get
+        .mockReturnValueOnce(
+          fakeResponse({ json: () => Promise.resolve(mockReports) }),
+        )
+        .mockReturnValueOnce(
+          fakeResponse({ json: () => Promise.resolve(sonarAnnotations) }),
+        )
+        .mockReturnValueOnce(
+          fakeResponse({ json: () => Promise.resolve(coverageAnnotations) }),
+        );
 
       const parsed = await callAndParse<{
         reports: Array<{ key: string }>;
@@ -97,14 +90,15 @@ describe("Insight tools", () => {
         values: [{ key: "broken-report", title: "Broken", result: "PASS" }],
       };
 
-      h.mockClients.insights.get.mockImplementation((url: Input) => {
-        if (String(url).endsWith("/reports")) {
-          return fakeResponse({ json: () => Promise.resolve(mockReports) });
-        }
-        return fakeResponse({
-          json: () => Promise.reject(new Error("Annotations not available")),
-        });
-      });
+      h.mockClients.insights.get
+        .mockReturnValueOnce(
+          fakeResponse({ json: () => Promise.resolve(mockReports) }),
+        )
+        .mockReturnValueOnce(
+          fakeResponse({
+            json: () => Promise.reject(new Error("Annotations not available")),
+          }),
+        );
 
       const parsed = await callAndParse<{
         reports: Array<{ key: string }>;
@@ -138,18 +132,15 @@ describe("Insight tools", () => {
         ],
       };
 
-      h.mockClients.insights.get.mockImplementation((url: Input) => {
-        const s = String(url);
-        if (s.endsWith("/reports")) {
-          return fakeResponse({ json: () => Promise.resolve(reportsList) });
-        }
-        if (s.includes("/reports/sonar/annotations")) {
-          return fakeResponse({
+      h.mockClients.insights.get
+        .mockReturnValueOnce(
+          fakeResponse({ json: () => Promise.resolve(reportsList) }),
+        )
+        .mockReturnValueOnce(
+          fakeResponse({
             json: () => Promise.resolve({ values: [{ message: "Bug" }] }),
-          });
-        }
-        return fakeResponse({ json: () => Promise.resolve({ values: [] }) });
-      });
+          }),
+        );
 
       const parsed = await callAndParse<{
         reports: unknown[];

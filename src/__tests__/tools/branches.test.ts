@@ -1,5 +1,4 @@
 import { describe, test, expect } from "vitest";
-import type { Input } from "ky";
 import { registerBranchTools } from "../../tools/branches.js";
 import { fakeResponse, mockJson } from "../test-utils.js";
 import {
@@ -30,14 +29,13 @@ describe("Branch tools", () => {
         id: "refs/heads/main",
       };
 
-      h.mockClients.api.get.mockImplementation((url: Input) => {
-        if (String(url).includes("default-branch")) {
-          return fakeResponse({
-            json: () => Promise.resolve(defaultBranchResponse),
-          });
-        }
-        return fakeResponse({ json: () => Promise.resolve(branchesResponse) });
-      });
+      h.mockClients.api.get
+        .mockReturnValueOnce(
+          fakeResponse({ json: () => Promise.resolve(branchesResponse) }),
+        )
+        .mockReturnValueOnce(
+          fakeResponse({ json: () => Promise.resolve(defaultBranchResponse) }),
+        );
 
       const parsed = await callAndParse<{
         total: number;
@@ -55,15 +53,16 @@ describe("Branch tools", () => {
     });
 
     test("should use default project when not provided", async () => {
-      h.mockClients.api.get.mockImplementation((url: Input) => {
-        if (String(url).includes("default-branch")) {
-          return fakeResponse({ json: () => Promise.resolve(null) });
-        }
-        return fakeResponse({
-          json: () =>
-            Promise.resolve({ values: [], size: 0, isLastPage: true }),
-        });
-      });
+      h.mockClients.api.get
+        .mockReturnValueOnce(
+          fakeResponse({
+            json: () =>
+              Promise.resolve({ values: [], size: 0, isLastPage: true }),
+          }),
+        )
+        .mockReturnValueOnce(
+          fakeResponse({ json: () => Promise.resolve(null) }),
+        );
 
       await callAndParse(h.client, "list_branches", { repository: "my-repo" });
 
@@ -95,14 +94,13 @@ describe("Branch tools", () => {
         extraField: "also kept",
       };
 
-      h.mockClients.api.get.mockImplementation((url: Input) => {
-        if (String(url).includes("default-branch")) {
-          return fakeResponse({
-            json: () => Promise.resolve(defaultBranchResponse),
-          });
-        }
-        return fakeResponse({ json: () => Promise.resolve(branchesResponse) });
-      });
+      h.mockClients.api.get
+        .mockReturnValueOnce(
+          fakeResponse({ json: () => Promise.resolve(branchesResponse) }),
+        )
+        .mockReturnValueOnce(
+          fakeResponse({ json: () => Promise.resolve(defaultBranchResponse) }),
+        );
 
       const parsed = await callAndParse<{
         branches: Array<{ extraField: string }>;
@@ -124,14 +122,13 @@ describe("Branch tools", () => {
         isLastPage: true,
       };
 
-      h.mockClients.api.get.mockImplementation((url: Input) => {
-        if (String(url).includes("default-branch")) {
-          return fakeResponse({
-            json: () => Promise.reject(new Error("Not found")),
-          });
-        }
-        return fakeResponse({ json: () => Promise.resolve(branchesResponse) });
-      });
+      h.mockClients.api.get
+        .mockReturnValueOnce(
+          fakeResponse({ json: () => Promise.resolve(branchesResponse) }),
+        )
+        .mockReturnValueOnce(
+          fakeResponse({ json: () => Promise.reject(new Error("Not found")) }),
+        );
 
       const parsed = await callAndParse<{
         total: number;
