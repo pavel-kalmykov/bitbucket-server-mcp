@@ -7,6 +7,7 @@ import {
   type MockApiClients,
   createMockClients,
   mockJson,
+  mockError,
 } from "../test-utils.js";
 import { ApiCache } from "../../http/cache.js";
 
@@ -40,7 +41,7 @@ describe("Resources", () => {
     await serverTransport.close();
   });
 
-  test("should list available resources", async () => {
+  test("should list available resources with correct metadata", async () => {
     mockJson(mockClients.api.get, {
       values: [{ key: "PROJ", name: "Project", description: "Desc" }],
       size: 1,
@@ -48,6 +49,18 @@ describe("Resources", () => {
 
     const result = await client.listResources();
     expect(result.resources.length).toBeGreaterThan(0);
+    const res = result.resources[0];
+    expect(res.uri).toBe("bitbucket://projects");
+    expect(res.mimeType).toBe("application/json");
+    expect(res.name).toBe("projects");
+  });
+
+  test("resource description mentions projects", async () => {
+    mockJson(mockClients.api.get, { values: [], size: 0 });
+
+    const result = await client.listResources();
+    const res = result.resources[0];
+    expect(res.description).toContain("projects");
   });
 
   test("should read bitbucket://projects resource", async () => {
@@ -122,8 +135,15 @@ describe("Resources", () => {
     });
     const result = await client.readResource({ uri: "bitbucket://projects" });
     const text = (result.contents[0] as { text: string }).text;
-    // Pretty-printed JSON has newlines and spaces
     expect(text).toContain("\n");
     expect(text).toMatch(/^\[\n {2}\{/);
+  });
+
+  test("propagates API errors", async () => {
+    mockError(mockClients.api.get, new Error("Server unavailable"));
+
+    await expect(
+      client.readResource({ uri: "bitbucket://projects" }),
+    ).rejects.toThrow("Server unavailable");
   });
 });

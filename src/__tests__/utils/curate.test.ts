@@ -53,9 +53,9 @@ describe("curateResponse", () => {
 
     test("skips undefined fields", () => {
       const d = { a: 1, b: undefined };
-      expect(curateResponse(d as Record<string, unknown>, "a,b")).toEqual({
-        a: 1,
-      });
+      const result = curateResponse(d as Record<string, unknown>, "a,b");
+      expect(result).toEqual({ a: 1 });
+      expect(result).not.toHaveProperty("b");
     });
   });
 
@@ -177,7 +177,20 @@ describe("curateList", () => {
 
 describe("default field constants", () => {
   test.each([
-    ["PR", DEFAULT_PR_FIELDS, ["id", "title", "state", "author", "reviewers"]],
+    [
+      "PR",
+      DEFAULT_PR_FIELDS,
+      [
+        "id",
+        "title",
+        "state",
+        "author",
+        "reviewers",
+        "fromRef",
+        "toRef",
+        "properties",
+      ],
+    ],
     ["Project", DEFAULT_PROJECT_FIELDS, ["key", "name", "type"]],
     ["Repository", DEFAULT_REPOSITORY_FIELDS, ["slug", "name", "project.key"]],
     [
@@ -205,5 +218,38 @@ describe("default field constants", () => {
       expect(constant.split(",").length).toBeGreaterThan(0);
       expect(constant.length).toBeGreaterThan(0);
     }
+  });
+
+  test("curating a PR with DEFAULT_PR_FIELDS preserves fromRef and toRef", () => {
+    const pr = {
+      id: 1,
+      fromRef: { displayId: "feature" },
+      toRef: { displayId: "main" },
+      properties: {
+        commentCount: 3,
+        openTaskCount: 1,
+        resolvedTaskCount: 2,
+        mergeResult: {},
+      },
+    };
+    const result = curateResponse(pr, DEFAULT_PR_FIELDS);
+    expect(result).toHaveProperty("fromRef.displayId", "feature");
+    expect(result).toHaveProperty("toRef.displayId", "main");
+    expect(result).toHaveProperty("properties.commentCount", 3);
+    expect(result).toHaveProperty("properties.openTaskCount", 1);
+  });
+});
+
+describe("curateList vs curateResponse: *all vs empty string", () => {
+  const items = [{ a: 1, b: 2 }];
+
+  test("curateList('*all') returns original but curateList('') returns empty objects", () => {
+    expect(curateList(items, "*all")).toEqual(items);
+    expect(curateList(items, "")).toEqual([{}]);
+  });
+
+  test("curateResponse('*all') returns original but curateResponse('') returns empty", () => {
+    expect(curateResponse(items[0], "*all")).toEqual(items[0]);
+    expect(curateResponse(items[0], "")).toEqual({});
   });
 });

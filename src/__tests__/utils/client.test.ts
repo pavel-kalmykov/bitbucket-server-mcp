@@ -171,4 +171,52 @@ describe("createApiClients", () => {
       expect(attempts).toBe(1);
     });
   });
+
+  describe("timeout configuration", () => {
+    test("requests time out after 30s", async () => {
+      server.use(
+        http.get("https://git.example.com/rest/api/1.0/projects", async () => {
+          await new Promise(() => {});
+        }),
+      );
+
+      const clients = createApiClients(baseConfig({ token: "t" }));
+      await expect(clients.api.get("projects").json()).rejects.toThrow();
+    }, 35_000);
+  });
+
+  describe("beforeRequest hook sets auth headers on every request", () => {
+    test("all auth headers are present on a GET request", async () => {
+      const clients = createApiClients(
+        baseConfig({
+          token: "my-token",
+          customHeaders: { "X-Custom": "value" },
+        }),
+      );
+      await clients.api
+        .get("test")
+        .json()
+        .catch(() => undefined);
+      expect(captured[0].headers.authorization).toBe("Bearer my-token");
+      expect(captured[0].headers["x-custom"]).toBe("value");
+    });
+  });
+
+  describe("retry: only GET requests are retried", () => {
+    test("POST on 503 is not retried (only GET)", async () => {
+      let attempts = 0;
+      server.use(
+        http.post("https://git.example.com/rest/api/1.0/test", () => {
+          attempts++;
+          return new HttpResponse(null, { status: 503 });
+        }),
+      );
+
+      const clients = createApiClients(baseConfig({ token: "t" }));
+      await expect(
+        clients.api.post("test", { json: {} }).json(),
+      ).rejects.toThrow();
+      expect(attempts).toBe(1);
+    });
+  });
 });

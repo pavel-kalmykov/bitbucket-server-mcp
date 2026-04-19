@@ -124,6 +124,57 @@ describe("Insight tools", () => {
       expect(result.isError).toBe(true);
     });
 
+    test("should use default project when not provided", async () => {
+      mockJson(h.mockClients.insights.get, { values: [] });
+
+      await h.client.callTool({
+        name: "get_code_insights",
+        arguments: { repository: "my-repo", pullRequestId: 1 },
+      });
+
+      expect(h.mockClients.insights.get).toHaveBeenCalledWith(
+        "projects/DEFAULT/repos/my-repo/pull-requests/1/reports",
+        expect.anything(),
+      );
+    });
+
+    test("should query annotations for each report by key", async () => {
+      h.mockClients.insights.get
+        .mockReturnValueOnce(
+          fakeResponse({
+            json: () =>
+              Promise.resolve({
+                values: [
+                  { key: "sonar", title: "Sonar", result: "PASS" },
+                  { key: "coverage", title: "Coverage", result: "FAIL" },
+                ],
+              }),
+          }),
+        )
+        .mockReturnValueOnce(
+          fakeResponse({ json: () => Promise.resolve({ values: [] }) }),
+        )
+        .mockReturnValueOnce(
+          fakeResponse({ json: () => Promise.resolve({ values: [] }) }),
+        );
+
+      await callAndParse(h.client, "get_code_insights", {
+        project: "TEST",
+        repository: "my-repo",
+        pullRequestId: 1,
+      });
+
+      const urls = h.mockClients.insights.get.mock.calls.map((c: [string]) =>
+        String(c[0]),
+      );
+      expect(urls).toEqual(
+        expect.arrayContaining([
+          expect.stringContaining("/reports/sonar/annotations"),
+          expect.stringContaining("/reports/coverage/annotations"),
+        ]),
+      );
+    });
+
     test("should skip reports without a key", async () => {
       const reportsList = {
         values: [
@@ -222,6 +273,9 @@ describe("Insight tools", () => {
       );
 
       expect(parsed[0].state).toBe("FAILED");
+      expect(h.mockClients.api.get).toHaveBeenCalledWith(
+        "projects/PROJ/repos/my-repo/pull-requests/42",
+      );
       expect(h.mockClients.buildStatus.get).toHaveBeenCalledWith(
         "commits/resolved999",
       );
@@ -234,6 +288,8 @@ describe("Insight tools", () => {
       });
 
       expect(result.isError).toBe(true);
+      const text = (result.content as Array<{ text: string }>)[0].text;
+      expect(text).toContain("commitId or prId");
     });
 
     test("should return error when prId provided but no repository", async () => {

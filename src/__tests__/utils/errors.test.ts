@@ -26,7 +26,9 @@ describe("formatApiError (decision table per status code)", () => {
       const serverResult = formatApiError(status, "msg").content[0].text;
       const notFoundResult = formatApiError(404, "msg").content[0].text;
       expect(serverResult).not.toBe(notFoundResult);
-      expect(serverResult).toMatch(/server/i);
+      expect(serverResult).toMatch(
+        /Bitbucket server error|temporarily unavailable/i,
+      );
     },
   );
 
@@ -37,6 +39,12 @@ describe("formatApiError (decision table per status code)", () => {
       expect(result.content[0].text).toContain(String(status));
     },
   );
+
+  test("status 499 (below 500) gets 'Unexpected HTTP' guidance, not 'server error'", () => {
+    const result = formatApiError(499, "msg");
+    expect(result.content[0].text).toContain("499");
+    expect(result.content[0].text).not.toContain("server error");
+  });
 
   test("result always has exactly one text content block", () => {
     const result = formatApiError(404, "msg");
@@ -113,6 +121,16 @@ describe("handleToolError (equivalence classes per input type)", () => {
     const result = handleToolError(new Error("Network unreachable"));
     expect(result.isError).toBe(true);
     expect(result.content[0].text).toContain("Network unreachable");
+  });
+
+  test("native Error uses 'Unexpected error' prefix", () => {
+    const result = handleToolError(new Error("boom"));
+    expect(result.content[0].text).toContain("Unexpected error");
+  });
+
+  test("HTTP error does NOT use 'Unexpected error' prefix", () => {
+    const result = handleToolError({ response: { status: 404 } });
+    expect(result.content[0].text).not.toContain("Unexpected error");
   });
 
   test("Error subclass is treated as Error", () => {

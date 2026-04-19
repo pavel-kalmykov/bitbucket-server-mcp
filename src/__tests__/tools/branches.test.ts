@@ -177,7 +177,7 @@ describe("Branch tools", () => {
       expectCalledWithSearchParams(
         h.mockClients.api.get,
         "projects/TEST/repos/my-repo/commits",
-        { until: "main" },
+        { until: "main", limit: 25, start: 0 },
       );
     });
 
@@ -388,6 +388,43 @@ describe("Branch tools", () => {
         h.client,
         "list_commits",
         { repository: "r", author: "smith" },
+      );
+      expect(parsed.commits).toHaveLength(1);
+    });
+
+    test("matches on slug field", async () => {
+      mockJson(h.mockClients.api.get, {
+        values: [
+          {
+            id: "sha1",
+            author: { name: "user", slug: "dev-user", displayName: "Dev" },
+          },
+        ],
+        isLastPage: true,
+      });
+
+      const parsed = await callAndParse<{ commits: unknown[] }>(
+        h.client,
+        "list_commits",
+        { repository: "r", author: "dev-user" },
+      );
+      expect(parsed.commits).toHaveLength(1);
+    });
+
+    test("excludes commits without author", async () => {
+      mockJson(h.mockClients.api.get, {
+        values: [
+          { id: "sha1", author: { name: "alice" } },
+          { id: "sha2" },
+          { id: "sha3", author: null },
+        ],
+        isLastPage: true,
+      });
+
+      const parsed = await callAndParse<{ commits: unknown[] }>(
+        h.client,
+        "list_commits",
+        { repository: "r", author: "alice" },
       );
       expect(parsed.commits).toHaveLength(1);
     });

@@ -30,10 +30,11 @@ describe("Prompts", () => {
     await serverTransport.close();
   });
 
-  test("should list review-pr prompt", async () => {
+  test("should list review-pr prompt with description", async () => {
     const result = await client.listPrompts();
-    const names = result.prompts.map((p) => p.name);
-    expect(names).toContain("review-pr");
+    const prompt = result.prompts.find((p) => p.name === "review-pr");
+    expect(prompt).toBeDefined();
+    expect(prompt!.description).toContain("pull request");
   });
 
   test("review-pr should return exactly one user message", async () => {
