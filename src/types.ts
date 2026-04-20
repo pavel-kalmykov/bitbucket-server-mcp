@@ -9,6 +9,7 @@ export interface BitbucketConfig {
   customHeaders: Record<string, string>;
   enabledTools?: string[];
   cacheTtlMs: number;
+  startupHealthcheck: boolean;
 }
 
 export interface BitbucketServerOptions {
@@ -22,4 +23,5 @@ export interface BitbucketServerOptions {
   customHeaders?: Record<string, string>;
   enabledTools?: string[];
   cacheTtlMs?: number;
+  startupHealthcheck?: boolean;
 }
