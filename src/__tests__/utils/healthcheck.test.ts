@@ -3,6 +3,7 @@ import { http, HttpResponse } from "msw";
 import { createApiClients } from "../../http/client.js";
 import type { BitbucketConfig } from "../../types.js";
 import { runStartupHealthcheck } from "../../http/healthcheck.js";
+import { createServer } from "../../server.js";
 import { logger } from "../../logging.js";
 import { setupHttpCapture } from "../http-test-utils.js";
 import type { components } from "../../generated/bitbucket-api.js";
@@ -148,5 +149,44 @@ describe("runStartupHealthcheck (via real ky against msw)", () => {
     );
     const clients = createApiClients(baseConfig({ token: "t" }));
     await expect(runStartupHealthcheck(clients)).resolves.toBeUndefined();
+  });
+});
+
+// Decision table over the `startupHealthcheck` flag on `createServer`.
+// Two cells, both sides of the ternary that wires the probe callback.
+describe("createServer wiring (decision table: startupHealthcheck flag)", () => {
+  test.each<{
+    name: string;
+    startupHealthcheck: boolean;
+    expectProbe: boolean;
+  }>([
+    {
+      name: "flag true: callback runs the probe",
+      startupHealthcheck: true,
+      expectProbe: true,
+    },
+    {
+      name: "flag false: callback is a no-op",
+      startupHealthcheck: false,
+      expectProbe: false,
+    },
+  ])("$name", async ({ startupHealthcheck, expectProbe }) => {
+    let probeCalls = 0;
+    server.use(
+      http.get(
+        "https://git.example.com/rest/api/1.0/application-properties",
+        () => {
+          probeCalls++;
+          return HttpResponse.json({ version: "8.5.0" });
+        },
+      ),
+    );
+    const { runStartupHealthcheck: run } = createServer({
+      baseUrl: "https://git.example.com",
+      token: "t",
+      startupHealthcheck,
+    });
+    await run();
+    expect(probeCalls).toBe(expectProbe ? 1 : 0);
   });
 });
