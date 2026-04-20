@@ -9,6 +9,8 @@
     "rootDir": "src",
     "declaration": true,
     "sourceMap": true,
+    "incremental": true,
+    "tsBuildInfoFile": "build/.tsbuildinfo",
     "types": ["node", "vitest/globals"]
   },
   "include": ["src/**/*"],
