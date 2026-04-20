@@ -158,19 +158,19 @@ describe("createServer wiring (decision table: startupHealthcheck flag)", () => 
   test.each<{
     name: string;
     startupHealthcheck: boolean;
-    expectProbe: boolean;
+    expectedProbeCalls: number;
   }>([
     {
       name: "flag true: callback runs the probe",
       startupHealthcheck: true,
-      expectProbe: true,
+      expectedProbeCalls: 1,
     },
     {
       name: "flag false: callback is a no-op",
       startupHealthcheck: false,
-      expectProbe: false,
+      expectedProbeCalls: 0,
     },
-  ])("$name", async ({ startupHealthcheck, expectProbe }) => {
+  ])("$name", async ({ startupHealthcheck, expectedProbeCalls }) => {
     let probeCalls = 0;
     server.use(
       http.get(
@@ -187,6 +187,6 @@ describe("createServer wiring (decision table: startupHealthcheck flag)", () => 
       startupHealthcheck,
     });
     await run();
-    expect(probeCalls).toBe(expectProbe ? 1 : 0);
+    expect(probeCalls).toBe(expectedProbeCalls);
   });
 });

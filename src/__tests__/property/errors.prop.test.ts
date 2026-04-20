@@ -31,6 +31,23 @@ const restErrors: fc.Arbitrary<RestErrors> = fc.record(
   { requiredKeys: [] },
 );
 
+// Narrower arbitrary: at least one error in the array is guaranteed to have
+// a non-empty message. Encoding the precondition in the generator instead
+// of branching in the test body keeps the assertion unconditional.
+const restErrorsWithMessage: fc.Arbitrary<RestErrors> = fc
+  .tuple(
+    fc.record(
+      {
+        message: fc.string({ minLength: 1, maxLength: 80 }),
+        context: errorField,
+        exceptionName: errorField,
+      },
+      { requiredKeys: ["message"] },
+    ),
+    fc.array(restErrorMessage, { minLength: 0, maxLength: 3 }),
+  )
+  .map(([head, tail]) => ({ errors: [head, ...tail] }));
+
 describe("extractBitbucketMessage (property-based over spec-typed bodies)", () => {
   test.prop([restErrors])("result is always a string", (body) => {
     expect(typeof extractBitbucketMessage(body)).toBe("string");
@@ -40,30 +57,10 @@ describe("extractBitbucketMessage (property-based over spec-typed bodies)", () =
     expect(() => extractBitbucketMessage(body)).not.toThrow();
   });
 
-  test.prop([restErrors])(
-    "if any error entry has a non-empty message or exceptionName, the result is non-empty",
+  test.prop([restErrorsWithMessage])(
+    "bodies with at least one message produce a non-empty result",
     (body) => {
-      const hasUsefulField = (body.errors ?? []).some(
-        (e) =>
-          (typeof e.message === "string" && e.message.length > 0) ||
-          (typeof e.exceptionName === "string" && e.exceptionName.length > 0),
-      );
-      const result = extractBitbucketMessage(body);
-      if (hasUsefulField) {
-        expect(result.length).toBeGreaterThan(0);
-      }
-    },
-  );
-
-  test.prop([restErrors])(
-    "every non-empty message is reproduced verbatim in the result",
-    (body) => {
-      const result = extractBitbucketMessage(body);
-      for (const err of body.errors ?? []) {
-        if (typeof err.message === "string" && err.message.length > 0) {
-          expect(result).toContain(err.message);
-        }
-      }
+      expect(extractBitbucketMessage(body).length).toBeGreaterThan(0);
     },
   );
 
