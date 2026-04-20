@@ -100,7 +100,15 @@ jobs:
       actions: read
       contents: write
       id-token: write
-    uses: slsa-framework/slsa-github-generator/.github/workflows/generator_generic_slsa3.yml@f7dd8c54c2067bafc12ca7a55595d5ee9b75204a # v2.1.0
+    # Pinned to the semver tag rather than a commit SHA on purpose.
+    # slsa-framework/slsa-github-generator#4216 (open) breaks
+    # `builder-fetch.sh` when the reusable workflow is referenced by
+    # SHA: the builder binary download fails with
+    # `slsa-generator-generic-linux-amd64: No such file or directory`
+    # (observed in our v0.6.8 release, run 24634716418). The SLSA
+    # verifier also requires @vX.Y.Z format to match the published
+    # builder identity.
+    uses: slsa-framework/slsa-github-generator/.github/workflows/generator_generic_slsa3.yml@v2.1.0
     with:
       base64-subjects: ${{ needs.release.outputs.digest }}
       upload-assets: true
