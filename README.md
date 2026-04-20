@@ -11,7 +11,7 @@
 <br>
 [![CI](https://github.com/pavel-kalmykov/bitbucket-server-mcp/actions/workflows/ci.yml/badge.svg)](https://github.com/pavel-kalmykov/bitbucket-server-mcp/actions/workflows/ci.yml)
 [![CodeQL](https://github.com/pavel-kalmykov/bitbucket-server-mcp/actions/workflows/codeql.yml/badge.svg)](https://github.com/pavel-kalmykov/bitbucket-server-mcp/actions/workflows/codeql.yml)
-[![codecov](https://codecov.io/gh/pavel-kalmykov/bitbucket-server-mcp-server/graph/badge.svg)](https://codecov.io/gh/pavel-kalmykov/bitbucket-server-mcp-server)
+[![codecov](https://codecov.io/gh/pavel-kalmykov/bitbucket-server-mcp/graph/badge.svg)](https://codecov.io/gh/pavel-kalmykov/bitbucket-server-mcp)
 [![Mutation testing](https://img.shields.io/endpoint?style=flat&url=https%3A%2F%2Fbadge-api.stryker-mutator.io%2Fgithub.com%2Fpavel-kalmykov%2Fbitbucket-server-mcp%2Fmain)](https://dashboard.stryker-mutator.io/reports/github.com/pavel-kalmykov/bitbucket-server-mcp/main)
 [![OpenSSF Scorecard](https://api.scorecard.dev/projects/github.com/pavel-kalmykov/bitbucket-server-mcp/badge)](https://scorecard.dev/viewer/?uri=github.com/pavel-kalmykov/bitbucket-server-mcp)
 [![OpenSSF Best Practices](https://www.bestpractices.dev/projects/12565/badge)](https://www.bestpractices.dev/projects/12565)
