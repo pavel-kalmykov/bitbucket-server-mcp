@@ -12,6 +12,7 @@ function baseConfig(overrides: Partial<BitbucketConfig> = {}): BitbucketConfig {
     readOnly: false,
     customHeaders: {},
     cacheTtlMs: 300_000,
+    startupHealthcheck: false,
     ...overrides,
   };
 }
