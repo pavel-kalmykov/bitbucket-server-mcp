@@ -527,7 +527,7 @@ describe("Comment tools", () => {
         // `toStrictEqual` (not `toEqual`) is required so that an
         // `{threadResolved: undefined}` body does not silently pass the
         // "omitted" row; Vitest's `toEqual` ignores undefined properties,
-        // which would let a `!==` → `===` mutation in the edit handler
+        // which would let a `!==` -> `===` mutation in the edit handler
         // survive.
         expect(actualBody).toStrictEqual(expectedBody);
       },
