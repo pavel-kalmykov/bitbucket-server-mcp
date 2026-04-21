@@ -35,6 +35,7 @@ export function parseConfig(options?: BitbucketServerOptions): BitbucketConfig {
   const maxLinesRaw = process.env.BITBUCKET_DIFF_MAX_LINES_PER_FILE;
   const enabledToolsRaw = process.env.BITBUCKET_ENABLED_TOOLS;
   const cacheTtlRaw = process.env.BITBUCKET_CACHE_TTL;
+  const healthcheckRaw = process.env.BITBUCKET_STARTUP_HEALTHCHECK;
 
   return {
     baseUrl,
@@ -58,5 +59,7 @@ export function parseConfig(options?: BitbucketServerOptions): BitbucketConfig {
     cacheTtlMs:
       options?.cacheTtlMs ??
       (cacheTtlRaw ? parseInt(cacheTtlRaw, 10) * 1000 : 5 * 60 * 1000),
+    startupHealthcheck:
+      options?.startupHealthcheck ?? healthcheckRaw === "true",
   };
 }

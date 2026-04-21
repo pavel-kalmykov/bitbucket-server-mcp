@@ -133,7 +133,11 @@ Do not cache volatile data like PR details, comments, or activities.
 
 ## Error handling
 
-Tools should never throw. Wrap the handler body in try/catch and return `handleToolError(error)` from `src/utils/errors.ts`. This returns `isError: true` with a recovery-oriented message that helps the LLM retry or adjust.
+Tools should never throw. Wrap the handler body in try/catch and return `handleToolError(error)` from `src/http/errors.ts`. This returns `isError: true` with a recovery-oriented message that helps the LLM retry or adjust.
+
+For ky's `HTTPError`, `handleToolError` reads the pre-parsed body from `error.data` (ky v2 populates it before throwing). Detection uses `error instanceof HTTPError`, not a home-grown type guard: the ky class is the single source of truth for what an HTTP error looks like, so we cannot accidentally match a shape the library does not actually produce.
+
+**Do not duck-type on `error.response.data?.message` or similar hand-rolled predicates.** ky's `HTTPError` puts the parsed body on `error.data`; no real instance matches an axios-shaped `response.data.message`, so a predicate like that silently drops the body in production. The "duck-typed fake HTTPError does NOT match" test in `errors.test.ts` guards against slipping back.
 
 ## Response formatting
 
@@ -141,7 +145,7 @@ Use `formatResponse(data)` for simple JSON responses, or `formatCompactResponse(
 
 ## Testing
 
-Tests use vitest with mocked ky instances. The mock pattern:
+Tests use vitest with mocked ky instances for tool-level tests:
 
 ```typescript
 (mockClients.api.get as ReturnType<typeof vi.fn>).mockReturnValue({
@@ -151,3 +155,26 @@ Tests use vitest with mocked ky instances. The mock pattern:
 
 Run all tests: `npm test`
 Run a specific file: `npx vitest run src/__tests__/tools/yourfile.test.ts`
+
+### Testing errors from external libraries
+
+Do not hand-craft mock error objects for library types. A hand-crafted `{ response: { status: 404, data: { ... } } }` passes the test because the test *also* constructs it, but it does not resemble what the library actually throws. Bugs hide in that gap.
+
+Two rules keep tests and production aligned on the same shape:
+
+1. **Detect library errors with `instanceof LibError`, never a home-grown predicate.** For ky: `error instanceof HTTPError`.
+2. **Produce library errors through the library itself.** In tests, call real ky against an `msw` handler (see `setupHttpCapture` in `src/__tests__/http-test-utils.ts` and the pattern in `src/__tests__/utils/errors.test.ts`). ky throws the real `HTTPError`; we verify how our code handles it. Mock objects never appear.
+
+### Using generated OpenAPI types in mocks
+
+Mock response bodies should be typed with the generated Bitbucket types in `src/generated/bitbucket-api.ts`:
+
+```typescript
+import type { components } from "../../generated/bitbucket-api.js";
+type RestErrors = components["schemas"]["RestErrors"];
+
+const body: RestErrors = { errors: [{ message: "...", exceptionName: "..." }] };
+server.use(http.get(url, () => HttpResponse.json(body, { status: 404 })));
+```
+
+If Atlassian ever changes the schema (renames a field, removes a type), `npm run generate:types` refreshes the bindings and every test that assumed the old shape fails to compile. This is the point: mocks cannot drift silently from the real API spec.

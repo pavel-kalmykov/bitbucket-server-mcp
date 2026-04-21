@@ -12,6 +12,7 @@ function baseConfig(overrides: Partial<BitbucketConfig> = {}): BitbucketConfig {
     readOnly: false,
     customHeaders: {},
     cacheTtlMs: 300_000,
+    startupHealthcheck: false,
     ...overrides,
   };
 }
@@ -97,6 +98,73 @@ describe("createApiClients", () => {
         .json()
         .catch(() => undefined);
       expect(captured[0].headers.authorization).toBe("from-custom");
+    });
+  });
+
+  describe("Accept header (decision table: custom Accept x custom Authorization)", () => {
+    // The merge in allHeaders puts customHeaders last, so either header
+    // present in BITBUCKET_CUSTOM_HEADERS wins over its defaulted
+    // counterpart. Four cells cover the full product.
+    test.each<{
+      name: string;
+      customHeaders: Record<string, string>;
+      expectedAccept: string;
+      expectedAuth: string;
+    }>([
+      {
+        name: "default both",
+        customHeaders: {},
+        expectedAccept: "application/json",
+        expectedAuth: "Bearer t",
+      },
+      {
+        name: "custom Accept, default Authorization",
+        customHeaders: { Accept: "application/xml" },
+        expectedAccept: "application/xml",
+        expectedAuth: "Bearer t",
+      },
+      {
+        name: "default Accept, custom Authorization",
+        customHeaders: { Authorization: "Token custom" },
+        expectedAccept: "application/json",
+        expectedAuth: "Token custom",
+      },
+      {
+        name: "custom both",
+        customHeaders: { Accept: "text/plain", Authorization: "Token custom" },
+        expectedAccept: "text/plain",
+        expectedAuth: "Token custom",
+      },
+    ])("$name", async ({ customHeaders, expectedAccept, expectedAuth }) => {
+      const clients = createApiClients(
+        baseConfig({ token: "t", customHeaders }),
+      );
+      await clients.api
+        .get("projects")
+        .json()
+        .catch(() => undefined);
+      expect(captured[0].headers.accept).toBe(expectedAccept);
+      expect(captured[0].headers.authorization).toBe(expectedAuth);
+    });
+  });
+
+  describe("Accept header propagation (every client uses the same beforeRequest hook)", () => {
+    test.each<[keyof ReturnType<typeof createApiClients>, string]>([
+      ["api", "rest/api/1.0"],
+      ["buildStatus", "rest/build-status/1.0"],
+      ["commentLikes", "rest/comment-likes/1.0"],
+      ["emoticons", "rest/emoticons/latest"],
+      ["insights", "rest/insights/latest"],
+      ["search", "rest/search/latest"],
+      ["branchUtils", "rest/branch-utils/1.0"],
+      ["defaultReviewers", "rest/default-reviewers/1.0"],
+    ])("%s client sends Accept: application/json", async (clientKey) => {
+      const clients = createApiClients(baseConfig({ token: "t" }));
+      await clients[clientKey]
+        .get("ping")
+        .json()
+        .catch(() => undefined);
+      expect(captured[0].headers.accept).toBe("application/json");
     });
   });
 

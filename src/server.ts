@@ -2,6 +2,7 @@ import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { parseConfig } from "./config.js";
 import { createApiClients } from "./http/client.js";
 import { ApiCache } from "./http/cache.js";
+import { runStartupHealthcheck } from "./http/healthcheck.js";
 import { registerRepositoryTools } from "./tools/repositories.js";
 import { registerBranchTools } from "./tools/branches.js";
 import { registerPullRequestTools } from "./tools/pull-requests.js";
@@ -105,5 +106,13 @@ export function createServer(options?: BitbucketServerOptions) {
   registerResources(server, clients, cache);
   registerPrompts(server);
 
-  return { server, config };
+  // The MCP logger only emits once the server has connected to a
+  // transport, so we expose the healthcheck as a callable instead of
+  // firing it here. entry.ts calls it after `server.connect()`.
+  const maybeRunStartupHealthcheck = (): Promise<void> =>
+    config.startupHealthcheck
+      ? runStartupHealthcheck(clients)
+      : Promise.resolve();
+
+  return { server, config, runStartupHealthcheck: maybeRunStartupHealthcheck };
 }

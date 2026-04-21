@@ -16,6 +16,7 @@ describe("parseConfig", () => {
     delete process.env.BITBUCKET_CUSTOM_HEADERS;
     delete process.env.BITBUCKET_ENABLED_TOOLS;
     delete process.env.BITBUCKET_CACHE_TTL;
+    delete process.env.BITBUCKET_STARTUP_HEALTHCHECK;
   });
 
   afterEach(() => {
@@ -119,6 +120,34 @@ describe("parseConfig", () => {
     test("options.readOnly overrides env", () => {
       process.env.BITBUCKET_READ_ONLY = "true";
       expect(parseConfig({ readOnly: false }).readOnly).toBe(false);
+    });
+  });
+
+  describe("startupHealthcheck (BITBUCKET_STARTUP_HEALTHCHECK is strict 'true')", () => {
+    beforeEach(() => {
+      process.env.BITBUCKET_URL = "https://git.example.com";
+      process.env.BITBUCKET_TOKEN = "t";
+    });
+
+    test.each([
+      ["true", true],
+      ["false", false],
+      ["True", false],
+      ["", false],
+    ])("'%s' parses to %s", (envValue, expected) => {
+      process.env.BITBUCKET_STARTUP_HEALTHCHECK = envValue;
+      expect(parseConfig().startupHealthcheck).toBe(expected);
+    });
+
+    test("defaults to false when env not set", () => {
+      expect(parseConfig().startupHealthcheck).toBe(false);
+    });
+
+    test("options.startupHealthcheck overrides env", () => {
+      process.env.BITBUCKET_STARTUP_HEALTHCHECK = "true";
+      expect(
+        parseConfig({ startupHealthcheck: false }).startupHealthcheck,
+      ).toBe(false);
     });
   });
 

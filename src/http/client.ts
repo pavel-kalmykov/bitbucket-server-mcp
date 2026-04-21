@@ -25,7 +25,17 @@ export function createApiClients(config: BitbucketConfig): ApiClients {
     authHeaders["Authorization"] = `Basic ${credentials}`;
   }
 
-  const allHeaders = { ...authHeaders, ...config.customHeaders };
+  // Accept is stated explicitly. Bitbucket Server's REST API already
+  // returns JSON by default, but well-behaved proxies/gateways in front
+  // of it can honor `Accept: application/json` instead of returning
+  // their own HTML error page. Proxies that ignore the Accept header
+  // are handled separately in `handleToolError` (raw-body cap at 500
+  // chars so an HTML login page cannot flood the MCP output).
+  const allHeaders: Record<string, string> = {
+    Accept: "application/json",
+    ...authHeaders,
+    ...config.customHeaders,
+  };
 
   const commonOptions: Options = {
     timeout: 30_000,

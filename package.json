@@ -71,7 +71,8 @@
     "*.ts": [
       "prettier --write",
       "eslint --fix",
-      "vitest related --run"
+      "vitest related --run",
+      "bash -c 'tsc --noEmit'"
     ]
   },
   "engines": {
