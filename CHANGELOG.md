@@ -1,3 +1,15 @@
+# [0.7.0](https://github.com/pavel-kalmykov/bitbucket-server-mcp/compare/v0.6.9...v0.7.0) (2026-04-21)
+
+
+### Bug Fixes
+
+* **errors:** read ky HTTPError.data instead of error.response.data ([3ae8d16](https://github.com/pavel-kalmykov/bitbucket-server-mcp/commit/3ae8d1608f2da6ba623675858d63450b80c1b48c)), closes [#10433](https://github.com/pavel-kalmykov/bitbucket-server-mcp/issues/10433)
+
+
+### Features
+
+* **healthcheck:** optional startup probe with factual failure hints ([c6e9fa0](https://github.com/pavel-kalmykov/bitbucket-server-mcp/commit/c6e9fa0c0ac6832f2cca8d934a9ecb7994c7803a))
+
 ## [0.6.9](https://github.com/pavel-kalmykov/bitbucket-server-mcp/compare/v0.6.8...v0.6.9) (2026-04-20)
 
 
