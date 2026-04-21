@@ -472,6 +472,91 @@ describe("Comment tools", () => {
     });
   });
 
+  describe("manage_comment threadResolved propagation (decision table)", () => {
+    // `threadResolved` is a separate dimension from `state` / `severity`.
+    // The edit handler must (a) forward the value verbatim when set,
+    // (b) omit the key entirely when the caller does not provide one,
+    // and (c) tolerate being combined with other mutations in a single
+    // PUT. Each row locks one of those contracts.
+    test.each<{
+      label: string;
+      extra: Record<string, unknown>;
+      expectedBody: Record<string, unknown>;
+    }>([
+      {
+        label: "true",
+        extra: { threadResolved: true },
+        // `text` is always present (set to undefined when the caller
+        // omits it) because the handler initialises the body object
+        // with it; only `threadResolved` / `state` / `severity` are
+        // spread-conditionally.
+        expectedBody: { text: undefined, version: 0, threadResolved: true },
+      },
+      {
+        label: "false",
+        extra: { threadResolved: false },
+        expectedBody: { text: undefined, version: 0, threadResolved: false },
+      },
+      {
+        label: "omitted",
+        extra: {},
+        expectedBody: { text: undefined, version: 0 },
+      },
+    ])(
+      "threadResolved=$label produces the expected PUT body",
+      async ({ extra, expectedBody }) => {
+        mockJson(h.mockClients.api.put, { id: 1, version: 1 });
+
+        await h.client.callTool({
+          name: "manage_comment",
+          arguments: {
+            action: "edit",
+            repository: "my-repo",
+            prId: 42,
+            commentId: 1,
+            version: 0,
+            ...extra,
+          },
+        });
+
+        const actualBody = (
+          h.mockClients.api.put.mock.calls[0][1] as {
+            json: Record<string, unknown>;
+          }
+        ).json;
+        // `toStrictEqual` (not `toEqual`) is required so that an
+        // `{threadResolved: undefined}` body does not silently pass the
+        // "omitted" row; Vitest's `toEqual` ignores undefined properties,
+        // which would let a `!==` → `===` mutation in the edit handler
+        // survive.
+        expect(actualBody).toStrictEqual(expectedBody);
+      },
+    );
+
+    test("state: RESOLVED and threadResolved: true combine in one PUT body", async () => {
+      mockJson(h.mockClients.api.put, { id: 1, version: 1 });
+
+      await h.client.callTool({
+        name: "manage_comment",
+        arguments: {
+          action: "edit",
+          repository: "my-repo",
+          prId: 42,
+          commentId: 1,
+          version: 0,
+          state: "RESOLVED",
+          threadResolved: true,
+        },
+      });
+
+      expectCalledWithJson(h.mockClients.api.put, `${commentUrl}/1`, {
+        state: "RESOLVED",
+        threadResolved: true,
+        version: 0,
+      });
+    });
+  });
+
   describe("manage_comment react/unreact", () => {
     test("react returns { react: true, commentId, emoticon }", async () => {
       mockVoid(h.mockClients.commentLikes.put);
