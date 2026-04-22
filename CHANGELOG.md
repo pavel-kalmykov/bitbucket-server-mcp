@@ -1,3 +1,15 @@
+# [0.8.0](https://github.com/pavel-kalmykov/bitbucket-server-mcp/compare/v0.7.0...v0.8.0) (2026-04-22)
+
+
+### Bug Fixes
+
+* **e2e:** chown the bind mount to the host uid before stop() ([57749df](https://github.com/pavel-kalmykov/bitbucket-server-mcp/commit/57749df5cc35f6bba999065912868c90ee17ff84)), closes [#43](https://github.com/pavel-kalmykov/bitbucket-server-mcp/issues/43)
+
+
+### Features
+
+* **comments:** expose threadResolved on manage_comment edit ([70d3806](https://github.com/pavel-kalmykov/bitbucket-server-mcp/commit/70d3806c09183c8cc71030583a3be45fe2b75536))
+
 # [0.7.0](https://github.com/pavel-kalmykov/bitbucket-server-mcp/compare/v0.6.9...v0.7.0) (2026-04-21)
 
 
