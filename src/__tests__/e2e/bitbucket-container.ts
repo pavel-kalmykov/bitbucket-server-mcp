@@ -156,6 +156,18 @@ export async function startBitbucket(
     version: version.name,
     api,
     async stop() {
+      // Bitbucket writes inside the bind mount as its internal
+      // `bitbucket` user, so on Linux (GitHub Actions runners) the
+      // host process cannot `rm -rf` the tmpdir afterwards. Chown
+      // the whole tree back to the host's uid/gid first, running
+      // as root inside the container so we can cross the ownership
+      // boundary regardless of what the entrypoint user is.
+      const uid = process.getuid?.() ?? 0;
+      const gid = process.getgid?.() ?? 0;
+      await container.exec(
+        ["chown", "-R", `${uid}:${gid}`, SHARED_DIR_IN_CONTAINER],
+        { user: "root" },
+      );
       await container.stop();
       await rm(hostSharedDir, { recursive: true, force: true });
     },
