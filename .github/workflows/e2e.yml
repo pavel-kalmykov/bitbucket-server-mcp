@@ -1,0 +1,53 @@
+name: E2E
+
+on:
+  # Chains after a successful CI on main (pipeline: CI -> E2E -> Release).
+  # The `if:` on the job filters on conclusion + the event that
+  # triggered CI, so PRs never wake this up.
+  workflow_run:
+    workflows: [CI]
+    types: [completed]
+    branches: [main]
+  workflow_dispatch:
+
+permissions: {}
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  e2e:
+    name: E2E (Bitbucket ${{ matrix.version }})
+    runs-on: ubuntu-latest
+    # On workflow_dispatch there is no workflow_run event; the first
+    # expression is vacuously true (`conclusion` is empty), so the
+    # fallback lets the manual trigger go through.
+    if: ${{ github.event_name != 'workflow_run' || (github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.event == 'push') }}
+    permissions:
+      contents: read
+    strategy:
+      fail-fast: false
+      matrix:
+        version: ["7.21", "8.5", "8.9", "8.19", "9.4", "10.2"]
+    steps:
+      - uses: step-security/harden-runner@8d3c67de8e2fe68ef647c8db1e6a09f647780f40 # v2.19.0
+        with:
+          egress-policy: audit
+
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: 24.x
+          cache: npm
+
+      - run: npm ci
+
+      - run: npm run build
+
+      - name: E2E suite (${{ matrix.version }})
+        env:
+          BITBUCKET_TIMEBOMB_LICENSE: ${{ secrets.BITBUCKET_TIMEBOMB_LICENSE }}
+          E2E_VERSIONS: ${{ matrix.version }}
+        run: npm run test:e2e

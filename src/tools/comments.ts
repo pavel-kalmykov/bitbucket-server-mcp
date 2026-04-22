@@ -17,6 +17,7 @@ interface CommentActionContext {
   parentId?: number;
   state?: "OPEN" | "PENDING" | "RESOLVED";
   severity?: "NORMAL" | "BLOCKER";
+  threadResolved?: boolean;
   filePath?: string;
   line?: number;
   lineType?: "ADDED" | "REMOVED" | "CONTEXT";
@@ -46,6 +47,7 @@ interface EditCommentBody {
   version?: number;
   severity?: string;
   state?: string;
+  threadResolved?: boolean;
 }
 
 const commentActions: Record<
@@ -92,12 +94,14 @@ const commentActions: Record<
     version,
     severity,
     state,
+    threadResolved,
   }) => {
     const body: EditCommentBody = {
       text,
       version,
       ...(severity && { severity }),
       ...(state && { state }),
+      ...(threadResolved !== undefined && { threadResolved }),
     };
     const data = await clients.api
       .put(`${basePath}/${commentId}`, { json: body })
@@ -146,7 +150,7 @@ export function registerCommentTools(ctx: ToolContext) {
     "manage_comment",
     {
       description:
-        'Manage pull request comments. Actions: "create" (general, inline, threaded, or tasks), "edit" (update text/severity/state), "delete", "react" (add emoji reaction), "unreact" (remove reaction).',
+        'Manage pull request comments. Actions: "create" (general, inline, threaded, or tasks), "edit" (update text/severity/state/threadResolved), "delete", "react" (add emoji reaction), "unreact" (remove reaction). `state: RESOLVED` toggles the task checkbox on a BLOCKER comment; `threadResolved: true` closes the conversation (the "Resolve" button in the UI). They are independent and can be passed together.',
       inputSchema: {
         action: z
           .enum(["create", "edit", "delete", "react", "unreact"])
@@ -186,6 +190,12 @@ export function registerCommentTools(ctx: ToolContext) {
           .optional()
           .describe(
             "Comment severity. BLOCKER marks it as a task (create and edit).",
+          ),
+        threadResolved: z
+          .boolean()
+          .optional()
+          .describe(
+            "Close or reopen the comment thread (edit only). Independent of `state`. Requires Bitbucket Data Center >= 8.9; older servers accept the PUT but ignore the field.",
           ),
         filePath: z
           .string()
@@ -242,6 +252,7 @@ export function registerCommentTools(ctx: ToolContext) {
           parentId: params.parentId,
           state: params.state,
           severity: params.severity,
+          threadResolved: params.threadResolved,
           filePath: params.filePath,
           line: params.line,
           lineType: params.lineType,
