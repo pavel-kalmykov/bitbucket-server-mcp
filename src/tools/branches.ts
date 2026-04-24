@@ -23,7 +23,7 @@ export function registerBranchTools(ctx: ToolContext) {
     "list_branches",
     {
       description:
-        "List branches in a repository. Also returns the default branch when available.",
+        "List branches in a repository. Also returns the default branch when available. Supports custom field selection via the `fields` param (`'*all'` for full raw response, `'displayId,latestCommit'` for a custom subset).",
       inputSchema: {
         project: z
           .string()
@@ -98,7 +98,7 @@ export function registerBranchTools(ctx: ToolContext) {
     "list_commits",
     {
       description:
-        "List commits in a repository, optionally filtered by branch and author.",
+        "List commits in a repository, optionally filtered by branch and author. Supports custom field selection via the `fields` param (`'*all'` for full raw response, `'id,message,author.name'` for a custom subset).",
       inputSchema: {
         project: z
           .string()

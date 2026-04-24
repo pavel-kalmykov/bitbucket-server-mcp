@@ -176,7 +176,7 @@ export function registerPullRequestTools(ctx: ToolContext) {
     "get_pull_request",
     {
       description:
-        "Get details of a specific pull request including status, reviewers, and metadata.",
+        "Get details of a specific pull request including status, reviewers, and metadata. Supports custom field selection via the `fields` param (`'*all'` for full raw response, `'id,title,state'` for a custom subset).",
       inputSchema: {
         project: z
           .string()
@@ -406,7 +406,7 @@ export function registerPullRequestTools(ctx: ToolContext) {
     "list_pull_requests",
     {
       description:
-        "List pull requests in a repository. Supports filtering by state, direction, order, and client-side author filtering.",
+        "List pull requests in a repository. Supports filtering by state, direction, order, and client-side author filtering. Supports custom field selection via the `fields` param (`'*all'` for full raw response, `'id,title,state'` for a custom subset).",
       inputSchema: {
         project: z
           .string()
@@ -505,7 +505,7 @@ export function registerPullRequestTools(ctx: ToolContext) {
     "get_dashboard_pull_requests",
     {
       description:
-        "Get pull requests from the authenticated user dashboard. No project/repo needed.",
+        "Get pull requests from the authenticated user dashboard. No project/repo needed. Supports custom field selection via the `fields` param (`'*all'` for full raw response, `'id,title,state'` for a custom subset).",
       inputSchema: {
         state: z
           .enum(["OPEN", "MERGED", "DECLINED", "ALL"])

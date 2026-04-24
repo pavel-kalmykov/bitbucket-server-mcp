@@ -18,7 +18,7 @@ export function registerRepositoryTools(ctx: ToolContext) {
     "list_projects",
     {
       description:
-        "List all Bitbucket projects you have access to. Use this first to discover project keys.",
+        "List all Bitbucket projects you have access to. Use this first to discover project keys. Supports custom field selection via the `fields` param (`'*all'` for full raw response, `'key,name'` for a custom subset).",
       inputSchema: {
         limit: z
           .number()
@@ -58,7 +58,7 @@ export function registerRepositoryTools(ctx: ToolContext) {
     "list_repositories",
     {
       description:
-        "List repositories in a project. Use this to find repository slugs for other operations.",
+        "List repositories in a project. Use this to find repository slugs for other operations. Supports custom field selection via the `fields` param (`'*all'` for full raw response, `'slug,name'` for a custom subset).",
       inputSchema: {
         project: z
           .string()
