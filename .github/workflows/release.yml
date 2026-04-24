@@ -62,21 +62,52 @@ jobs:
           GITHUB_TOKEN: ${{ steps.app-token.outputs.token }}
         run: npx semantic-release
 
-      # After semantic-release runs, a successful release leaves a new
-      # annotated tag pointing at HEAD (and bumps package.json). If no
-      # release happened (no releasable commits), no tag is on HEAD and
-      # downstream jobs are skipped.
+      # A successful release leaves `package.json`, `package-lock.json`
+      # and `CHANGELOG.md` bumped in the working tree; if none of them
+      # changed, no release happened and downstream jobs are skipped.
+      # The git commit back to main is done in the next step via
+      # `createCommitOnBranch` so the commit is GitHub-signed and the
+      # ruleset can require signatures with zero bypass_actors.
       - name: Detect published release
         id: info
         run: |
-          TAG=$(git tag --points-at HEAD | head -n1)
-          if [ -n "$TAG" ]; then
-            printf 'published=true\n' >> "$GITHUB_OUTPUT"
-            printf 'tag=%s\n' "$TAG" >> "$GITHUB_OUTPUT"
-            printf 'version=%s\n' "${TAG#v}" >> "$GITHUB_OUTPUT"
-          else
+          if git diff --quiet -- package.json; then
             printf 'published=false\n' >> "$GITHUB_OUTPUT"
+          else
+            VERSION=$(node -p "require('./package.json').version")
+            printf 'published=true\n' >> "$GITHUB_OUTPUT"
+            printf 'version=%s\n' "$VERSION" >> "$GITHUB_OUTPUT"
+            printf 'tag=v%s\n' "$VERSION" >> "$GITHUB_OUTPUT"
           fi
+
+      # Commit the version bump and changelog back to main via the
+      # GraphQL `createCommitOnBranch` mutation. GitHub signs commits
+      # created through that endpoint with the App's identity, which
+      # satisfies the `required_signatures` rule on main without
+      # listing the App under `bypass_actors`.
+      - name: Commit release assets (signed)
+        if: steps.info.outputs.published == 'true'
+        uses: planetscale/ghcommit-action@25309d8005ac7c3bcd61d3fe19b69e0fe47dbdde # v0.2.20
+        with:
+          commit_message: "chore(release): ${{ steps.info.outputs.version }} [skip ci]"
+          repo: ${{ github.repository }}
+          branch: main
+          file_pattern: "package.json package-lock.json CHANGELOG.md"
+        env:
+          GITHUB_TOKEN: ${{ steps.app-token.outputs.token }}
+
+      # Create the GitHub Release with `--target main` so the tag lands
+      # on the signed commit just pushed by ghcommit-action. Matches
+      # how planetscale/ghcommit-action releases itself.
+      - name: Create GitHub Release
+        if: steps.info.outputs.published == 'true'
+        env:
+          GH_TOKEN: ${{ steps.app-token.outputs.token }}
+        run: |
+          gh release create "${{ steps.info.outputs.tag }}" \
+            --target main \
+            --title "${{ steps.info.outputs.tag }}" \
+            --generate-notes
 
       - name: Pack npm tarball
         if: steps.info.outputs.published == 'true'
@@ -97,6 +128,40 @@ jobs:
         env:
           GH_TOKEN: ${{ steps.app-token.outputs.token }}
         run: gh release upload "${{ steps.info.outputs.tag }}" ./*.tgz --clobber
+
+      # Emulates the notifications that `@semantic-release/github`
+      # used to post: a comment on every PR whose merge commit is
+      # part of this release and on every issue closed by those
+      # commits, plus a `released` label. Runs with the App token so
+      # the bot identity that readers see is the same
+      # (`bitbucket-mcp-bot`) as before this workflow switched off
+      # `@semantic-release/github`.
+      - name: Notify released PRs and issues
+        if: steps.info.outputs.published == 'true'
+        env:
+          GH_TOKEN: ${{ steps.app-token.outputs.token }}
+          TAG: ${{ steps.info.outputs.tag }}
+          REPO: ${{ github.repository }}
+        run: |
+          set -euo pipefail
+          release_url="https://github.com/$REPO/releases/tag/$TAG"
+          prev_tag=$(git describe --tags --abbrev=0 "$TAG^" 2>/dev/null || true)
+          if [ -n "$prev_tag" ]; then
+            range="$prev_tag..$TAG"
+          else
+            range="$TAG"
+          fi
+          prs=$(git log --format=%s "$range" | grep -oE "#[0-9]+" | sort -u | tr -d '#')
+          issues=$(git log --format=%B "$range" | grep -iEo "(close[sd]?|fix(e[sd])?|resolve[sd]?) #[0-9]+" | grep -oE "[0-9]+" | sort -u)
+          gh label create released --color 0366d6 --description "Shipped in a release" --force >/dev/null
+          for n in $prs; do
+            gh pr comment "$n" --body ":tada: This PR is included in [$TAG]($release_url) :tada:" || true
+            gh pr edit "$n" --add-label released || true
+          done
+          for n in $issues; do
+            gh issue comment "$n" --body ":tada: This issue has been resolved in [$TAG]($release_url) :tada:" || true
+            gh issue edit "$n" --add-label released || true
+          done
 
   # Generates a signed SLSA v1.0 provenance (.intoto.jsonl) for the
   # npm tarball and uploads it as an asset to the same GitHub release.
