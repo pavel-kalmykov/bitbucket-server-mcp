@@ -13,6 +13,24 @@ export interface ApiClients {
   defaultReviewers: KyInstance;
 }
 
+// Build a redactor from the actual credential values in config so that any
+// of those values appearing in a logged URL are replaced with [REDACTED].
+// Value-based redaction avoids false positives from key-name heuristics
+// (e.g. `auth=public` would not be redacted) and catches tokens passed under
+// non-standard parameter names.
+function buildRedactor(config: BitbucketConfig): (text: string) => string {
+  const secrets = [
+    config.token,
+    config.password,
+    ...Object.values(config.customHeaders ?? {}),
+  ].filter((v): v is string => !!v && v.length > 0);
+
+  if (secrets.length === 0) return (text) => text;
+
+  return (text) =>
+    secrets.reduce((acc, secret) => acc.replaceAll(secret, "[REDACTED]"), text);
+}
+
 export function createApiClients(config: BitbucketConfig): ApiClients {
   const authHeaders: Record<string, string> = {};
 
@@ -37,6 +55,8 @@ export function createApiClients(config: BitbucketConfig): ApiClients {
     ...config.customHeaders,
   };
 
+  const redact = buildRedactor(config);
+
   const commonOptions: Options = {
     timeout: 30_000,
     retry: {
@@ -50,13 +70,25 @@ export function createApiClients(config: BitbucketConfig): ApiClients {
           for (const [key, value] of Object.entries(allHeaders)) {
             request.headers.set(key, value);
           }
-          logger.debug(`${request.method} ${request.url}`);
+          logger.debug(redact(`${request.method} ${request.url}`));
         },
       ],
       afterResponse: [
         ({ response }) => {
           if (!response.ok) {
-            logger.warn(`HTTP ${response.status} ${response.url}`);
+            if (response.status === 429) {
+              const reset = response.headers.get("X-RateLimit-Reset");
+              if (reset) {
+                const waitMs = Math.max(
+                  0,
+                  parseInt(reset, 10) * 1000 - Date.now(),
+                );
+                if (waitMs > 0) {
+                  logger.warn(`Rate limited; waiting ${waitMs}ms for reset`);
+                }
+              }
+            }
+            logger.warn(redact(`HTTP ${response.status} ${response.url}`));
           }
         },
       ],
