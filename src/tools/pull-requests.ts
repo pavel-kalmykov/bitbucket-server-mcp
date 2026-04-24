@@ -8,6 +8,7 @@ import {
   curateList,
   DEFAULT_PR_FIELDS,
 } from "../response/curate.js";
+import { getPaginated } from "../http/client.js";
 import { mergeDefaultReviewers } from "./shared.js";
 import type { ToolContext } from "./shared.js";
 import type {
@@ -465,18 +466,13 @@ export function registerPullRequestTools(ctx: ToolContext) {
         if (direction) searchParams.direction = direction;
         if (order) searchParams.order = order;
 
-        const data = await clients.api
-          .get(
-            `projects/${resolvedProject}/repos/${repository}/pull-requests`,
-            { searchParams },
-          )
-          .json<{
-            values: PullRequest[];
-            size: number;
-            isLastPage: boolean;
-          }>();
+        const data = await getPaginated(
+          clients.api,
+          `projects/${resolvedProject}/repos/${repository}/pull-requests`,
+          { searchParams },
+        );
 
-        let pullRequests = data.values;
+        let pullRequests = data.values as PullRequest[];
 
         if (author) {
           const authorLower = author.toLowerCase();
@@ -564,15 +560,13 @@ export function registerPullRequestTools(ctx: ToolContext) {
         if (order) searchParams.order = order;
         if (closedSince) searchParams.closedSince = closedSince;
 
-        const data = await clients.api
-          .get("dashboard/pull-requests", {
+        const data = await getPaginated(
+          clients.api,
+          "dashboard/pull-requests",
+          {
             searchParams,
-          })
-          .json<{
-            values: Record<string, unknown>[];
-            size: number;
-            isLastPage: boolean;
-          }>();
+          },
+        );
 
         return formatResponse({
           ...data,
@@ -629,14 +623,13 @@ export function registerPullRequestTools(ctx: ToolContext) {
     }) => {
       try {
         const resolvedProject = ctx.resolveProject(project);
-        const data = await clients.api
-          .get(
-            `projects/${resolvedProject}/repos/${repository}/pull-requests/${prId}/activities`,
-            { searchParams: { limit, start } },
-          )
-          .json<{ values: Activity[]; isLastPage: boolean; size: number }>();
+        const data = await getPaginated(
+          clients.api,
+          `projects/${resolvedProject}/repos/${repository}/pull-requests/${prId}/activities`,
+          { searchParams: { limit, start } },
+        );
 
-        let activities = data.values;
+        let activities = data.values as Activity[];
 
         if (excludeUsers?.length) {
           const excluded = new Set(excludeUsers.map((u) => u.toLowerCase()));

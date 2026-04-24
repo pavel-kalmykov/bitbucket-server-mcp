@@ -8,6 +8,7 @@ import {
   DEFAULT_BRANCH_FIELDS,
   DEFAULT_COMMIT_FIELDS,
 } from "../response/curate.js";
+import { getPaginated } from "../http/client.js";
 import type { ToolContext } from "./shared.js";
 import type { Commit as BaseCommit } from "../generated/types.js";
 
@@ -64,15 +65,11 @@ export function registerBranchTools(ctx: ToolContext) {
         if (filterText) searchParams.filterText = filterText;
 
         const [branchData, defaultBranch] = await Promise.all([
-          clients.api
-            .get(`projects/${resolvedProject}/repos/${repository}/branches`, {
-              searchParams,
-            })
-            .json<{
-              values: Record<string, unknown>[];
-              size: number;
-              isLastPage: boolean;
-            }>(),
+          getPaginated(
+            clients.api,
+            `projects/${resolvedProject}/repos/${repository}/branches`,
+            { searchParams },
+          ),
           clients.api
             .get(
               `projects/${resolvedProject}/repos/${repository}/default-branch`,
@@ -149,13 +146,13 @@ export function registerBranchTools(ctx: ToolContext) {
         const searchParams: Record<string, string | number> = { limit, start };
         if (branch) searchParams.until = branch;
 
-        const data = await clients.api
-          .get(`projects/${resolvedProject}/repos/${repository}/commits`, {
-            searchParams,
-          })
-          .json<{ values: Commit[]; size: number; isLastPage: boolean }>();
+        const data = await getPaginated(
+          clients.api,
+          `projects/${resolvedProject}/repos/${repository}/commits`,
+          { searchParams },
+        );
 
-        let commits = data.values;
+        let commits = data.values as Commit[];
 
         if (author) {
           const authorLower = author.toLowerCase();

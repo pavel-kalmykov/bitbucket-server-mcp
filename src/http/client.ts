@@ -1,6 +1,7 @@
 import ky, { type KyInstance, type Options } from "ky";
 import type { BitbucketConfig } from "../types.js";
 import { logger } from "../logging.js";
+import { validatePaginated, type Paginated } from "../response/validate.js";
 
 export interface ApiClients {
   api: KyInstance;
@@ -111,4 +112,15 @@ export function createApiClients(config: BitbucketConfig): ApiClients {
     branchUtils: create("/rest/branch-utils/1.0"),
     defaultReviewers: create("/rest/default-reviewers/1.0"),
   };
+}
+
+export function getPaginated(
+  client: KyInstance,
+  url: string,
+  options?: Options,
+): Promise<Paginated> {
+  return client
+    .get(url, options)
+    .json()
+    .then((r) => validatePaginated(r, url));
 }
