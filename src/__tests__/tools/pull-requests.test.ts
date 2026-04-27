@@ -5,6 +5,7 @@ import {
   callAndParse,
   expectCalledWithJson,
   expectCalledWithSearchParams,
+  expectCalledWithStrictJson,
   setupToolHarness,
 } from "../tool-test-utils.js";
 
@@ -389,6 +390,43 @@ describe("Pull request tools", () => {
         title: "Keep me",
         description: "New desc",
       });
+    });
+
+    test("should not send author field in PUT body", async () => {
+      // The GET response includes `author`, which the Bitbucket PUT endpoint
+      // rejects with 400. Verify the tool strips it before sending.
+      const existingPr = {
+        id: 12,
+        version: 2,
+        title: "Old title",
+        description: "Old desc",
+        toRef: { id: "refs/heads/main", displayId: "main" },
+        reviewers: [],
+        author: { user: { name: "alice", slug: "alice" } },
+      };
+
+      mockJson(h.mockClients.api.get, existingPr);
+      mockJson(h.mockClients.api.put, { ...existingPr, title: "New title" });
+
+      await callAndParse(h.client, "update_pull_request", {
+        project: "PROJ",
+        repository: "my-repo",
+        prId: 12,
+        title: "New title",
+      });
+
+      expectCalledWithStrictJson(
+        h.mockClients.api.put,
+        "projects/PROJ/repos/my-repo/pull-requests/12",
+        {
+          id: 12,
+          version: 2,
+          title: "New title",
+          description: "Old desc",
+          toRef: { id: "refs/heads/main", displayId: "main" },
+          reviewers: [],
+        },
+      );
     });
   });
 

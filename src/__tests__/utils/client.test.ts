@@ -1,8 +1,9 @@
-import { describe, test, expect } from "vitest";
+import { describe, test, expect, vi, afterEach } from "vitest";
 import { http, HttpResponse } from "msw";
 import { createApiClients } from "../../http/client.js";
 import type { BitbucketConfig } from "../../types.js";
 import { setupHttpCapture } from "../http-test-utils.js";
+import { logger } from "../../logging.js";
 
 const { captured, server } = setupHttpCapture();
 
@@ -194,18 +195,17 @@ describe("createApiClients", () => {
     test.each([408, 429, 500, 502, 503, 504])(
       "retries GET on status %i",
       async (status) => {
-        let attempts = 0;
+        const respond = vi
+          .fn()
+          .mockReturnValueOnce(new HttpResponse(null, { status }))
+          .mockReturnValue(HttpResponse.json({ values: [] }));
         server.use(
-          http.get("https://git.example.com/rest/api/1.0/projects", () => {
-            attempts++;
-            if (attempts < 2) return new HttpResponse(null, { status });
-            return HttpResponse.json({ values: [] });
-          }),
+          http.get("https://git.example.com/rest/api/1.0/projects", respond),
         );
 
         const clients = createApiClients(baseConfig({ token: "t" }));
         await clients.api.get("projects").json();
-        expect(attempts).toBe(2);
+        expect(respond).toHaveBeenCalledTimes(2);
       },
     );
 
@@ -253,6 +253,77 @@ describe("createApiClients", () => {
     }, 35_000);
   });
 
+  describe("URL redaction (value-based, not key-name heuristic)", () => {
+    afterEach(() => vi.restoreAllMocks());
+
+    test("redacts token value wherever it appears in the logged URL", async () => {
+      const debugSpy = vi.spyOn(logger, "debug");
+      const clients = createApiClients(
+        baseConfig({ token: "super-secret-token" }),
+      );
+      // Simulate the token leaking into a query param (e.g. via a misconfigured base URL)
+      await clients.api
+        .get("projects", {
+          searchParams: { access_token: "super-secret-token" },
+        })
+        .json()
+        .catch(() => undefined);
+      expect(debugSpy).not.toHaveBeenCalledWith(
+        expect.stringContaining("super-secret-token"),
+      );
+      expect(debugSpy).toHaveBeenCalledWith(
+        expect.stringContaining("[REDACTED]"),
+      );
+    });
+
+    test("redacts password value wherever it appears in the logged URL", async () => {
+      const debugSpy = vi.spyOn(logger, "debug");
+      const clients = createApiClients(
+        baseConfig({ username: "alice", password: "hunter2" }),
+      );
+      await clients.api
+        .get("projects", { searchParams: { pw: "hunter2" } })
+        .json()
+        .catch(() => undefined);
+      expect(debugSpy).not.toHaveBeenCalledWith(
+        expect.stringContaining("hunter2"),
+      );
+      expect(debugSpy).toHaveBeenCalledWith(
+        expect.stringContaining("[REDACTED]"),
+      );
+    });
+
+    test("redacts custom header values wherever they appear in the logged URL", async () => {
+      const debugSpy = vi.spyOn(logger, "debug");
+      const clients = createApiClients(
+        baseConfig({ customHeaders: { "X-ZTA-Token": "zta-secret-xyz" } }),
+      );
+      await clients.api
+        .get("projects", { searchParams: { tok: "zta-secret-xyz" } })
+        .json()
+        .catch(() => undefined);
+      expect(debugSpy).not.toHaveBeenCalledWith(
+        expect.stringContaining("zta-secret-xyz"),
+      );
+      expect(debugSpy).toHaveBeenCalledWith(
+        expect.stringContaining("[REDACTED]"),
+      );
+    });
+
+    test("does not redact innocent values that share a key name with credential params", async () => {
+      const debugSpy = vi.spyOn(logger, "debug");
+      const clients = createApiClients(baseConfig({ token: "real-secret" }));
+      await clients.api
+        .get("projects", { searchParams: { auth: "public-value" } })
+        .json()
+        .catch(() => undefined);
+      // "auth=public-value" must not be redacted -- key-name heuristic is gone
+      expect(debugSpy).toHaveBeenCalledWith(
+        expect.stringContaining("public-value"),
+      );
+    });
+  });
+
   describe("beforeRequest hook sets auth headers on every request", () => {
     test("all auth headers are present on a GET request", async () => {
       const clients = createApiClients(
@@ -285,6 +356,78 @@ describe("createApiClients", () => {
         clients.api.post("test", { json: {} }).json(),
       ).rejects.toThrow();
       expect(attempts).toBe(1);
+    });
+  });
+
+  // X-RateLimit-Reset handling is applied by ky's built-in rate-limit logic
+  // (afterResponse fires, ky sleeps, then retry). Our afterResponse hook adds
+  // a warning log before the sleep.
+  describe("429 X-RateLimit-Reset handling", () => {
+    afterEach(() => vi.restoreAllMocks());
+
+    test("retries 429 without X-RateLimit-Reset without any rate-limit warning", async () => {
+      const warnSpy = vi.spyOn(logger, "warn");
+      const respond = vi
+        .fn()
+        .mockReturnValueOnce(new HttpResponse(null, { status: 429 }))
+        .mockReturnValue(HttpResponse.json({}));
+      server.use(
+        http.get("https://git.example.com/rest/api/1.0/projects", respond),
+      );
+      const clients = createApiClients(baseConfig({ token: "t" }));
+      await clients.api.get("projects").json();
+      expect(respond).toHaveBeenCalledTimes(2);
+      expect(warnSpy).not.toHaveBeenCalledWith(
+        expect.stringContaining("Rate limited"),
+      );
+    });
+
+    test("retries 429 with expired X-RateLimit-Reset without any rate-limit warning", async () => {
+      const warnSpy = vi.spyOn(logger, "warn");
+      const expiredReset = String(Math.floor(Date.now() / 1000) - 10);
+      const respond = vi
+        .fn()
+        .mockReturnValueOnce(
+          new HttpResponse(null, {
+            status: 429,
+            headers: { "X-RateLimit-Reset": expiredReset },
+          }),
+        )
+        .mockReturnValue(HttpResponse.json({}));
+      server.use(
+        http.get("https://git.example.com/rest/api/1.0/projects", respond),
+      );
+      const clients = createApiClients(baseConfig({ token: "t" }));
+      const start = Date.now();
+      await clients.api.get("projects").json();
+      expect(respond).toHaveBeenCalledTimes(2);
+      expect(Date.now() - start).toBeLessThan(500);
+      expect(warnSpy).not.toHaveBeenCalledWith(
+        expect.stringContaining("Rate limited"),
+      );
+    });
+
+    test("logs rate-limit warning when X-RateLimit-Reset is in the near future", async () => {
+      const warnSpy = vi.spyOn(logger, "warn");
+      const nearFutureReset = String(Math.ceil((Date.now() + 500) / 1000));
+      const respond = vi
+        .fn()
+        .mockReturnValueOnce(
+          new HttpResponse(null, {
+            status: 429,
+            headers: { "X-RateLimit-Reset": nearFutureReset },
+          }),
+        )
+        .mockReturnValue(HttpResponse.json({}));
+      server.use(
+        http.get("https://git.example.com/rest/api/1.0/projects", respond),
+      );
+      const clients = createApiClients(baseConfig({ token: "t" }));
+      await clients.api.get("projects").json();
+      expect(respond).toHaveBeenCalledTimes(2);
+      expect(warnSpy).toHaveBeenCalledWith(
+        expect.stringContaining("Rate limited; waiting"),
+      );
     });
   });
 });
