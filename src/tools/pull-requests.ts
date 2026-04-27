@@ -253,9 +253,11 @@ export function registerPullRequestTools(ctx: ToolContext) {
           )
           .json<PullRequest>();
 
-        // Merge only changed fields
+        // Only send the fields the PUT endpoint accepts. Spreading the full
+        // PR object causes a 400 because the API rejects fields like `author`.
         const updated: Record<string, unknown> = {
-          ...current,
+          id: current.id,
+          version: current.version,
           title: title ?? current.title,
           description: description ?? current.description,
           toRef: targetBranch
