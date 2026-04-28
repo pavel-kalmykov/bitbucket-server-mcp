@@ -1,3 +1,10 @@
+## [0.8.2](https://github.com/pavel-kalmykov/bitbucket-server-mcp/compare/v0.8.1...v0.8.2) (2026-04-28)
+
+
+### Bug Fixes
+
+* **ci:** tolerate empty grep result in release notification script ([a161bad](https://github.com/pavel-kalmykov/bitbucket-server-mcp/commit/a161bad26da6fc16bafb5c913dd487dc1d6c51a4))
+
 ## [0.8.1](https://github.com/pavel-kalmykov/bitbucket-server-mcp/compare/v0.8.0...v0.8.1) (2026-04-28)
 
 
