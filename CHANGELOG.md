@@ -1,3 +1,15 @@
+## [0.8.1](https://github.com/pavel-kalmykov/bitbucket-server-mcp/compare/v0.8.0...v0.8.1) (2026-04-28)
+
+
+### Bug Fixes
+
+* API hardening (response validation, rate limit, token redaction, field defaults, update_pr bug) ([94fec39](https://github.com/pavel-kalmykov/bitbucket-server-mcp/commit/94fec39e1aad554cd5bde08cf1c21ecb7ea04b59))
+* **http:** value-based URL redaction and 429 rate-limit warning ([32650f0](https://github.com/pavel-kalmykov/bitbucket-server-mcp/commit/32650f0063bd39be3ce9af9378983e6a201b4b23))
+* **response:** include committer fields in DEFAULT_COMMIT_FIELDS ([0f33f80](https://github.com/pavel-kalmykov/bitbucket-server-mcp/commit/0f33f80f9bf674412b8382f4ff797faf57c252bd))
+* **response:** validate paginated API responses with Zod ([1cbc93f](https://github.com/pavel-kalmykov/bitbucket-server-mcp/commit/1cbc93f06ed48e287aec5b54fa9b71148c102288))
+* **tools:** mention fields param in read tool descriptions ([4a99e71](https://github.com/pavel-kalmykov/bitbucket-server-mcp/commit/4a99e71da0b66251b6a04cb8d8bbbbfbfaff9b92))
+* **tools:** stop sending author field in update_pull_request PUT body ([81d8306](https://github.com/pavel-kalmykov/bitbucket-server-mcp/commit/81d83063f1c9452feb6ab58557db0c9cc41e82a3))
+
 # [0.8.0](https://github.com/pavel-kalmykov/bitbucket-server-mcp/compare/v0.7.0...v0.8.0) (2026-04-22)
 
 
