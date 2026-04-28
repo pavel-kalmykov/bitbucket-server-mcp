@@ -1,3 +1,10 @@
+## [0.8.3](https://github.com/pavel-kalmykov/bitbucket-server-mcp/compare/v0.8.2...v0.8.3) (2026-04-28)
+
+
+### Bug Fixes
+
+* **deps:** resolve 4 npm audit vulnerabilities in devDependencies ([8677aa5](https://github.com/pavel-kalmykov/bitbucket-server-mcp/commit/8677aa586c0d642d2346d36f2be077113312c62d))
+
 ## [0.8.2](https://github.com/pavel-kalmykov/bitbucket-server-mcp/compare/v0.8.1...v0.8.2) (2026-04-28)
 
 
