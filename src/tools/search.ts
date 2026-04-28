@@ -11,7 +11,7 @@ export function registerSearchTools(ctx: ToolContext) {
     "search",
     {
       description:
-        "Search for code or files across Bitbucket repositories. Supports filtering by project, repository, and search type.",
+        "Search for code or files across Bitbucket repositories. Supports filtering by project, repository, and search type. Supports custom field selection via the `fields` param (`'*all'` for full raw response, `'file,hitCount'` for a custom subset).",
       inputSchema: {
         query: z.string().describe("Search query string."),
         project: z
@@ -49,7 +49,15 @@ export function registerSearchTools(ctx: ToolContext) {
       },
       annotations: toolAnnotations({ openWorldHint: true }),
     },
-    async ({ query, project, repository, type, limit = 25, start = 0, fields }) => {
+    async ({
+      query,
+      project,
+      repository,
+      type,
+      limit = 25,
+      start = 0,
+      fields,
+    }) => {
       try {
         let effectiveQuery = query;
 

@@ -8,6 +8,7 @@ import {
   curateList,
   DEFAULT_PR_FIELDS,
 } from "../response/curate.js";
+import { getPaginated } from "../http/client.js";
 import { mergeDefaultReviewers } from "./shared.js";
 import type { ToolContext } from "./shared.js";
 import type {
@@ -175,7 +176,7 @@ export function registerPullRequestTools(ctx: ToolContext) {
     "get_pull_request",
     {
       description:
-        "Get details of a specific pull request including status, reviewers, and metadata.",
+        "Get details of a specific pull request including status, reviewers, and metadata. Supports custom field selection via the `fields` param (`'*all'` for full raw response, `'id,title,state'` for a custom subset).",
       inputSchema: {
         project: z
           .string()
@@ -252,9 +253,11 @@ export function registerPullRequestTools(ctx: ToolContext) {
           )
           .json<PullRequest>();
 
-        // Merge only changed fields
+        // Only send the fields the PUT endpoint accepts. Spreading the full
+        // PR object causes a 400 because the API rejects fields like `author`.
         const updated: Record<string, unknown> = {
-          ...current,
+          id: current.id,
+          version: current.version,
           title: title ?? current.title,
           description: description ?? current.description,
           toRef: targetBranch
@@ -405,7 +408,7 @@ export function registerPullRequestTools(ctx: ToolContext) {
     "list_pull_requests",
     {
       description:
-        "List pull requests in a repository. Supports filtering by state, direction, order, and client-side author filtering.",
+        "List pull requests in a repository. Supports filtering by state, direction, order, and client-side author filtering. Supports custom field selection via the `fields` param (`'*all'` for full raw response, `'id,title,state'` for a custom subset).",
       inputSchema: {
         project: z
           .string()
@@ -465,18 +468,13 @@ export function registerPullRequestTools(ctx: ToolContext) {
         if (direction) searchParams.direction = direction;
         if (order) searchParams.order = order;
 
-        const data = await clients.api
-          .get(
-            `projects/${resolvedProject}/repos/${repository}/pull-requests`,
-            { searchParams },
-          )
-          .json<{
-            values: PullRequest[];
-            size: number;
-            isLastPage: boolean;
-          }>();
+        const data = await getPaginated(
+          clients.api,
+          `projects/${resolvedProject}/repos/${repository}/pull-requests`,
+          { searchParams },
+        );
 
-        let pullRequests = data.values;
+        let pullRequests = data.values as PullRequest[];
 
         if (author) {
           const authorLower = author.toLowerCase();
@@ -509,7 +507,7 @@ export function registerPullRequestTools(ctx: ToolContext) {
     "get_dashboard_pull_requests",
     {
       description:
-        "Get pull requests from the authenticated user dashboard. No project/repo needed.",
+        "Get pull requests from the authenticated user dashboard. No project/repo needed. Supports custom field selection via the `fields` param (`'*all'` for full raw response, `'id,title,state'` for a custom subset).",
       inputSchema: {
         state: z
           .enum(["OPEN", "MERGED", "DECLINED", "ALL"])
@@ -564,15 +562,13 @@ export function registerPullRequestTools(ctx: ToolContext) {
         if (order) searchParams.order = order;
         if (closedSince) searchParams.closedSince = closedSince;
 
-        const data = await clients.api
-          .get("dashboard/pull-requests", {
+        const data = await getPaginated(
+          clients.api,
+          "dashboard/pull-requests",
+          {
             searchParams,
-          })
-          .json<{
-            values: Record<string, unknown>[];
-            size: number;
-            isLastPage: boolean;
-          }>();
+          },
+        );
 
         return formatResponse({
           ...data,
@@ -629,14 +625,13 @@ export function registerPullRequestTools(ctx: ToolContext) {
     }) => {
       try {
         const resolvedProject = ctx.resolveProject(project);
-        const data = await clients.api
-          .get(
-            `projects/${resolvedProject}/repos/${repository}/pull-requests/${prId}/activities`,
-            { searchParams: { limit, start } },
-          )
-          .json<{ values: Activity[]; isLastPage: boolean; size: number }>();
+        const data = await getPaginated(
+          clients.api,
+          `projects/${resolvedProject}/repos/${repository}/pull-requests/${prId}/activities`,
+          { searchParams: { limit, start } },
+        );
 
-        let activities = data.values;
+        let activities = data.values as Activity[];
 
         if (excludeUsers?.length) {
           const excluded = new Set(excludeUsers.map((u) => u.toLowerCase()));

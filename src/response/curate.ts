@@ -22,7 +22,10 @@ export const DEFAULT_SEARCH_FIELDS =
   "repository.slug,repository.name,repository.project.key";
 
 export const DEFAULT_COMMIT_FIELDS =
-  "id,displayId,message,author.name,author.emailAddress,authorTimestamp,parents.id";
+  "id,displayId,message," +
+  "author.name,author.emailAddress,authorTimestamp," +
+  "committer.name,committer.emailAddress,committerTimestamp," +
+  "parents.id";
 
 function pickFieldsFromObject(
   source: Record<string, unknown>,
