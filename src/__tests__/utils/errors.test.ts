@@ -20,7 +20,7 @@ const { server } = setupHttpCapture();
  */
 type RestErrors = components["schemas"]["RestErrors"];
 
-describe("formatApiError (decision table per status code)", () => {
+describe("formatApiError (status code)", () => {
   // Stable substrings: short, semantically meaningful words unlikely to be
   // reworded. A rename to "Auth failed" or "Access denied" still passes.
   test.each<[number, RegExp]>([
@@ -180,17 +180,6 @@ type ExtendedError = components["schemas"]["RestErrorMessage"] & {
 type ExtendedErrors = { errors: ExtendedError[] };
 
 describe("extractBitbucketMessage — reviewerErrors and validReviewers extraction", () => {
-  // Decision table for reviewerErrors:
-  // | reviewerErrors present | is array | element valid | has message | has context | output                                          |
-  // |------------------------|----------|---------------|-------------|-------------|-------------------------------------------------|
-  // | F                      | –        | –             | –           | –           | no reviewer text                                |
-  // | T, not array           | F        | –             | –           | –           | no reviewer text                                |
-  // | T                      | T        | F (null)      | –           | –           | no reviewer text                                |
-  // | T                      | T        | F (non-obj)   | –           | –           | no reviewer text                                |
-  // | T                      | T        | T             | F           | –           | no reviewer text                                |
-  // | T                      | T        | T             | T           | F           | reviewer: {msg}                                 |
-  // | T                      | T        | T             | T           | T           | reviewer "{ctx}": {msg}                         |
-
   test("single reviewerError with context and message", () => {
     const body: ExtendedErrors = {
       errors: [
@@ -297,18 +286,6 @@ describe("extractBitbucketMessage — reviewerErrors and validReviewers extracti
     // The null element should not crash or produce garbage
     expect(result).not.toContain("null");
   });
-
-  // Decision table for validReviewers:
-  // | validReviewers present | is array | length > 0 | element shape       | user.name valid | output                                         |
-  // |------------------------|----------|------------|---------------------|----------------|-------------------------------------------------|
-  // | F                      | –        | –          | –                   | –              | no validReviewers text                          |
-  // | T, not array           | F        | –          | –                   | –              | no validReviewers text                          |
-  // | T                      | T        | F          | –                   | –              | no validReviewers text                          |
-  // | T                      | T        | T          | null                | –              | no validReviewers text                          |
-  // | T                      | T        | T          | non-object          | –              | String(vr) in list                             |
-  // | T                      | T        | T          | object, user=null   | –              | String(vr) in list                             |
-  // | T                      | T        | T          | object, user valid  | non-empty str  | name in brackets                                |
-  // | T                      | T        | T          | object, user valid  | empty str      | filtered out (not added)                        |
 
   test("single validReviewer with user.name", () => {
     const body: ExtendedErrors = {
@@ -554,23 +531,6 @@ describe("handleToolError (real ky HTTPError via msw)", () => {
     // "Server response:" is required.
     expect(result.content[0].text).toMatch(/Server response: .{3,}/);
   });
-
-  // Decision table for hasExceptionName (exercised through handleToolError):
-  // | errors is Array | length > 0 | element has string excName | excName non-empty | branch                        |
-  // |-----------------|------------|----------------------------|-------------------|-------------------------------|
-  // | F               | –          | –                          | –                 | formatApiError (guidance)     |
-  // | T               | F          | –                          | –                 | formatApiError                |
-  // | T               | T          | F (missing)                | –                 | formatApiError                |
-  // | T               | T          | T                          | F ("")            | formatApiError                |
-  // | T               | T          | T                          | T                 | structured (direct body)      |
-  //
-  // The last row is already covered by the "Bitbucket error body" and
-  // "structured Bitbucket error body is returned directly" tests above.
-  //
-  // Additional branch: mixed exceptionName presence (some elements have a
-  // valid one, others don't).  `.some()` returns true because at least one
-  // element qualifies; `.every()` returns false.  This kills the
-  // MethodExpression mutant that swaps `.some` for `.every`.
 
   test("mixed exceptionName presence: some() returns true, structured path taken", async () => {
     const body = {

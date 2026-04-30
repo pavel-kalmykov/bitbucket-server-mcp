@@ -13,6 +13,31 @@ concurrency:
   cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
 
 jobs:
+  lint:
+    name: Lint and static analysis
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: step-security/harden-runner@8d3c67de8e2fe68ef647c8db1e6a09f647780f40 # v2.19.0
+        with:
+          egress-policy: audit
+
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: 24.x
+          cache: npm
+
+      - run: npm ci
+
+      - run: npm run lint
+
+      - run: npm run check:deadcode
+
+      - run: npm run check:deadcode:types
+
   build:
     name: Build and test (Node ${{ matrix.node-version }})
     runs-on: ubuntu-latest
@@ -34,18 +59,6 @@ jobs:
           cache: npm
 
       - run: npm ci
-
-      - name: Lint
-        if: matrix.node-version == '24.x'
-        run: npm run lint
-
-      - name: Dead code check (fallow)
-        if: matrix.node-version == '24.x'
-        run: npm run check:deadcode
-
-      - name: Dead type check (knip)
-        if: matrix.node-version == '24.x'
-        run: npm run check:deadcode:types
 
       - name: Test
         run: ${{ matrix.node-version == '24.x' && 'npm run test:coverage' || 'npm test' }}
