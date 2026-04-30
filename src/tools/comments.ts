@@ -244,21 +244,7 @@ export function registerCommentTools(ctx: ToolContext) {
           clients,
           basePath,
           resolvedProject,
-          repository: params.repository,
-          prId: params.prId,
-          text: params.text,
-          commentId: params.commentId,
-          version: params.version,
-          parentId: params.parentId,
-          state: params.state,
-          severity: params.severity,
-          threadResolved: params.threadResolved,
-          filePath: params.filePath,
-          line: params.line,
-          lineType: params.lineType,
-          diffType: params.diffType,
-          fileType: params.fileType,
-          emoticon: params.emoticon,
+          ...params,
         });
       } catch (error) {
         return handleToolError(error);
