@@ -48,6 +48,72 @@ export function formatApiError(
  * on most failures, so prefer that shape. Fall back to a generic `.message`
  * field, then to the raw body (truncated).
  */
+function hasExceptionName(data: unknown): boolean {
+  if (data == null || typeof data !== "object") return false;
+  const body = data as { errors?: unknown };
+  if (!Array.isArray(body.errors) || body.errors.length === 0) return false;
+  return body.errors.some(
+    (e) =>
+      e != null &&
+      typeof e === "object" &&
+      typeof (e as Record<string, unknown>).exceptionName === "string" &&
+      (e as Record<string, unknown>).exceptionName !== "",
+  );
+}
+
+function formatReviewerErrors(reviewerErrors: unknown): string | undefined {
+  if (!Array.isArray(reviewerErrors)) return undefined;
+
+  const parts: string[] = [];
+  for (const re of reviewerErrors) {
+    if (!(re && typeof re === "object")) continue;
+    const r = re as Record<string, unknown>;
+    const ctx = typeof r.context === "string" ? r.context : null;
+    const rMsg = typeof r.message === "string" ? r.message : null;
+    if (rMsg) {
+      parts.push(ctx ? `reviewer "${ctx}": ${rMsg}` : `reviewer: ${rMsg}`);
+    }
+  }
+  return parts.length > 0 ? parts.join("; ") : undefined;
+}
+
+function formatValidReviewers(validReviewers: unknown): string | undefined {
+  if (!Array.isArray(validReviewers) || validReviewers.length === 0)
+    return undefined;
+
+  const names = validReviewers
+    .map((vr) => {
+      if (vr == null) return undefined;
+      if (typeof vr === "object") {
+        const v = vr as Record<string, unknown>;
+        return v.user && typeof v.user === "object"
+          ? (v.user as Record<string, unknown>).name
+          : String(vr);
+      }
+      return String(vr);
+    })
+    .filter((n): n is string => typeof n === "string" && n.length > 0);
+
+  return names.length > 0 ? `validReviewers: [${names.join(", ")}]` : undefined;
+}
+
+function formatErrorParts(e: Record<string, unknown>): string {
+  const pieces: string[] = [];
+
+  const core = [e.exceptionName, e.message].filter(
+    (s): s is string => typeof s === "string" && s.length > 0,
+  );
+  pieces.push(...core);
+
+  const reviewerText = formatReviewerErrors(e.reviewerErrors);
+  if (reviewerText) pieces.push(reviewerText);
+
+  const validReviewersText = formatValidReviewers(e.validReviewers);
+  if (validReviewersText) pieces.push(validReviewersText);
+
+  return pieces.join(": ");
+}
+
 export function extractBitbucketMessage(data: unknown): string {
   if (data == null) return "";
 
@@ -61,12 +127,7 @@ export function extractBitbucketMessage(data: unknown): string {
 
   if (Array.isArray(body.errors) && body.errors.length > 0) {
     const parts = (body.errors as Array<Record<string, unknown>>)
-      .map((e) => {
-        const pieces = [e.exceptionName, e.message].filter(
-          (s): s is string => typeof s === "string" && s.length > 0,
-        );
-        return pieces.join(": ");
-      })
+      .map(formatErrorParts)
       .filter((s) => s.length > 0);
     if (parts.length > 0) return parts.join("; ");
   }
@@ -91,8 +152,20 @@ export function extractBitbucketMessage(data: unknown): string {
 export function handleToolError(error: unknown): ToolErrorResult {
   if (error instanceof HTTPError) {
     const { status } = error.response;
-    const msg = extractBitbucketMessage(error.data) || error.message;
+    const body = extractBitbucketMessage(error.data);
+    const msg = body || error.message;
     logger.error(`API error ${status}`, msg);
+
+    // Surface structured Bitbucket errors directly — the server's
+    // exceptionName + message (+ reviewerErrors, etc.) is more actionable
+    // than any generic status-based guidance we could add.
+    if (hasExceptionName(error.data)) {
+      return {
+        content: [{ type: "text", text: msg }],
+        isError: true,
+      };
+    }
+
     return formatApiError(status, msg);
   }
 

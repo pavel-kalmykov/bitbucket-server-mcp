@@ -422,7 +422,9 @@ export function registerPullRequestTools(ctx: ToolContext) {
         author: z
           .string()
           .optional()
-          .describe("Client-side filter by author username/displayName."),
+          .describe(
+            "Client-side filter by author username/displayName. Only filters the current page of results. Use with start/limit to paginate for more matches.",
+          ),
         direction: z
           .enum(["INCOMING", "OUTGOING"])
           .optional()

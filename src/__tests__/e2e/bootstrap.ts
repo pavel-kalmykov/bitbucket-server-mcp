@@ -63,7 +63,7 @@ export async function bootstrap(api: KyInstance): Promise<Scenario> {
   return { projectKey, repoSlug, prId: pr.id };
 }
 
-export interface CommentResponse {
+interface CommentResponse {
   id: number;
   version: number;
   text: string;

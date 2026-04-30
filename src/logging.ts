@@ -4,11 +4,7 @@ type LogLevel = "debug" | "info" | "warning" | "error";
 
 let serverRef: McpServer | undefined;
 
-export function initLogging(server: McpServer) {
-  serverRef = server;
-}
-
-export function log(level: LogLevel, message: string, data?: unknown) {
+function log(level: LogLevel, message: string, data?: unknown) {
   if (!serverRef) return;
 
   try {
@@ -22,9 +18,21 @@ export function log(level: LogLevel, message: string, data?: unknown) {
   }
 }
 
-export const logger = {
+export interface Logger {
+  debug: (message: string, data?: unknown) => void;
+  info: (message: string, data?: unknown) => void;
+  warn: (message: string, data?: unknown) => void;
+  error: (message: string, data?: unknown) => void;
+}
+
+export const logger: Logger = {
   debug: (message: string, data?: unknown) => log("debug", message, data),
   info: (message: string, data?: unknown) => log("info", message, data),
   warn: (message: string, data?: unknown) => log("warning", message, data),
   error: (message: string, data?: unknown) => log("error", message, data),
 };
+
+export function attachLogger(server: McpServer): Logger {
+  serverRef = server;
+  return logger;
+}

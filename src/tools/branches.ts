@@ -113,7 +113,7 @@ export function registerBranchTools(ctx: ToolContext) {
           .string()
           .optional()
           .describe(
-            "Filter commits by author (case-insensitive match on name, slug, or displayName).",
+            "Client-side filter by author (case-insensitive match on name, slug, or displayName). Only filters the current page of results. Use with start/limit to paginate for more matches.",
           ),
         limit: z
           .number()

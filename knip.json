@@ -1,0 +1,10 @@
+{
+  "$schema": "https://unpkg.com/knip@6/schema.json",
+  "project": ["src/**/*.ts", "!src/__tests__/**", "!src/generated/bitbucket-api.d.ts"],
+  "ignore": ["src/generated/bitbucket-api.d.ts", "stryker.config.mjs"],
+  "ignoreDependencies": [
+    "@stryker-mutator/typescript-checker",
+    "@stryker-mutator/vitest-runner",
+    "@stryker-mutator/api"
+  ]
+}

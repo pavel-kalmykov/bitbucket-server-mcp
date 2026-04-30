@@ -85,7 +85,9 @@ export function createApiClients(config: BitbucketConfig): ApiClients {
                   parseInt(reset, 10) * 1000 - Date.now(),
                 );
                 if (waitMs > 0) {
-                  logger.warn(`Rate limited; waiting ${waitMs}ms for reset`);
+                  logger.warn(
+                    `Rate limited (429); reset in ${waitMs}ms, retry handled by HTTP layer`,
+                  );
                 }
               }
             }

@@ -1,8 +1,4 @@
-import {
-  GenericContainer,
-  Wait,
-  type StartedTestContainer,
-} from "testcontainers";
+import { GenericContainer, Wait } from "testcontainers";
 import ky, { type KyInstance } from "ky";
 import { mkdtemp, rm, writeFile, chmod } from "node:fs/promises";
 import { tmpdir } from "node:os";
@@ -173,5 +169,3 @@ export async function startBitbucket(
     },
   };
 }
-
-export { type StartedTestContainer };

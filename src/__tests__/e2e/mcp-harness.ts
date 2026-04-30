@@ -5,6 +5,7 @@ import { createApiClients } from "../../http/client.js";
 import { ApiCache } from "../../http/cache.js";
 import { ToolContext } from "../../tools/shared.js";
 import { registerCommentTools } from "../../tools/comments.js";
+import { logger } from "../../logging.js";
 import type { BitbucketConfig } from "../../types.js";
 import type { StartedBitbucket } from "./bitbucket-container.js";
 
@@ -40,6 +41,7 @@ export async function setupMcpAgainst(
     server,
     clients,
     cache: new ApiCache({ defaultTtlMs: 100 }),
+    logger,
   });
   registerCommentTools(ctx);
 

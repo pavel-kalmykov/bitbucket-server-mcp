@@ -12,7 +12,7 @@ import { registerSearchTools } from "./tools/search.js";
 import { registerInsightTools } from "./tools/insights.js";
 import { registerResources } from "./resources/index.js";
 import { registerPrompts } from "./prompts/index.js";
-import { initLogging } from "./logging.js";
+import { attachLogger } from "./logging.js";
 import type { BitbucketServerOptions } from "./types.js";
 import { ToolContext } from "./tools/shared.js";
 import { createRequire } from "module";
@@ -62,7 +62,7 @@ export function createServer(options?: BitbucketServerOptions) {
     },
   );
 
-  initLogging(server);
+  const log = attachLogger(server);
 
   const filteredServer = new Proxy(server, {
     get(target, prop, receiver) {
@@ -91,6 +91,7 @@ export function createServer(options?: BitbucketServerOptions) {
     server: filteredServer,
     clients,
     cache,
+    logger: log,
     defaultProject: config.defaultProject,
     maxLinesPerFile: config.maxLinesPerFile,
   });
