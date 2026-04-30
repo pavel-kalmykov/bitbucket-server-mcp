@@ -1,3 +1,11 @@
+## [0.8.4](https://github.com/pavel-kalmykov/bitbucket-server-mcp/compare/v0.8.3...v0.8.4) (2026-04-30)
+
+
+### Bug Fixes
+
+* correct rate-limit log message to reflect HTTP layer handles retries ([e9ecc56](https://github.com/pavel-kalmykov/bitbucket-server-mcp/commit/e9ecc56e27c6a731594777e9d6ebc922b56a422d))
+* surface reviewerErrors and validReviewers in Bitbucket error messages ([79c5838](https://github.com/pavel-kalmykov/bitbucket-server-mcp/commit/79c583883b636b0bfb0fca70d3868cd3079c3b7e))
+
 ## [0.8.3](https://github.com/pavel-kalmykov/bitbucket-server-mcp/compare/v0.8.2...v0.8.3) (2026-04-28)
 
 
