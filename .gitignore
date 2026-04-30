@@ -31,3 +31,5 @@ reports/
 Thumbs.db
 demo.cast
 assets/
+.playwright-mcp/
+.fallow/

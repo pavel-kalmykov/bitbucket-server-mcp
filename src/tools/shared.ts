@@ -3,7 +3,7 @@ import type { ApiClients } from "../http/client.js";
 import type { ApiCache } from "../http/cache.js";
 import type { Logger } from "../logging.js";
 
-export interface ToolContextParams {
+interface ToolContextParams {
   server: McpServer;
   clients: ApiClients;
   cache: ApiCache;

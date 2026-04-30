@@ -4,7 +4,7 @@ import { InMemoryTransport } from "@modelcontextprotocol/sdk/inMemory.js";
 import { afterEach, beforeEach, expect } from "vitest";
 import type { MockProxy } from "vitest-mock-extended";
 import type { KyInstance } from "ky";
-import { ToolContext, type ToolContextParams } from "../tools/shared.js";
+import { ToolContext } from "../tools/shared.js";
 import { ApiCache } from "../http/cache.js";
 import { logger } from "../logging.js";
 import { type MockApiClients, createMockClients } from "./test-utils.js";
@@ -46,7 +46,7 @@ export async function connectMcp(server: McpServer): Promise<McpConnection> {
  * both entry points stay in sync.
  */
 export function createTestToolContext(
-  overrides: Partial<ToolContextParams> = {},
+  overrides: Partial<ConstructorParameters<typeof ToolContext>[0]> = {},
 ): ToolContext {
   return new ToolContext({
     server: new McpServer({ name: "test", version: "1.0.0" }),

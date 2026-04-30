@@ -175,7 +175,7 @@ describe("extractBitbucketMessage (equivalence classes over response bodies)", (
 // body literals stay checked for the spec fields while allowing the extras.
 type ExtendedError = components["schemas"]["RestErrorMessage"] & {
   reviewerErrors?: Array<Record<string, unknown> | null>;
-  validReviewers?: Array<Record<string, unknown> | null>;
+  validReviewers?: Array<unknown>;
 };
 type ExtendedErrors = { errors: ExtendedError[] };
 
@@ -356,6 +356,21 @@ describe("extractBitbucketMessage — reviewerErrors and validReviewers extracti
     };
     const result = extractBitbucketMessage(body);
     expect(result).toContain("validReviewers: [[object Object]]");
+  });
+
+  test("validReviewer plain string (not an object) is included as-is", () => {
+    const body: ExtendedErrors = {
+      errors: [
+        {
+          message: "Some reviewers are not active",
+          exceptionName:
+            "com.atlassian.bitbucket.pull.InvalidPullRequestReviewersException",
+          validReviewers: ["jdoe"],
+        },
+      ],
+    };
+    const result = extractBitbucketMessage(body);
+    expect(result).toContain("validReviewers: [jdoe]");
   });
 
   test("validReviewer where user.name is empty string is filtered out", () => {

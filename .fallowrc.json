@@ -1,0 +1,67 @@
+{
+  "$schema": "https://raw.githubusercontent.com/fallow-rs/fallow/main/schema.json",
+  "entry": [
+    "src/entry.ts"
+  ],
+  "ignorePatterns": [
+    "build/**",
+    "coverage/**",
+    "dist/**",
+    ".stryker-tmp/**",
+    "stryker.config.mjs",
+    "src/generated/**"
+  ],
+  "ignoreDependencies": [
+    "@stryker-mutator/typescript-checker",
+    "@stryker-mutator/vitest-runner",
+    "@stryker-mutator/api",
+    "@stryker-mutator/core"
+  ],
+  "ignoreExports": [
+    {
+      "file": "src/__tests__/e2e/**",
+      "exports": ["*"]
+    }
+  ],
+  "rules": {
+    "unused-files": "error",
+    "unused-exports": "error",
+    "unused-types": "error",
+    "unused-dependencies": "error",
+    "unused-dev-dependencies": "error",
+    "unused-enum-members": "error",
+    "unused-class-members": "error",
+    "unresolved-imports": "error",
+    "unlisted-dependencies": "error",
+    "duplicate-exports": "error",
+    "type-only-dependencies": "error",
+    "coverage-gaps": "error",
+    "test-only-dependencies": "error",
+    "circular-dependencies": "error"
+  },
+  "duplicates": {
+    "enabled": true,
+    "mode": "strict",
+    "minTokens": 40,
+    "minLines": 4,
+    "skipLocal": false
+  },
+  "overrides": [
+    {
+      "files": [
+        "src/__tests__/utils/errors.test.ts",
+        "src/__tests__/utils/healthcheck.test.ts",
+        "src/__tests__/property/errors.prop.test.ts"
+      ],
+      "rules": {
+        "unresolved-imports": "off"
+      }
+    }
+  ],
+  "health": {
+    "maxCyclomatic": 8,
+    "maxCognitive": 10,
+    "maxCrap": 20.0,
+    "ignore": []
+  }
+}

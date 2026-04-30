@@ -39,6 +39,14 @@ jobs:
         if: matrix.node-version == '24.x'
         run: npm run lint
 
+      - name: Dead code check (fallow)
+        if: matrix.node-version == '24.x'
+        run: npm run check:deadcode
+
+      - name: Dead type check (knip)
+        if: matrix.node-version == '24.x'
+        run: npm run check:deadcode:types
+
       - name: Test
         run: ${{ matrix.node-version == '24.x' && 'npm run test:coverage' || 'npm test' }}
 
