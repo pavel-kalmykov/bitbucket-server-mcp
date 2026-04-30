@@ -141,7 +141,7 @@ For ky's `HTTPError`, `handleToolError` reads the pre-parsed body from `error.da
 
 ## Response formatting
 
-Use `formatResponse(data)` for simple JSON responses, or `formatCompactResponse(summary, details)` for audience-annotated responses (compact summary for the user, full details for the assistant).
+Use `formatResponse(data)` to wrap data in the standard MCP content format.
 
 ## Testing
 

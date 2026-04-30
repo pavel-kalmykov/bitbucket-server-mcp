@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { logger } from "../logging.js";
 
-export const paginatedSchema = z.object({
+const paginatedSchema = z.object({
   values: z.array(z.record(z.string(), z.unknown())),
   isLastPage: z.boolean(),
   size: z.number().optional(),
