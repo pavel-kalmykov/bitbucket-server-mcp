@@ -1,11 +1,13 @@
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import type { ApiClients } from "../http/client.js";
 import type { ApiCache } from "../http/cache.js";
+import type { Logger } from "../logging.js";
 
 export interface ToolContextParams {
   server: McpServer;
   clients: ApiClients;
   cache: ApiCache;
+  logger: Logger;
   defaultProject?: string;
   maxLinesPerFile?: number;
 }
@@ -14,6 +16,7 @@ export class ToolContext {
   readonly server: McpServer;
   readonly clients: ApiClients;
   readonly cache: ApiCache;
+  readonly logger: Logger;
   readonly defaultProject?: string;
   readonly maxLinesPerFile: number;
 
@@ -21,6 +24,7 @@ export class ToolContext {
     this.server = params.server;
     this.clients = params.clients;
     this.cache = params.cache;
+    this.logger = params.logger;
     this.defaultProject = params.defaultProject;
     this.maxLinesPerFile = params.maxLinesPerFile ?? 500;
   }
@@ -36,7 +40,7 @@ export class ToolContext {
   }
 }
 
-export interface ReviewerEntry {
+interface ReviewerEntry {
   user: { name: string };
 }
 

@@ -6,15 +6,16 @@ import type { MockProxy } from "vitest-mock-extended";
 import type { KyInstance } from "ky";
 import { ToolContext, type ToolContextParams } from "../tools/shared.js";
 import { ApiCache } from "../http/cache.js";
+import { logger } from "../logging.js";
 import { type MockApiClients, createMockClients } from "./test-utils.js";
 
-export interface ToolTestContext {
+interface ToolTestContext {
   readonly client: Client;
   readonly mockClients: MockApiClients;
   readonly ctx: ToolContext;
 }
 
-export interface McpConnection extends AsyncDisposable {
+interface McpConnection extends AsyncDisposable {
   readonly client: Client;
 }
 
@@ -51,6 +52,7 @@ export function createTestToolContext(
     server: new McpServer({ name: "test", version: "1.0.0" }),
     clients: createMockClients(),
     cache: new ApiCache({ defaultTtlMs: 100 }),
+    logger,
     ...overrides,
   });
 }

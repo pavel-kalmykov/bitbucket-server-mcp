@@ -1,6 +1,6 @@
 import { describe, test, expect, beforeEach, vi } from "vitest";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
-import { initLogging, logger } from "../../logging.js";
+import { attachLogger, logger } from "../../logging.js";
 
 describe("logging", () => {
   let server: McpServer;
@@ -10,7 +10,7 @@ describe("logging", () => {
     server = new McpServer({ name: "test", version: "1.0.0" });
     sendSpy = vi.fn();
     server.sendLoggingMessage = sendSpy as typeof server.sendLoggingMessage;
-    initLogging(server);
+    attachLogger(server);
   });
 
   test("logger.info should send info level message", () => {
@@ -64,8 +64,8 @@ describe("logging", () => {
   });
 
   test("should not throw when server is not initialized", () => {
-    // @ts-expect-error testing undefined to verify runtime safety
-    initLogging(undefined);
+    // Don't call attachLogger — serverRef stays undefined, same as
+    // importing logger before the server connects.
     expect(() => logger.info("no server")).not.toThrow();
   });
 
