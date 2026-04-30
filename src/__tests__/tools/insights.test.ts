@@ -81,7 +81,6 @@ describe("Insight tools", () => {
 
       expect(h.mockClients.insights.get).toHaveBeenCalledWith(
         "projects/DEFAULT/repos/my-repo/pull-requests/1/reports",
-        expect.anything(),
       );
     });
 
@@ -134,7 +133,6 @@ describe("Insight tools", () => {
 
       expect(h.mockClients.insights.get).toHaveBeenCalledWith(
         "projects/DEFAULT/repos/my-repo/pull-requests/1/reports",
-        expect.anything(),
       );
     });
 

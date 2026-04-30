@@ -28,9 +28,7 @@ export function registerInsightTools(ctx: ToolContext) {
         const basePath = `projects/${resolvedProject}/repos/${repository}/pull-requests/${pullRequestId}`;
 
         const reportsData = await clients.insights
-          .get(`${basePath}/reports`, {
-            searchParams: {},
-          })
+          .get(`${basePath}/reports`)
           .json<{ values: InsightReport[] }>();
 
         const reports = reportsData.values;
@@ -41,9 +39,7 @@ export function registerInsightTools(ctx: ToolContext) {
               .filter((r): r is InsightReport & { key: string } => !!r.key)
               .map(async (r) => {
                 const values = await clients.insights
-                  .get(`${basePath}/reports/${r.key}/annotations`, {
-                    searchParams: {},
-                  })
+                  .get(`${basePath}/reports/${r.key}/annotations`)
                   .json<{ values: unknown[] }>()
                   .then((d) => d.values)
                   .catch((): unknown[] => []);
