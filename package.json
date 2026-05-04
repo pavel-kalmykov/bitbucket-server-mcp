@@ -10,7 +10,7 @@
     "!build/__tests__"
   ],
   "bin": {
-    "bitbucket-server-mcp": "./build/entry.js"
+    "bitbucket-server-mcp": "build/entry.js"
   },
   "publishConfig": {
     "access": "public"
@@ -90,7 +90,7 @@
   "license": "Apache-2.0",
   "repository": {
     "type": "git",
-    "url": "https://github.com/pavel-kalmykov/bitbucket-server-mcp.git"
+    "url": "git+https://github.com/pavel-kalmykov/bitbucket-server-mcp.git"
   },
   "homepage": "https://github.com/pavel-kalmykov/bitbucket-server-mcp#readme",
   "bugs": {
