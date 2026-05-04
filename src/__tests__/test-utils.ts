@@ -17,6 +17,7 @@ export function createMockClients(): MockApiClients {
     search: mock<KyInstance>(),
     branchUtils: mock<KyInstance>(),
     defaultReviewers: mock<KyInstance>(),
+    ui: mock<KyInstance>(),
   };
 }
 
