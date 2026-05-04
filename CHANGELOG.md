@@ -1,3 +1,10 @@
+# [0.9.0](https://github.com/pavel-kalmykov/bitbucket-server-mcp/compare/v0.8.4...v0.9.0) (2026-05-04)
+
+
+### Features
+
+* add opt-in merge vetoes and build summaries to get_pull_request ([b507aa3](https://github.com/pavel-kalmykov/bitbucket-server-mcp/commit/b507aa3c0eb626a0a448dfbad78e1ad8d6fdc507))
+
 ## [0.8.4](https://github.com/pavel-kalmykov/bitbucket-server-mcp/compare/v0.8.3...v0.8.4) (2026-04-30)
 
 
