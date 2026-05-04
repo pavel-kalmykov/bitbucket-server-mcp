@@ -12,6 +12,7 @@ export interface ApiClients {
   search: KyInstance;
   branchUtils: KyInstance;
   defaultReviewers: KyInstance;
+  ui: KyInstance;
 }
 
 // Build a redactor from the actual credential values in config so that any
@@ -113,6 +114,7 @@ export function createApiClients(config: BitbucketConfig): ApiClients {
     search: create("/rest/search/latest"),
     branchUtils: create("/rest/branch-utils/1.0"),
     defaultReviewers: create("/rest/default-reviewers/1.0"),
+    ui: create("/rest/ui/latest"),
   };
 }
 

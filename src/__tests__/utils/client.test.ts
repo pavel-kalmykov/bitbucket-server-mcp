@@ -426,7 +426,7 @@ describe("createApiClients", () => {
       await clients.api.get("projects").json();
       expect(respond).toHaveBeenCalledTimes(2);
       expect(warnSpy).toHaveBeenCalledWith(
-        expect.stringContaining("Rate limited (429)"),
+        expect.stringContaining("Rate limited (429); reset in"),
       );
     });
   });

@@ -190,21 +190,56 @@ export function registerPullRequestTools(ctx: ToolContext) {
           .describe(
             "Comma-separated fields to return. Defaults to: id, title, description, state, dates, author (name, displayName, status), branches (displayId), reviewers (name, displayName, status, approved), properties (commentCount, taskCount). Use '*all' for the full API response with all nested objects.",
           ),
+        includeMergeVetoes: z
+          .boolean()
+          .optional()
+          .describe(
+            "Include merge vetoes from the /merge endpoint (default: false). Adds `mergeCheck` with canMerge, conflicted, outcome, and vetoes fields.",
+          ),
+        includeBuildSummaries: z
+          .boolean()
+          .optional()
+          .describe(
+            "Include build summaries from the UI-layer endpoint (default: false). Adds `buildSummaries` with aggregated CI status per commit. May not be available in older Bitbucket deployments.",
+          ),
       },
       annotations: toolAnnotations(),
     },
-    async ({ project, repository, prId, fields }) => {
+    async ({
+      project,
+      repository,
+      prId,
+      fields,
+      includeMergeVetoes,
+      includeBuildSummaries,
+    }) => {
       try {
         const resolvedProject = ctx.resolveProject(project);
-        const data = await clients.api
-          .get(
-            `projects/${resolvedProject}/repos/${repository}/pull-requests/${prId}`,
-          )
-          .json<PullRequest>();
+        const basePath = `projects/${resolvedProject}/repos/${repository}/pull-requests/${prId}`;
 
-        return formatResponse(
-          curateResponse(data, fields ?? DEFAULT_PR_FIELDS),
-        );
+        const [prData, mergeCheck, buildSummaries] = await Promise.all([
+          clients.api.get(basePath).json<PullRequest>(),
+          includeMergeVetoes
+            ? clients.api
+                .get(`${basePath}/merge`)
+                .json<Record<string, unknown>>()
+                .catch(() => null)
+            : null,
+          includeBuildSummaries
+            ? clients.ui
+                .get(`${basePath}/build-summaries`)
+                .json<Record<string, unknown>>()
+                .catch(() => null)
+            : null,
+        ]);
+
+        const curated = curateResponse(prData, fields ?? DEFAULT_PR_FIELDS);
+        const result: Record<string, unknown> = { ...curated };
+
+        if (mergeCheck) result.mergeCheck = mergeCheck;
+        if (buildSummaries) result.buildSummaries = buildSummaries;
+
+        return formatResponse(result);
       } catch (error) {
         return handleToolError(error);
       }
