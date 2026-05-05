@@ -266,4 +266,43 @@ export function registerBranchTools(ctx: ToolContext) {
       }
     },
   );
+
+  server.registerTool(
+    "get_commit",
+    {
+      description:
+        "Get details of a specific commit by its ID. Supports custom field selection via the `fields` param (`'*all'` for full raw response, `'id,message,author.name'` for a custom subset).",
+      inputSchema: {
+        project: z
+          .string()
+          .optional()
+          .describe("Project key. Defaults to BITBUCKET_DEFAULT_PROJECT."),
+        repository: z.string().describe("Repository slug."),
+        commitId: z.string().describe("Full commit hash."),
+        fields: z
+          .string()
+          .optional()
+          .describe(
+            "Comma-separated fields to return. Defaults to: id, displayId, message, author (name, email), authorTimestamp, committer (name, email), committerTimestamp, parents (id). Use '*all' for the full API response.",
+          ),
+      },
+      annotations: toolAnnotations(),
+    },
+    async ({ project, repository, commitId, fields }) => {
+      try {
+        const resolvedProject = ctx.resolveProject(project);
+        const data = await clients.api
+          .get(
+            `projects/${resolvedProject}/repos/${repository}/commits/${commitId}`,
+          )
+          .json<Record<string, unknown>>();
+
+        return formatResponse(
+          curateResponse(data, fields ?? DEFAULT_COMMIT_FIELDS),
+        );
+      } catch (error) {
+        return handleToolError(error);
+      }
+    },
+  );
 }

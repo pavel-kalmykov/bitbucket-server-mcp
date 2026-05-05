@@ -64,6 +64,7 @@ describe("Tool schema contract: descriptions", () => {
     { name: "list_branches", contains: "default branch" },
     { name: "list_commits", contains: "author" },
     { name: "manage_branches", contains: "create a new branch" },
+    { name: "get_commit", contains: "commit by its ID" },
     { name: "manage_comment", contains: "inline" },
     { name: "search_emoticons", contains: "shortcut" },
     { name: "submit_review", contains: "approve" },
@@ -95,6 +96,7 @@ describe("Tool schema contract: required fields", () => {
     { name: "list_branches", required: ["repository"] },
     { name: "list_commits", required: ["repository"] },
     { name: "manage_branches", required: ["action", "repository", "branch"] },
+    { name: "get_commit", required: ["repository", "commitId"] },
     { name: "manage_comment", required: ["action", "repository", "prId"] },
     { name: "search_emoticons", required: ["query"] },
     { name: "submit_review", required: ["action", "repository", "prId"] },
@@ -159,6 +161,7 @@ describe("Tool schema contract: field descriptions", () => {
     { tool: "list_commits", field: "author", contains: "case-insensitive" },
     { tool: "manage_branches", field: "action", contains: "Operation" },
     { tool: "manage_branches", field: "startPoint", contains: "branch from" },
+    { tool: "get_commit", field: "commitId", contains: "commit hash" },
     {
       tool: "upload_attachment",
       field: "filePath",
@@ -308,6 +311,10 @@ describe("Tool schema contract: annotations", () => {
       },
     },
     {
+      name: "get_commit",
+      expected: { readOnlyHint: true, idempotentHint: true },
+    },
+    {
       name: "upload_attachment",
       expected: { readOnlyHint: false, idempotentHint: false },
     },
@@ -441,6 +448,7 @@ describe("Tool schema contract: all expected tools are registered", () => {
       "list_branches",
       "list_commits",
       "manage_branches",
+      "get_commit",
       "create_pull_request",
       "get_pull_request",
       "update_pull_request",
