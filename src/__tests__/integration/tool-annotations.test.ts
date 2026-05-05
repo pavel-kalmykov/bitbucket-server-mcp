@@ -116,7 +116,7 @@ describe("Tool annotations", () => {
     const destructiveTools = [
       "merge_pull_request",
       "decline_pull_request",
-      "delete_branch",
+      "manage_branches",
     ];
 
     test.each(destructiveTools)("%s is destructive", (name) => {

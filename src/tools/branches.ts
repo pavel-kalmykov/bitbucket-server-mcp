@@ -10,11 +10,54 @@ import {
 } from "../response/curate.js";
 import { getPaginated } from "../http/client.js";
 import type { ToolContext } from "./shared.js";
+import type { ApiClients } from "../http/client.js";
 import type { Commit as BaseCommit } from "../generated/types.js";
 
 // Extend: the API returns slug/displayName on author but the spec doesn't document them
 type Commit = BaseCommit & {
   author?: { name?: string; slug?: string; displayName?: string };
+};
+
+interface BranchActionContext {
+  clients: ApiClients;
+  resolvedProject: string;
+  repository: string;
+  branch: string;
+  startPoint?: string;
+}
+
+const branchActions: Record<
+  string,
+  (ctx: BranchActionContext) => Promise<ReturnType<typeof formatResponse>>
+> = {
+  create: async ({
+    clients,
+    resolvedProject,
+    repository,
+    branch,
+    startPoint,
+  }) => {
+    const data = await clients.branchUtils
+      .post(`projects/${resolvedProject}/repos/${repository}/branches`, {
+        json: { name: `refs/heads/${branch}`, startPoint },
+      })
+      .json();
+    return formatResponse(data);
+  },
+  delete: async ({ clients, resolvedProject, repository, branch }) => {
+    const defaultBranch = await clients.api
+      .get(`projects/${resolvedProject}/repos/${repository}/default-branch`)
+      .json<{ displayId?: string }>();
+    if (defaultBranch.displayId === branch) {
+      throw new Error(`Cannot delete the default branch "${branch}".`);
+    }
+    await clients.branchUtils
+      .post(`projects/${resolvedProject}/repos/${repository}/branches`, {
+        json: { name: `refs/heads/${branch}`, dryRun: false },
+      })
+      .json();
+    return formatResponse({ deleted: true, branch });
+  },
 };
 
 export function registerBranchTools(ctx: ToolContext) {
@@ -181,17 +224,22 @@ export function registerBranchTools(ctx: ToolContext) {
   );
 
   server.registerTool(
-    "delete_branch",
+    "manage_branches",
     {
       description:
-        "Delete a branch from a repository. Refuses to delete the default branch.",
+        'Manage branches in a repository. Actions: "create" (create a new branch), "delete" (delete a branch). Refuses to delete the default branch.',
       inputSchema: {
+        action: z.enum(["create", "delete"]).describe("Operation to perform."),
         project: z
           .string()
           .optional()
           .describe("Project key. Defaults to BITBUCKET_DEFAULT_PROJECT."),
         repository: z.string().describe("Repository slug."),
-        branch: z.string().describe("Branch name to delete."),
+        branch: z.string().describe("Branch name."),
+        startPoint: z
+          .string()
+          .optional()
+          .describe("Ref to branch from (create only)."),
       },
       annotations: toolAnnotations({
         readOnlyHint: false,
@@ -199,25 +247,20 @@ export function registerBranchTools(ctx: ToolContext) {
         idempotentHint: false,
       }),
     },
-    async ({ project, repository, branch }) => {
+    async ({ action, project, repository, branch, startPoint }) => {
       try {
         const resolvedProject = ctx.resolveProject(project);
-
-        const defaultBranch = await clients.api
-          .get(`projects/${resolvedProject}/repos/${repository}/default-branch`)
-          .json<{ displayId?: string }>();
-
-        if (defaultBranch.displayId === branch) {
-          throw new Error(`Cannot delete the default branch "${branch}".`);
+        const handler = branchActions[action];
+        if (!handler) {
+          throw new Error(`Unknown action: ${action}`);
         }
-
-        await clients.branchUtils
-          .post(`projects/${resolvedProject}/repos/${repository}/branches`, {
-            json: { name: `refs/heads/${branch}`, dryRun: false },
-          })
-          .json();
-
-        return formatResponse({ deleted: true, branch });
+        return await handler({
+          clients,
+          resolvedProject,
+          repository,
+          branch,
+          startPoint,
+        });
       } catch (error) {
         return handleToolError(error);
       }

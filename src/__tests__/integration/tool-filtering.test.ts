@@ -62,7 +62,7 @@ describe("readOnly mode", () => {
     expect(names).not.toContain("decline_pull_request");
     expect(names).not.toContain("manage_comment");
     expect(names).not.toContain("submit_review");
-    expect(names).not.toContain("delete_branch");
+    expect(names).not.toContain("manage_branches");
     expect(names).not.toContain("upload_attachment");
   });
 });
@@ -96,7 +96,7 @@ describe("default mode (no readOnly, no enabledTools)", () => {
     expect(names).toContain("decline_pull_request");
     expect(names).toContain("manage_comment");
     expect(names).toContain("submit_review");
-    expect(names).toContain("delete_branch");
+    expect(names).toContain("manage_branches");
     expect(names).toContain("upload_attachment");
   });
 });
