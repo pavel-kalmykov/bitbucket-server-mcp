@@ -3,7 +3,6 @@ import { registerBranchTools } from "../../tools/branches.js";
 import { fakeResponse, mockJson } from "../test-utils.js";
 import {
   callAndParse,
-  expectCalledWith,
   expectCalledWithSearchParams,
   setupToolHarness,
 } from "../tool-test-utils.js";
@@ -227,69 +226,6 @@ describe("Branch tools", () => {
       expect(h.mockClients.api.get).toHaveBeenCalledWith(
         "projects/DEFAULT/repos/my-repo/commits",
         expect.anything(),
-      );
-    });
-  });
-
-  describe("delete_branch", () => {
-    test("should delete a non-default branch", async () => {
-      mockJson(h.mockClients.api.get, {
-        displayId: "main",
-        id: "refs/heads/main",
-      });
-      mockJson(h.mockClients.branchUtils.post, {});
-
-      const parsed = await callAndParse<{
-        deleted: boolean;
-        branch: string;
-      }>(h.client, "delete_branch", {
-        project: "TEST",
-        repository: "my-repo",
-        branch: "feature/old",
-      });
-
-      expect(parsed.deleted).toBe(true);
-      expect(parsed.branch).toBe("feature/old");
-
-      expect(h.mockClients.branchUtils.post).toHaveBeenCalledWith(
-        "projects/TEST/repos/my-repo/branches",
-        { json: { name: "refs/heads/feature/old", dryRun: false } },
-      );
-    });
-
-    test("should refuse to delete the default branch", async () => {
-      mockJson(h.mockClients.api.get, {
-        displayId: "main",
-        id: "refs/heads/main",
-      });
-
-      const result = await h.client.callTool({
-        name: "delete_branch",
-        arguments: { project: "TEST", repository: "my-repo", branch: "main" },
-      });
-
-      const content = result.content as Array<{ type: string; text: string }>;
-      expect(content[0].text).toContain("Cannot delete the default branch");
-      expect(result.isError).toBe(true);
-
-      expect(h.mockClients.branchUtils.post).not.toHaveBeenCalled();
-    });
-
-    test("should use default project when not provided", async () => {
-      mockJson(h.mockClients.api.get, {
-        displayId: "main",
-        id: "refs/heads/main",
-      });
-      mockJson(h.mockClients.branchUtils.post, {});
-
-      await h.client.callTool({
-        name: "delete_branch",
-        arguments: { repository: "my-repo", branch: "feature/old" },
-      });
-
-      expectCalledWith(
-        h.mockClients.api.get,
-        "projects/DEFAULT/repos/my-repo/default-branch",
       );
     });
   });

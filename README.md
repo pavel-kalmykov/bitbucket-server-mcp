@@ -190,7 +190,12 @@ Or build locally: `docker build -t bitbucket-mcp .`
 |------|-------------|
 | `list_branches` | List branches with default branch detection |
 | `list_commits` | Browse commit history with branch and author filtering |
-| `delete_branch` | Delete a branch (safety check prevents deleting default branch) |
+| `manage_branches` | Create or delete branches (safety check prevents deleting default branch) |
+| `get_commit` | Get details of a specific commit by its ID |
+| `compare_refs` | List commits reachable from one ref but not another |
+| `list_tags` | List tags in a repository |
+| `manage_tags` | Create or delete tags |
+| `get_tag` | Get details of a specific tag by its name |
 
 ### Search & Insights
 

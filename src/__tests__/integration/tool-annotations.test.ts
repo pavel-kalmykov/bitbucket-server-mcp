@@ -76,6 +76,10 @@ describe("Tool annotations", () => {
       "list_commits",
       "get_code_insights",
       "get_build_status",
+      "get_commit",
+      "compare_refs",
+      "list_tags",
+      "get_tag",
     ];
 
     test.each(readOnlyTools)("%s is read-only and idempotent", (name) => {
@@ -116,7 +120,8 @@ describe("Tool annotations", () => {
     const destructiveTools = [
       "merge_pull_request",
       "decline_pull_request",
-      "delete_branch",
+      "manage_branches",
+      "manage_tags",
     ];
 
     test.each(destructiveTools)("%s is destructive", (name) => {
