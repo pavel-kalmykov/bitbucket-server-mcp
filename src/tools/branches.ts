@@ -446,48 +446,45 @@ export function registerBranchTools(ctx: ToolContext) {
     },
   );
 
-  server.registerTool(
-    "create_tag",
-    {
-      description:
-        "Create a tag in a repository pointing to a specific commit.",
-      inputSchema: {
-        project: z
-          .string()
-          .optional()
-          .describe("Project key. Defaults to BITBUCKET_DEFAULT_PROJECT."),
-        repository: z.string().describe("Repository slug."),
-        name: z.string().describe("Tag name (e.g. 'v1.0.0')."),
-        startPoint: z.string().describe("Commit hash to tag."),
-        message: z
-          .string()
-          .optional()
-          .describe("Optional message for the tag."),
-      },
-      annotations: toolAnnotations({
-        readOnlyHint: false,
-        idempotentHint: false,
-      }),
-    },
-    async ({ project, repository, name, startPoint, message }) => {
-      try {
-        const resolvedProject = ctx.resolveProject(project);
-        const data = await clients.api
-          .post(`projects/${resolvedProject}/repos/${repository}/tags`, {
-            json: {
-              name: `refs/tags/${name}`,
-              startPoint,
-              message,
-            },
-          })
-          .json<Record<string, unknown>>();
+  interface TagActionContext {
+    clients: ApiClients;
+    resolvedProject: string;
+    repository: string;
+    name: string;
+    startPoint?: string;
+    message?: string;
+  }
 
-        return formatResponse(data);
-      } catch (error) {
-        return handleToolError(error);
-      }
+  const tagActions: Record<
+    string,
+    (ctx: TagActionContext) => Promise<ReturnType<typeof formatResponse>>
+  > = {
+    create: async ({
+      clients,
+      resolvedProject,
+      repository,
+      name,
+      startPoint,
+      message,
+    }) => {
+      const data = await clients.api
+        .post(`projects/${resolvedProject}/repos/${repository}/tags`, {
+          json: {
+            name: `refs/tags/${name}`,
+            startPoint,
+            message,
+          },
+        })
+        .json();
+      return formatResponse(data);
     },
-  );
+    delete: async ({ clients, resolvedProject, repository, name }) => {
+      await clients.git
+        .delete(`projects/${resolvedProject}/repos/${repository}/tags/${name}`)
+        .json();
+      return formatResponse({ deleted: true, tag: name });
+    },
+  };
 
   server.registerTool(
     "get_tag",
@@ -527,16 +524,26 @@ export function registerBranchTools(ctx: ToolContext) {
   );
 
   server.registerTool(
-    "delete_tag",
+    "manage_tags",
     {
-      description: "Delete a tag from a repository by its name.",
+      description:
+        'Manage tags in a repository. Actions: "create" (create a new tag pointing to a commit), "delete" (delete a tag by name).',
       inputSchema: {
+        action: z.enum(["create", "delete"]).describe("Operation to perform."),
         project: z
           .string()
           .optional()
           .describe("Project key. Defaults to BITBUCKET_DEFAULT_PROJECT."),
         repository: z.string().describe("Repository slug."),
         name: z.string().describe("Tag name (e.g. 'v1.0.0')."),
+        startPoint: z
+          .string()
+          .optional()
+          .describe("Commit hash to tag (create only)."),
+        message: z
+          .string()
+          .optional()
+          .describe("Optional message for the tag (create only)."),
       },
       annotations: toolAnnotations({
         readOnlyHint: false,
@@ -544,16 +551,21 @@ export function registerBranchTools(ctx: ToolContext) {
         idempotentHint: false,
       }),
     },
-    async ({ project, repository, name }) => {
+    async ({ action, project, repository, name, startPoint, message }) => {
       try {
         const resolvedProject = ctx.resolveProject(project);
-        await clients.git
-          .delete(
-            `projects/${resolvedProject}/repos/${repository}/tags/${name}`,
-          )
-          .json();
-
-        return formatResponse({ deleted: true, tag: name });
+        const handler = tagActions[action];
+        if (!handler) {
+          throw new Error(`Unknown action: ${action}`);
+        }
+        return await handler({
+          clients,
+          resolvedProject,
+          repository,
+          name,
+          startPoint,
+          message,
+        });
       } catch (error) {
         return handleToolError(error);
       }

@@ -97,7 +97,6 @@ describe("Tool annotations", () => {
       "manage_comment",
       "submit_review",
       "upload_attachment",
-      "create_tag",
     ];
 
     test.each(writeTools)("%s is writable and non-idempotent", (name) => {
@@ -122,7 +121,7 @@ describe("Tool annotations", () => {
       "merge_pull_request",
       "decline_pull_request",
       "manage_branches",
-      "delete_tag",
+      "manage_tags",
     ];
 
     test.each(destructiveTools)("%s is destructive", (name) => {
