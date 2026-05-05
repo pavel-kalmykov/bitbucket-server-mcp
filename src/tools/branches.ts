@@ -7,6 +7,7 @@ import {
   curateResponse,
   DEFAULT_BRANCH_FIELDS,
   DEFAULT_COMMIT_FIELDS,
+  DEFAULT_TAG_FIELDS,
 } from "../response/curate.js";
 import { getPaginated } from "../http/client.js";
 import type { ToolContext } from "./shared.js";
@@ -374,6 +375,114 @@ export function registerBranchTools(ctx: ToolContext) {
           ),
           isLastPage: data.isLastPage,
         });
+      } catch (error) {
+        return handleToolError(error);
+      }
+    },
+  );
+
+  server.registerTool(
+    "list_tags",
+    {
+      description:
+        "List tags in a repository. Supports custom field selection via the `fields` param (`'*all'` for full raw response, `'id,displayId,hash'` for a custom subset).",
+      inputSchema: {
+        project: z
+          .string()
+          .optional()
+          .describe("Project key. Defaults to BITBUCKET_DEFAULT_PROJECT."),
+        repository: z.string().describe("Repository slug."),
+        filterText: z
+          .string()
+          .optional()
+          .describe("Filter tags by name substring."),
+        limit: z
+          .number()
+          .optional()
+          .describe("Number of tags to return (default: 25, max: 1000)."),
+        start: z
+          .number()
+          .optional()
+          .describe("Start index for pagination (default: 0)."),
+        fields: z
+          .string()
+          .optional()
+          .describe(
+            "Comma-separated fields to return. Defaults to: id, displayId, type, hash, latestCommit. Use '*all' for the full API response.",
+          ),
+      },
+      annotations: toolAnnotations(),
+    },
+    async ({
+      project,
+      repository,
+      filterText,
+      limit = 25,
+      start = 0,
+      fields,
+    }) => {
+      try {
+        const resolvedProject = ctx.resolveProject(project);
+        const searchParams: Record<string, string | number> = { limit, start };
+        if (filterText) searchParams.filterText = filterText;
+
+        const data = await getPaginated(
+          clients.api,
+          `projects/${resolvedProject}/repos/${repository}/tags`,
+          { searchParams },
+        );
+
+        return formatResponse({
+          total: data.size,
+          tags: curateList(
+            data.values as Record<string, unknown>[],
+            fields ?? DEFAULT_TAG_FIELDS,
+          ),
+          isLastPage: data.isLastPage,
+        });
+      } catch (error) {
+        return handleToolError(error);
+      }
+    },
+  );
+
+  server.registerTool(
+    "create_tag",
+    {
+      description:
+        "Create a tag in a repository pointing to a specific commit.",
+      inputSchema: {
+        project: z
+          .string()
+          .optional()
+          .describe("Project key. Defaults to BITBUCKET_DEFAULT_PROJECT."),
+        repository: z.string().describe("Repository slug."),
+        name: z.string().describe("Tag name (e.g. 'v1.0.0')."),
+        startPoint: z.string().describe("Commit hash to tag."),
+        message: z
+          .string()
+          .optional()
+          .describe("Optional message for the tag."),
+      },
+      annotations: toolAnnotations({
+        readOnlyHint: false,
+        idempotentHint: false,
+      }),
+    },
+    async ({ project, repository, name, startPoint, message }) => {
+      try {
+        const resolvedProject = ctx.resolveProject(project);
+        const data = await clients.api
+          .post(`projects/${resolvedProject}/repos/${repository}/tags`, {
+            json: {
+              name: `refs/tags/${name}`,
+              startPoint,
+              message,
+            },
+          })
+          .json<Record<string, unknown>>();
+
+        return formatResponse(data);
       } catch (error) {
         return handleToolError(error);
       }

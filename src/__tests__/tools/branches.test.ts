@@ -841,4 +841,220 @@ describe("Branch tools", () => {
       expect(result.isError).toBe(true);
     });
   });
+
+  describe("list_tags", () => {
+    test("returns tags from the API", async () => {
+      mockJson(h.mockClients.api.get, {
+        values: [
+          { id: "refs/tags/v1.0.0", displayId: "v1.0.0", type: "TAG" },
+          { id: "refs/tags/v2.0.0", displayId: "v2.0.0", type: "TAG" },
+        ],
+        size: 2,
+        isLastPage: true,
+      });
+
+      const parsed = await callAndParse<{
+        total: number;
+        tags: Array<{ displayId: string }>;
+      }>(h.client, "list_tags", {
+        project: "TEST",
+        repository: "my-repo",
+      });
+
+      expect(parsed.total).toBe(2);
+      expect(parsed.tags).toHaveLength(2);
+      expect(parsed.tags[0].displayId).toBe("v1.0.0");
+    });
+
+    test("passes filterText as search param", async () => {
+      mockJson(h.mockClients.api.get, {
+        values: [],
+        size: 0,
+        isLastPage: true,
+      });
+
+      await callAndParse(h.client, "list_tags", {
+        project: "TEST",
+        repository: "my-repo",
+        filterText: "v1",
+      });
+
+      expectCalledWithSearchParams(
+        h.mockClients.api.get,
+        "projects/TEST/repos/my-repo/tags",
+        { filterText: "v1", limit: 25, start: 0 },
+      );
+    });
+
+    test("omits filterText from searchParams when not provided", async () => {
+      mockJson(h.mockClients.api.get, {
+        values: [],
+        size: 0,
+        isLastPage: true,
+      });
+
+      await callAndParse(h.client, "list_tags", { repository: "my-repo" });
+
+      const callArgs = h.mockClients.api.get.mock.calls.find((c) =>
+        String(c[0]).endsWith("/tags"),
+      );
+      const searchParams = (
+        callArgs![1] as { searchParams: Record<string, unknown> }
+      ).searchParams;
+      expect(searchParams).not.toHaveProperty("filterText");
+    });
+
+    test("uses default project when not provided", async () => {
+      mockJson(h.mockClients.api.get, {
+        values: [],
+        size: 0,
+        isLastPage: true,
+      });
+
+      await callAndParse(h.client, "list_tags", { repository: "my-repo" });
+
+      expect(h.mockClients.api.get).toHaveBeenCalledWith(
+        "projects/DEFAULT/repos/my-repo/tags",
+        expect.anything(),
+      );
+    });
+
+    test("returns raw output when fields is '*all'", async () => {
+      mockJson(h.mockClients.api.get, {
+        values: [{ id: "refs/tags/v1.0.0", extra: "kept" }],
+        size: 1,
+        isLastPage: true,
+      });
+
+      const parsed = await callAndParse<{
+        tags: Array<{ extra: string }>;
+      }>(h.client, "list_tags", {
+        project: "TEST",
+        repository: "my-repo",
+        fields: "*all",
+      });
+
+      expect(parsed.tags[0].extra).toBe("kept");
+    });
+
+    test("returns custom fields subset when fields is provided", async () => {
+      mockJson(h.mockClients.api.get, {
+        values: [
+          { id: "refs/tags/v1.0.0", displayId: "v1.0.0", hash: "abc123" },
+        ],
+        size: 1,
+        isLastPage: true,
+      });
+
+      const parsed = await callAndParse<{
+        tags: Array<{ id: string; displayId: string }>;
+      }>(h.client, "list_tags", {
+        project: "TEST",
+        repository: "my-repo",
+        fields: "id,displayId",
+      });
+
+      expect(parsed.tags[0].id).toBe("refs/tags/v1.0.0");
+      expect(parsed.tags[0].displayId).toBe("v1.0.0");
+      expect(parsed.tags[0]).not.toHaveProperty("hash");
+    });
+
+    test("returns error when API call fails", async () => {
+      h.mockClients.api.get.mockRejectedValueOnce(new Error("Not found"));
+
+      const result = await callRaw(h.client, "list_tags", {
+        project: "TEST",
+        repository: "my-repo",
+      });
+
+      expect(result.isError).toBe(true);
+    });
+  });
+
+  describe("create_tag", () => {
+    test("creates a tag with required params", async () => {
+      mockJson(h.mockClients.api.post, {
+        id: "refs/tags/v1.0.0",
+        displayId: "v1.0.0",
+        hash: "abc123",
+      });
+
+      const parsed = await callAndParse<{
+        id: string;
+        displayId: string;
+      }>(h.client, "create_tag", {
+        project: "TEST",
+        repository: "my-repo",
+        name: "v1.0.0",
+        startPoint: "abc123",
+      });
+
+      expect(parsed.id).toBe("refs/tags/v1.0.0");
+      expect(parsed.displayId).toBe("v1.0.0");
+
+      expect(h.mockClients.api.post).toHaveBeenCalledWith(
+        "projects/TEST/repos/my-repo/tags",
+        {
+          json: {
+            name: "refs/tags/v1.0.0",
+            startPoint: "abc123",
+            message: undefined,
+          },
+        },
+      );
+    });
+
+    test("includes message in body when provided", async () => {
+      mockJson(h.mockClients.api.post, { id: "refs/tags/v1.0.0" });
+
+      await callAndParse(h.client, "create_tag", {
+        project: "TEST",
+        repository: "my-repo",
+        name: "v1.0.0",
+        startPoint: "abc123",
+        message: "Release v1.0.0",
+      });
+
+      expect(h.mockClients.api.post).toHaveBeenCalledWith(
+        "projects/TEST/repos/my-repo/tags",
+        {
+          json: {
+            name: "refs/tags/v1.0.0",
+            startPoint: "abc123",
+            message: "Release v1.0.0",
+          },
+        },
+      );
+    });
+
+    test("uses default project when not provided", async () => {
+      mockJson(h.mockClients.api.post, { id: "refs/tags/v1.0.0" });
+
+      await callAndParse(h.client, "create_tag", {
+        repository: "my-repo",
+        name: "v1.0.0",
+        startPoint: "abc123",
+      });
+
+      expect(h.mockClients.api.post).toHaveBeenCalledWith(
+        "projects/DEFAULT/repos/my-repo/tags",
+        expect.anything(),
+      );
+    });
+
+    test("returns error when API call fails", async () => {
+      h.mockClients.api.post.mockRejectedValueOnce(
+        new Error("Tag already exists"),
+      );
+
+      const result = await callRaw(h.client, "create_tag", {
+        project: "TEST",
+        repository: "my-repo",
+        name: "v1.0.0",
+        startPoint: "abc123",
+      });
+
+      expect(result.isError).toBe(true);
+    });
+  });
 });

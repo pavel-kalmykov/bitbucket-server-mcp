@@ -193,6 +193,8 @@ Or build locally: `docker build -t bitbucket-mcp .`
 | `manage_branches` | Create or delete branches (safety check prevents deleting default branch) |
 | `get_commit` | Get details of a specific commit by its ID |
 | `compare_refs` | List commits reachable from one ref but not another |
+| `list_tags` | List tags in a repository |
+| `create_tag` | Create a tag pointing to a specific commit |
 
 ### Search & Insights
 

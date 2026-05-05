@@ -27,6 +27,8 @@ export const DEFAULT_COMMIT_FIELDS =
   "committer.name,committer.emailAddress,committerTimestamp," +
   "parents.id";
 
+export const DEFAULT_TAG_FIELDS = "id,displayId,type,hash,latestCommit";
+
 function pickFieldsFromObject(
   source: Record<string, unknown>,
   fieldPaths: string[],

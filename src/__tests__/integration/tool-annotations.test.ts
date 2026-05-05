@@ -78,6 +78,7 @@ describe("Tool annotations", () => {
       "get_build_status",
       "get_commit",
       "compare_refs",
+      "list_tags",
     ];
 
     test.each(readOnlyTools)("%s is read-only and idempotent", (name) => {
@@ -95,6 +96,7 @@ describe("Tool annotations", () => {
       "manage_comment",
       "submit_review",
       "upload_attachment",
+      "create_tag",
     ];
 
     test.each(writeTools)("%s is writable and non-idempotent", (name) => {
