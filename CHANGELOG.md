@@ -1,3 +1,14 @@
+# [0.10.0](https://github.com/pavel-kalmykov/bitbucket-server-mcp/compare/v0.9.0...v0.10.0) (2026-05-05)
+
+
+### Features
+
+* add compare_refs tool ([53b2246](https://github.com/pavel-kalmykov/bitbucket-server-mcp/commit/53b22468162cd9fb55947f424edc25d2a4195659))
+* add get_commit tool ([fb9b624](https://github.com/pavel-kalmykov/bitbucket-server-mcp/commit/fb9b624a9287c4a99fd11c8ebd3ac7c201130b44))
+* add get_tag and delete_tag tools ([4f99bae](https://github.com/pavel-kalmykov/bitbucket-server-mcp/commit/4f99bae7918c7d3e1d6604800478e1b4bb867f6b))
+* add list_tags and create_tag tools ([43b963b](https://github.com/pavel-kalmykov/bitbucket-server-mcp/commit/43b963bc2b8f0710810e210379064c016434e978))
+* add manage_branches tool ([cebc0f3](https://github.com/pavel-kalmykov/bitbucket-server-mcp/commit/cebc0f38e6fd191017b9b094c0c0be714e749005))
+
 # [0.9.0](https://github.com/pavel-kalmykov/bitbucket-server-mcp/compare/v0.8.4...v0.9.0) (2026-05-04)
 
 
