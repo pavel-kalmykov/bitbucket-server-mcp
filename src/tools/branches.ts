@@ -305,4 +305,78 @@ export function registerBranchTools(ctx: ToolContext) {
       }
     },
   );
+
+  server.registerTool(
+    "compare_refs",
+    {
+      description:
+        "Compare two refs and list commits accessible from `to` but not from `from`. Supports custom field selection via the `fields` param (`'*all'` for full raw response, `'id,message,author.name'` for a custom subset).",
+      inputSchema: {
+        project: z
+          .string()
+          .optional()
+          .describe("Project key. Defaults to BITBUCKET_DEFAULT_PROJECT."),
+        repository: z.string().describe("Repository slug."),
+        from: z
+          .string()
+          .optional()
+          .describe("Source ref (commits reachable from here are excluded)."),
+        to: z
+          .string()
+          .optional()
+          .describe("Target ref (commits reachable from here are included)."),
+        limit: z
+          .number()
+          .optional()
+          .describe("Number of commits to return (default: 25, max: 1000)."),
+        start: z
+          .number()
+          .optional()
+          .describe("Start index for pagination (default: 0)."),
+        fields: z
+          .string()
+          .optional()
+          .describe(
+            "Comma-separated fields to return. Defaults to: id, displayId, message, author (name, email), authorTimestamp, committer (name, email), committerTimestamp, parents (id). Use '*all' for the full API response.",
+          ),
+      },
+      annotations: toolAnnotations(),
+    },
+    async ({
+      project,
+      repository,
+      from,
+      to,
+      limit = 25,
+      start = 0,
+      fields,
+    }) => {
+      try {
+        const resolvedProject = ctx.resolveProject(project);
+        const searchParams: Record<string, string | number> = {
+          limit,
+          start,
+        };
+        if (from) searchParams.from = from;
+        if (to) searchParams.to = to;
+
+        const data = await getPaginated(
+          clients.api,
+          `projects/${resolvedProject}/repos/${repository}/compare/commits`,
+          { searchParams },
+        );
+
+        return formatResponse({
+          total: data.size,
+          commits: curateList(
+            data.values as Record<string, unknown>[],
+            fields ?? DEFAULT_COMMIT_FIELDS,
+          ),
+          isLastPage: data.isLastPage,
+        });
+      } catch (error) {
+        return handleToolError(error);
+      }
+    },
+  );
 }

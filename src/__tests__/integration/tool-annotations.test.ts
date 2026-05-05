@@ -77,6 +77,7 @@ describe("Tool annotations", () => {
       "get_code_insights",
       "get_build_status",
       "get_commit",
+      "compare_refs",
     ];
 
     test.each(readOnlyTools)("%s is read-only and idempotent", (name) => {
