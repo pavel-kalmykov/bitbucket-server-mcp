@@ -79,6 +79,7 @@ describe("Tool annotations", () => {
       "get_commit",
       "compare_refs",
       "list_tags",
+      "get_tag",
     ];
 
     test.each(readOnlyTools)("%s is read-only and idempotent", (name) => {
@@ -121,6 +122,7 @@ describe("Tool annotations", () => {
       "merge_pull_request",
       "decline_pull_request",
       "manage_branches",
+      "delete_tag",
     ];
 
     test.each(destructiveTools)("%s is destructive", (name) => {

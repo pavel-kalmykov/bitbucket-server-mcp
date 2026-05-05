@@ -195,6 +195,8 @@ Or build locally: `docker build -t bitbucket-mcp .`
 | `compare_refs` | List commits reachable from one ref but not another |
 | `list_tags` | List tags in a repository |
 | `create_tag` | Create a tag pointing to a specific commit |
+| `get_tag` | Get details of a specific tag by its name |
+| `delete_tag` | Delete a tag from a repository |
 
 ### Search & Insights
 

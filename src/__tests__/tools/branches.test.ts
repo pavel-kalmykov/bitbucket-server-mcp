@@ -1,6 +1,6 @@
 import { describe, test, expect } from "vitest";
 import { registerBranchTools } from "../../tools/branches.js";
-import { fakeResponse, mockJson } from "../test-utils.js";
+import { fakeResponse, mockJson, mockVoid } from "../test-utils.js";
 import {
   callAndParse,
   callRaw,
@@ -1052,6 +1052,148 @@ describe("Branch tools", () => {
         repository: "my-repo",
         name: "v1.0.0",
         startPoint: "abc123",
+      });
+
+      expect(result.isError).toBe(true);
+    });
+  });
+
+  describe("get_tag", () => {
+    test("retrieves a tag by name", async () => {
+      mockJson(h.mockClients.api.get, {
+        id: "refs/tags/v1.0.0",
+        displayId: "v1.0.0",
+        hash: "abc123",
+      });
+
+      const parsed = await callAndParse<{
+        id: string;
+        displayId: string;
+        hash: string;
+      }>(h.client, "get_tag", {
+        project: "TEST",
+        repository: "my-repo",
+        name: "v1.0.0",
+      });
+
+      expect(parsed.id).toBe("refs/tags/v1.0.0");
+      expect(parsed.displayId).toBe("v1.0.0");
+      expect(parsed.hash).toBe("abc123");
+      expect(h.mockClients.api.get).toHaveBeenCalledWith(
+        "projects/TEST/repos/my-repo/tags/v1.0.0",
+      );
+    });
+
+    test("uses default project when not provided", async () => {
+      mockJson(h.mockClients.api.get, { id: "refs/tags/v1.0.0" });
+
+      await callAndParse(h.client, "get_tag", {
+        repository: "my-repo",
+        name: "v1.0.0",
+      });
+
+      expect(h.mockClients.api.get).toHaveBeenCalledWith(
+        "projects/DEFAULT/repos/my-repo/tags/v1.0.0",
+      );
+    });
+
+    test('returns raw response when fields is "*all"', async () => {
+      const raw = { id: "refs/tags/v1.0.0", hash: "abc123", extra: 42 };
+      mockJson(h.mockClients.api.get, raw);
+
+      const parsed = await callAndParse<Record<string, unknown>>(
+        h.client,
+        "get_tag",
+        {
+          project: "TEST",
+          repository: "my-repo",
+          name: "v1.0.0",
+          fields: "*all",
+        },
+      );
+
+      expect(parsed.extra).toBe(42);
+    });
+
+    test("returns only requested custom fields", async () => {
+      mockJson(h.mockClients.api.get, {
+        id: "refs/tags/v1.0.0",
+        displayId: "v1.0.0",
+        hash: "abc123",
+        latestCommit: "def456",
+      });
+
+      const parsed = await callAndParse<{ id: string; hash?: string }>(
+        h.client,
+        "get_tag",
+        {
+          project: "TEST",
+          repository: "my-repo",
+          name: "v1.0.0",
+          fields: "id,displayId",
+        },
+      );
+
+      expect(parsed.id).toBe("refs/tags/v1.0.0");
+      expect(parsed.hash).toBeUndefined();
+    });
+
+    test("returns error when API call fails", async () => {
+      h.mockClients.api.get.mockRejectedValueOnce(new Error("Tag not found"));
+
+      const result = await callRaw(h.client, "get_tag", {
+        project: "TEST",
+        repository: "my-repo",
+        name: "nonexistent",
+      });
+
+      expect(result.isError).toBe(true);
+    });
+  });
+
+  describe("delete_tag", () => {
+    test("deletes a tag by name", async () => {
+      mockVoid(h.mockClients.git.delete);
+
+      const parsed = await callAndParse<{ deleted: boolean; tag: string }>(
+        h.client,
+        "delete_tag",
+        {
+          project: "TEST",
+          repository: "my-repo",
+          name: "v1.0.0",
+        },
+      );
+
+      expect(parsed.deleted).toBe(true);
+      expect(parsed.tag).toBe("v1.0.0");
+      expect(h.mockClients.git.delete).toHaveBeenCalledWith(
+        "projects/TEST/repos/my-repo/tags/v1.0.0",
+      );
+    });
+
+    test("uses default project when not provided", async () => {
+      mockVoid(h.mockClients.git.delete);
+
+      await callAndParse(h.client, "delete_tag", {
+        repository: "my-repo",
+        name: "v1.0.0",
+      });
+
+      expect(h.mockClients.git.delete).toHaveBeenCalledWith(
+        "projects/DEFAULT/repos/my-repo/tags/v1.0.0",
+      );
+    });
+
+    test("returns error when API call fails", async () => {
+      h.mockClients.git.delete.mockRejectedValueOnce(
+        new Error("Tag not found"),
+      );
+
+      const result = await callRaw(h.client, "delete_tag", {
+        project: "TEST",
+        repository: "my-repo",
+        name: "nonexistent",
       });
 
       expect(result.isError).toBe(true);

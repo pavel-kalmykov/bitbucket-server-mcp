@@ -12,6 +12,7 @@ export interface ApiClients {
   search: KyInstance;
   branchUtils: KyInstance;
   defaultReviewers: KyInstance;
+  git: KyInstance;
   ui: KyInstance;
 }
 
@@ -114,6 +115,7 @@ export function createApiClients(config: BitbucketConfig): ApiClients {
     search: create("/rest/search/latest"),
     branchUtils: create("/rest/branch-utils/1.0"),
     defaultReviewers: create("/rest/default-reviewers/1.0"),
+    git: create("/rest/git/1.0"),
     ui: create("/rest/ui/latest"),
   };
 }

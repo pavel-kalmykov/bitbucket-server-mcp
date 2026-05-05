@@ -488,4 +488,75 @@ export function registerBranchTools(ctx: ToolContext) {
       }
     },
   );
+
+  server.registerTool(
+    "get_tag",
+    {
+      description:
+        "Get details of a specific tag by its name. Supports custom field selection via the `fields` param (`'*all'` for full raw response, `'id,displayId,hash'` for a custom subset).",
+      inputSchema: {
+        project: z
+          .string()
+          .optional()
+          .describe("Project key. Defaults to BITBUCKET_DEFAULT_PROJECT."),
+        repository: z.string().describe("Repository slug."),
+        name: z.string().describe("Tag name (e.g. 'v1.0.0')."),
+        fields: z
+          .string()
+          .optional()
+          .describe(
+            "Comma-separated fields to return. Defaults to: id, displayId, type, hash, latestCommit. Use '*all' for the full API response.",
+          ),
+      },
+      annotations: toolAnnotations(),
+    },
+    async ({ project, repository, name, fields }) => {
+      try {
+        const resolvedProject = ctx.resolveProject(project);
+        const data = await clients.api
+          .get(`projects/${resolvedProject}/repos/${repository}/tags/${name}`)
+          .json<Record<string, unknown>>();
+
+        return formatResponse(
+          curateResponse(data, fields ?? DEFAULT_TAG_FIELDS),
+        );
+      } catch (error) {
+        return handleToolError(error);
+      }
+    },
+  );
+
+  server.registerTool(
+    "delete_tag",
+    {
+      description: "Delete a tag from a repository by its name.",
+      inputSchema: {
+        project: z
+          .string()
+          .optional()
+          .describe("Project key. Defaults to BITBUCKET_DEFAULT_PROJECT."),
+        repository: z.string().describe("Repository slug."),
+        name: z.string().describe("Tag name (e.g. 'v1.0.0')."),
+      },
+      annotations: toolAnnotations({
+        readOnlyHint: false,
+        destructiveHint: true,
+        idempotentHint: false,
+      }),
+    },
+    async ({ project, repository, name }) => {
+      try {
+        const resolvedProject = ctx.resolveProject(project);
+        await clients.git
+          .delete(
+            `projects/${resolvedProject}/repos/${repository}/tags/${name}`,
+          )
+          .json();
+
+        return formatResponse({ deleted: true, tag: name });
+      } catch (error) {
+        return handleToolError(error);
+      }
+    },
+  );
 }
