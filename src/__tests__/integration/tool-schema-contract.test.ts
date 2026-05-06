@@ -60,6 +60,7 @@ describe("Tool schema contract: descriptions", () => {
     { name: "browse_repository", contains: "project structure" },
     { name: "get_file_content", contains: "pagination" },
     { name: "upload_attachment", contains: "markdown reference" },
+    { name: "edit_file", contains: "committing" },
     { name: "get_server_info", contains: "version" },
     { name: "list_branches", contains: "default branch" },
     { name: "list_commits", contains: "author" },
@@ -97,6 +98,10 @@ describe("Tool schema contract: required fields", () => {
     { name: "browse_repository", required: ["repository"] },
     { name: "get_file_content", required: ["repository", "filePath"] },
     { name: "upload_attachment", required: ["repository", "filePath"] },
+    {
+      name: "edit_file",
+      required: ["repository", "filePath", "branch", "content", "message"],
+    },
     { name: "list_branches", required: ["repository"] },
     { name: "list_commits", required: ["repository"] },
     { name: "manage_branches", required: ["action", "repository", "branch"] },
@@ -190,6 +195,12 @@ describe("Tool schema contract: field descriptions", () => {
       field: "filePath",
       contains: "local filesystem",
     },
+    {
+      tool: "edit_file",
+      field: "sourceCommitId",
+      contains: "optimistic locking",
+    },
+    { tool: "edit_file", field: "sourceBranch", contains: "Fork" },
   ])("$tool.$field describes '$contains'", ({ tool, field, contains }) => {
     const t = getTool(tool);
     const prop = getProp(t, field);
@@ -361,6 +372,10 @@ describe("Tool schema contract: annotations", () => {
       name: "upload_attachment",
       expected: { readOnlyHint: false, idempotentHint: false },
     },
+    {
+      name: "edit_file",
+      expected: { readOnlyHint: false, idempotentHint: false },
+    },
   ])("$name has annotations $expected", ({ name, expected }) => {
     const tool = getTool(name);
     expect(tool.annotations).toBeDefined();
@@ -382,6 +397,8 @@ describe("Tool schema contract: field types", () => {
     { tool: "get_diff", field: "contextLines", type: "number" },
     { tool: "list_pull_requests", field: "limit", type: "number" },
     { tool: "browse_repository", field: "path", type: "string" },
+    { tool: "edit_file", field: "content", type: "string" },
+    { tool: "edit_file", field: "message", type: "string" },
   ])("$tool.$field has type '$type'", ({ tool, field, type }) => {
     const prop = getProp(getTool(tool), field);
     expect(prop).toBeDefined();
@@ -399,6 +416,9 @@ describe("Tool schema contract: optional fields", () => {
     { tool: "get_diff", field: "filePath" },
     { tool: "browse_repository", field: "branch" },
     { tool: "browse_repository", field: "path" },
+    { tool: "edit_file", field: "project" },
+    { tool: "edit_file", field: "sourceCommitId" },
+    { tool: "edit_file", field: "sourceBranch" },
   ])("$tool.$field is optional (not in required)", ({ tool, field }) => {
     const t = getTool(tool);
     expect(t.inputSchema.required).not.toContain(field);
@@ -487,6 +507,7 @@ describe("Tool schema contract: all expected tools are registered", () => {
       "browse_repository",
       "get_file_content",
       "upload_attachment",
+      "edit_file",
       "get_server_info",
       "list_branches",
       "list_commits",

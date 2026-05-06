@@ -418,6 +418,331 @@ describe("Repository tools", () => {
     });
   });
 
+  describe("edit_file", () => {
+    const commitResponse = {
+      id: "abc123def456",
+      displayId: "abc123d",
+      message: "Edit README.md",
+      author: { name: "admin", emailAddress: "admin@example.com" },
+      committer: { name: "admin", emailAddress: "admin@example.com" },
+      authorTimestamp: 1680000000000,
+      committerTimestamp: 1680000000000,
+      parents: [{ id: "parent123", displayId: "parent12" }],
+    };
+
+    test("should edit a file with all required params", async () => {
+      mockJson(h.mockClients.api.put, commitResponse);
+
+      const parsed = await callAndParse<{ id: string; displayId: string }>(
+        h.client,
+        "edit_file",
+        {
+          project: "TEST",
+          repository: "my-repo",
+          filePath: "README.md",
+          branch: "main",
+          content: "new content",
+          message: "Edit README.md",
+        },
+      );
+
+      expect(parsed.id).toBe("abc123def456");
+      expect(parsed.displayId).toBe("abc123d");
+
+      const [url, opts] = h.mockClients.api.put.mock.calls[0] as [
+        string,
+        { body: FormData },
+      ];
+      expect(url).toBe("projects/TEST/repos/my-repo/browse/README.md");
+      const fd = opts.body;
+      const entries: Record<string, unknown> = {};
+      fd.forEach((value, key) => {
+        entries[key] = value;
+      });
+      expect(entries.branch).toBe("main");
+      expect(entries.content).toBe("new content");
+      expect(entries.message).toBe("Edit README.md");
+      expect(entries).not.toHaveProperty("sourceCommitId");
+      expect(entries).not.toHaveProperty("sourceBranch");
+    });
+
+    test("should use default project when not provided", async () => {
+      mockJson(h.mockClients.api.put, commitResponse);
+
+      await h.client.callTool({
+        name: "edit_file",
+        arguments: {
+          repository: "my-repo",
+          filePath: "file.txt",
+          branch: "main",
+          content: "data",
+          message: "msg",
+        },
+      });
+
+      const [url] = h.mockClients.api.put.mock.calls[0] as [string, unknown];
+      expect(url).toBe("projects/DEFAULT/repos/my-repo/browse/file.txt");
+    });
+
+    describe("sourceCommitId x sourceBranch decision table", () => {
+      test("both omitted: only required fields in FormData", async () => {
+        mockJson(h.mockClients.api.put, commitResponse);
+
+        await h.client.callTool({
+          name: "edit_file",
+          arguments: {
+            project: "TEST",
+            repository: "r",
+            filePath: "f.txt",
+            branch: "b",
+            content: "c",
+            message: "m",
+          },
+        });
+
+        const [, opts] = h.mockClients.api.put.mock.calls[0] as [
+          string,
+          { body: FormData },
+        ];
+        const keys = new Set<string>();
+        opts.body.forEach((_, key) => keys.add(key));
+        expect(keys.has("sourceCommitId")).toBe(false);
+        expect(keys.has("sourceBranch")).toBe(false);
+        expect(keys.has("branch")).toBe(true);
+        expect(keys.has("content")).toBe(true);
+        expect(keys.has("message")).toBe(true);
+      });
+
+      test("sourceCommitId provided: included in FormData", async () => {
+        mockJson(h.mockClients.api.put, commitResponse);
+
+        await h.client.callTool({
+          name: "edit_file",
+          arguments: {
+            project: "TEST",
+            repository: "r",
+            filePath: "f.txt",
+            branch: "b",
+            content: "c",
+            message: "m",
+            sourceCommitId: "abc123",
+          },
+        });
+
+        const [, opts] = h.mockClients.api.put.mock.calls[0] as [
+          string,
+          { body: FormData },
+        ];
+        const entries: Record<string, unknown> = {};
+        opts.body.forEach((value, key) => {
+          entries[key] = value;
+        });
+        expect(entries.sourceCommitId).toBe("abc123");
+        expect(entries).not.toHaveProperty("sourceBranch");
+      });
+
+      test("sourceBranch provided: included in FormData", async () => {
+        mockJson(h.mockClients.api.put, commitResponse);
+
+        await h.client.callTool({
+          name: "edit_file",
+          arguments: {
+            project: "TEST",
+            repository: "r",
+            filePath: "f.txt",
+            branch: "b",
+            content: "c",
+            message: "m",
+            sourceBranch: "develop",
+          },
+        });
+
+        const [, opts] = h.mockClients.api.put.mock.calls[0] as [
+          string,
+          { body: FormData },
+        ];
+        const entries: Record<string, unknown> = {};
+        opts.body.forEach((value, key) => {
+          entries[key] = value;
+        });
+        expect(entries.sourceBranch).toBe("develop");
+        expect(entries).not.toHaveProperty("sourceCommitId");
+      });
+
+      test("both provided: both in FormData", async () => {
+        mockJson(h.mockClients.api.put, commitResponse);
+
+        await h.client.callTool({
+          name: "edit_file",
+          arguments: {
+            project: "TEST",
+            repository: "r",
+            filePath: "f.txt",
+            branch: "b",
+            content: "c",
+            message: "m",
+            sourceCommitId: "abc123",
+            sourceBranch: "develop",
+          },
+        });
+
+        const [, opts] = h.mockClients.api.put.mock.calls[0] as [
+          string,
+          { body: FormData },
+        ];
+        const entries: Record<string, unknown> = {};
+        opts.body.forEach((value, key) => {
+          entries[key] = value;
+        });
+        expect(entries.sourceCommitId).toBe("abc123");
+        expect(entries.sourceBranch).toBe("develop");
+      });
+    });
+
+    describe("content partitions", () => {
+      test("empty content is sent as empty string", async () => {
+        mockJson(h.mockClients.api.put, commitResponse);
+
+        await h.client.callTool({
+          name: "edit_file",
+          arguments: {
+            project: "TEST",
+            repository: "r",
+            filePath: "f.txt",
+            branch: "b",
+            content: "",
+            message: "clear",
+          },
+        });
+
+        const [, opts] = h.mockClients.api.put.mock.calls[0] as [
+          string,
+          { body: FormData },
+        ];
+        const entries: Record<string, unknown> = {};
+        opts.body.forEach((value, key) => {
+          entries[key] = value;
+        });
+        expect(entries.content).toBe("");
+      });
+
+      test("unicode and emoji content is preserved", async () => {
+        mockJson(h.mockClients.api.put, commitResponse);
+        const content = "line1\nline2\n\tindented\n⭐";
+
+        await h.client.callTool({
+          name: "edit_file",
+          arguments: {
+            project: "TEST",
+            repository: "r",
+            filePath: "f.txt",
+            branch: "b",
+            content,
+            message: "unicode",
+          },
+        });
+
+        const [, opts] = h.mockClients.api.put.mock.calls[0] as [
+          string,
+          { body: FormData },
+        ];
+        const entries: Record<string, unknown> = {};
+        opts.body.forEach((value, key) => {
+          entries[key] = value;
+        });
+        expect(entries.content).toBe(content);
+      });
+    });
+
+    describe("filePath partitions", () => {
+      test.each([
+        { label: "root-level", path: "README.md" },
+        { label: "nested", path: "src/lib/utils.ts" },
+        { label: "with spaces", path: "my documents/notes.txt" },
+        { label: "deeply nested", path: "a/b/c/d/e/f/g/file.txt" },
+      ])("$label path is URL-embedded correctly", async ({ path }) => {
+        mockJson(h.mockClients.api.put, commitResponse);
+
+        await h.client.callTool({
+          name: "edit_file",
+          arguments: {
+            project: "TEST",
+            repository: "r",
+            filePath: path,
+            branch: "b",
+            content: "c",
+            message: "m",
+          },
+        });
+
+        const [url] = h.mockClients.api.put.mock.calls[0] as [string, unknown];
+        expect(url).toBe(`projects/TEST/repos/r/browse/${path}`);
+      });
+    });
+
+    describe("message partitions", () => {
+      test("multiline message with body is preserved", async () => {
+        mockJson(h.mockClients.api.put, commitResponse);
+        const message = "feat: add feature\n\nDetailed description.";
+
+        await h.client.callTool({
+          name: "edit_file",
+          arguments: {
+            project: "TEST",
+            repository: "r",
+            filePath: "f.txt",
+            branch: "b",
+            content: "c",
+            message,
+          },
+        });
+
+        const [, opts] = h.mockClients.api.put.mock.calls[0] as [
+          string,
+          { body: FormData },
+        ];
+        const entries: Record<string, unknown> = {};
+        opts.body.forEach((value, key) => {
+          entries[key] = value;
+        });
+        expect(entries.message).toBe(message);
+      });
+    });
+
+    describe("error handling", () => {
+      test("returns error on HTTP 404", async () => {
+        h.mockClients.api.put.mockRejectedValueOnce(new Error("Not Found"));
+
+        const result = await callRaw(h.client, "edit_file", {
+          project: "TEST",
+          repository: "nonexistent",
+          filePath: "f.txt",
+          branch: "main",
+          content: "c",
+          message: "m",
+        });
+
+        expect(result.isError).toBe(true);
+      });
+
+      test("returns error on HTTP 409 conflict", async () => {
+        h.mockClients.api.put.mockRejectedValueOnce(new Error("Conflict"));
+
+        const result = await callRaw(h.client, "edit_file", {
+          project: "TEST",
+          repository: "my-repo",
+          filePath: "f.txt",
+          branch: "main",
+          content: "c",
+          message: "m",
+          sourceCommitId: "stale-commit",
+        });
+
+        expect(result.isError).toBe(true);
+      });
+    });
+  });
+
   describe("get_file_content", () => {
     test("should read file content", async () => {
       mockJson(h.mockClients.api.get, {

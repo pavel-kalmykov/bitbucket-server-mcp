@@ -64,6 +64,7 @@ describe("readOnly mode", () => {
     expect(names).not.toContain("manage_review");
     expect(names).not.toContain("manage_branches");
     expect(names).not.toContain("upload_attachment");
+    expect(names).not.toContain("edit_file");
   });
 });
 
@@ -98,6 +99,7 @@ describe("default mode (no readOnly, no enabledTools)", () => {
     expect(names).toContain("manage_review");
     expect(names).toContain("manage_branches");
     expect(names).toContain("upload_attachment");
+    expect(names).toContain("edit_file");
   });
 });
 

@@ -161,6 +161,7 @@ Or build locally: `docker build -t bitbucket-mcp .`
 | `browse_repository` | Browse files and directories |
 | `get_file_content` | Read file contents with pagination |
 | `upload_attachment` | Upload a local file and get a markdown reference for PR comments |
+| `edit_file` | Edit a file by committing a new version via the REST API |
 | `get_server_info` | Get Bitbucket Server version and properties |
 
 ### Pull Requests
@@ -238,7 +239,7 @@ Or build locally: `docker build -t bitbucket-mcp .`
 
 ### Read-Only Mode
 
-Set `BITBUCKET_READ_ONLY=true` to restrict the server to read-only operations. Write tools (`create_pull_request`, `update_pull_request`, `merge_pull_request`, `decline_pull_request`, `manage_comment`, `manage_review`, `manage_branches`, `manage_tags`, `upload_attachment`) are disabled.
+Set `BITBUCKET_READ_ONLY=true` to restrict the server to read-only operations. Write tools (`create_pull_request`, `update_pull_request`, `merge_pull_request`, `decline_pull_request`, `manage_comment`, `manage_review`, `manage_branches`, `manage_tags`, `upload_attachment`, `edit_file`) are disabled.
 
 ### Tool Filtering
 
