@@ -1,3 +1,10 @@
+# [0.11.0](https://github.com/pavel-kalmykov/bitbucket-server-mcp/compare/v0.10.1...v0.11.0) (2026-05-06)
+
+
+### Features
+
+* add edit_file tool for committing file changes via REST API ([c4d4466](https://github.com/pavel-kalmykov/bitbucket-server-mcp/commit/c4d446612f1fc4e31310fdee26e40130228d9bb0))
+
 ## [0.10.1](https://github.com/pavel-kalmykov/bitbucket-server-mcp/compare/v0.10.0...v0.10.1) (2026-05-06)
 
 # [0.10.0](https://github.com/pavel-kalmykov/bitbucket-server-mcp/compare/v0.9.0...v0.10.0) (2026-05-05)
