@@ -267,4 +267,69 @@ export function registerRepositoryTools(ctx: ToolContext) {
       }
     },
   );
+
+  server.registerTool(
+    "edit_file",
+    {
+      description:
+        "Edit a file in a repository by committing a new version via the Bitbucket REST API. Returns the commit metadata.",
+      inputSchema: {
+        project: z
+          .string()
+          .optional()
+          .describe("Project key. Defaults to BITBUCKET_DEFAULT_PROJECT."),
+        repository: z.string().describe("Repository slug."),
+        filePath: z.string().describe("Path to the file in the repository."),
+        branch: z.string().describe("Target branch name."),
+        content: z.string().describe("Full new file content as a string."),
+        message: z.string().describe("Commit message."),
+        sourceCommitId: z
+          .string()
+          .optional()
+          .describe(
+            "Current commit ID for optimistic locking. If provided and the branch has advanced, the request will fail with a 409 conflict.",
+          ),
+        sourceBranch: z
+          .string()
+          .optional()
+          .describe("Fork point branch when creating a new branch."),
+      },
+      annotations: toolAnnotations({
+        readOnlyHint: false,
+        idempotentHint: false,
+      }),
+    },
+    async ({
+      project,
+      repository,
+      filePath,
+      branch,
+      content,
+      message,
+      sourceCommitId,
+      sourceBranch,
+    }) => {
+      try {
+        const resolvedProject = ctx.resolveProject(project);
+
+        const formData = new FormData();
+        formData.append("branch", branch);
+        formData.append("content", content);
+        formData.append("message", message);
+        if (sourceCommitId) formData.append("sourceCommitId", sourceCommitId);
+        if (sourceBranch) formData.append("sourceBranch", sourceBranch);
+
+        const data = await clients.api
+          .put(
+            `projects/${resolvedProject}/repos/${repository}/browse/${filePath}`,
+            { body: formData },
+          )
+          .json();
+
+        return formatResponse(data);
+      } catch (error) {
+        return handleToolError(error);
+      }
+    },
+  );
 }

@@ -101,6 +101,7 @@ describe("Tool annotations", () => {
       "manage_comment",
       "manage_review",
       "upload_attachment",
+      "edit_file",
     ];
 
     test.each(writeTools)("%s is writable and non-idempotent", (name) => {
