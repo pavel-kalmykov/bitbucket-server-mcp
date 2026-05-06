@@ -1,3 +1,11 @@
+## [0.11.1](https://github.com/pavel-kalmykov/bitbucket-server-mcp/compare/v0.11.0...v0.11.1) (2026-05-06)
+
+
+### Bug Fixes
+
+* **ci:** revert scorecard-action SHA to dereferenced commit ([c4fa97b](https://github.com/pavel-kalmykov/bitbucket-server-mcp/commit/c4fa97b10b6f5c046a24b80973d007f54516118b))
+* **ci:** scan PR descriptions for issue references in release notifications ([c1c2f32](https://github.com/pavel-kalmykov/bitbucket-server-mcp/commit/c1c2f32cdcdb760be81491f2d7a6c1123c52cd13))
+
 # [0.11.0](https://github.com/pavel-kalmykov/bitbucket-server-mcp/compare/v0.10.1...v0.11.0) (2026-05-06)
 
 
