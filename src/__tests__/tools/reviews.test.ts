@@ -1,5 +1,5 @@
 import { describe, test, expect } from "vitest";
-import { registerReviewTools } from "../../tools/reviews.js";
+import { registerReviewTools } from "../../tools/pull-requests.js";
 import { mockJson, mockVoid } from "../test-utils.js";
 import {
   callAndParse,
@@ -13,7 +13,7 @@ describe("Review tools", () => {
     defaultProject: "DEFAULT",
   });
 
-  describe("submit_review", () => {
+  describe("manage_review", () => {
     test("should approve a pull request", async () => {
       const mockResponse = {
         approved: true,
@@ -26,7 +26,7 @@ describe("Review tools", () => {
 
       const parsed = await callAndParse<{ approved: boolean }>(
         h.client,
-        "submit_review",
+        "manage_review",
         {
           action: "approve",
           repository: "my-repo",
@@ -47,7 +47,7 @@ describe("Review tools", () => {
       const parsed = await callAndParse<{
         unapproved: boolean;
         prId: number;
-      }>(h.client, "submit_review", {
+      }>(h.client, "manage_review", {
         action: "unapprove",
         repository: "my-repo",
         prId: 42,
@@ -71,7 +71,7 @@ describe("Review tools", () => {
 
       const parsed = await callAndParse<{ status: string }>(
         h.client,
-        "submit_review",
+        "manage_review",
         {
           action: "publish",
           repository: "my-repo",
@@ -93,7 +93,7 @@ describe("Review tools", () => {
     });
   });
 
-  describe("submit_review publish (decision table: commentText x participantStatus)", () => {
+  describe("manage_review publish (decision table: commentText x participantStatus)", () => {
     test.each<{
       name: string;
       args: Record<string, unknown>;
@@ -130,7 +130,7 @@ describe("Review tools", () => {
     ])("$name", async ({ args, expectedBody }) => {
       mockJson(h.mockClients.api.put, { status: "APPROVED" });
       await h.client.callTool({
-        name: "submit_review",
+        name: "manage_review",
         arguments: {
           action: "publish",
           repository: "r",
@@ -146,17 +146,17 @@ describe("Review tools", () => {
     });
   });
 
-  describe("submit_review action-to-verb mapping over sequences", () => {
+  describe("manage_review action-to-verb mapping over sequences", () => {
     test("approve then unapprove issues POST then DELETE in that order", async () => {
       mockJson(h.mockClients.api.post, { approved: true, status: "APPROVED" });
       mockVoid(h.mockClients.api.delete);
 
       await h.client.callTool({
-        name: "submit_review",
+        name: "manage_review",
         arguments: { action: "approve", repository: "r", prId: 1 },
       });
       await h.client.callTool({
-        name: "submit_review",
+        name: "manage_review",
         arguments: { action: "unapprove", repository: "r", prId: 1 },
       });
 
@@ -177,15 +177,15 @@ describe("Review tools", () => {
       mockJson(h.mockClients.api.post, { approved: true });
 
       await h.client.callTool({
-        name: "submit_review",
+        name: "manage_review",
         arguments: { action: "unapprove", repository: "r", prId: 1 },
       });
       await h.client.callTool({
-        name: "submit_review",
+        name: "manage_review",
         arguments: { action: "approve", repository: "r", prId: 1 },
       });
       await h.client.callTool({
-        name: "submit_review",
+        name: "manage_review",
         arguments: { action: "unapprove", repository: "r", prId: 1 },
       });
 
@@ -198,14 +198,14 @@ describe("Review tools", () => {
     });
   });
 
-  describe("submit_review URL construction (grey box)", () => {
+  describe("manage_review URL construction (grey box)", () => {
     test.each([
       { project: "TEST", repository: "r1", prId: 1 },
       { project: "OTHER", repository: "another-repo", prId: 999 },
     ])("approve on $project/$repository/$prId", async (args) => {
       mockJson(h.mockClients.api.post, { approved: true });
       await h.client.callTool({
-        name: "submit_review",
+        name: "manage_review",
         arguments: { action: "approve", ...args },
       });
       expect(h.mockClients.api.post).toHaveBeenCalledWith(
@@ -217,7 +217,7 @@ describe("Review tools", () => {
     test("uses default project when project omitted", async () => {
       mockJson(h.mockClients.api.post, { approved: true });
       await h.client.callTool({
-        name: "submit_review",
+        name: "manage_review",
         arguments: { action: "approve", repository: "r", prId: 1 },
       });
       expect(h.mockClients.api.post).toHaveBeenCalledWith(

@@ -267,22 +267,4 @@ export function registerRepositoryTools(ctx: ToolContext) {
       }
     },
   );
-
-  server.registerTool(
-    "get_server_info",
-    {
-      description:
-        "Get Bitbucket Server version and properties. Useful to check connectivity and server version.",
-      inputSchema: {},
-      annotations: toolAnnotations(),
-    },
-    async () => {
-      try {
-        const data = await clients.api.get("application-properties").json();
-        return formatResponse(data);
-      } catch (error) {
-        return handleToolError(error);
-      }
-    },
-  );
 }

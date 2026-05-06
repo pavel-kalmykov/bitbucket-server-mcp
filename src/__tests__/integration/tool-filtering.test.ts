@@ -61,7 +61,7 @@ describe("readOnly mode", () => {
     expect(names).not.toContain("merge_pull_request");
     expect(names).not.toContain("decline_pull_request");
     expect(names).not.toContain("manage_comment");
-    expect(names).not.toContain("submit_review");
+    expect(names).not.toContain("manage_review");
     expect(names).not.toContain("manage_branches");
     expect(names).not.toContain("upload_attachment");
   });
@@ -95,7 +95,7 @@ describe("default mode (no readOnly, no enabledTools)", () => {
     expect(names).toContain("merge_pull_request");
     expect(names).toContain("decline_pull_request");
     expect(names).toContain("manage_comment");
-    expect(names).toContain("submit_review");
+    expect(names).toContain("manage_review");
     expect(names).toContain("manage_branches");
     expect(names).toContain("upload_attachment");
   });
@@ -162,7 +162,7 @@ describe("server identity", () => {
     expect(instructions!.length).toBeGreaterThan(100);
     expect(instructions).toContain("list_projects");
     expect(instructions).toContain("manage_comment");
-    expect(instructions).toContain("submit_review");
+    expect(instructions).toContain("manage_review");
     expect(instructions).toContain("BITBUCKET_DEFAULT_PROJECT");
   });
 });

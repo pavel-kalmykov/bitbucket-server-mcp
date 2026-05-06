@@ -18,14 +18,14 @@ export function registerInsightTools(ctx: ToolContext) {
           .optional()
           .describe("Project key. Defaults to BITBUCKET_DEFAULT_PROJECT."),
         repository: z.string().describe("Repository slug."),
-        pullRequestId: z.coerce.number().describe("Pull request ID."),
+        prId: z.coerce.number().describe("Pull request ID."),
       },
       annotations: toolAnnotations(),
     },
-    async ({ project, repository, pullRequestId }) => {
+    async ({ project, repository, prId }) => {
       try {
         const resolvedProject = ctx.resolveProject(project);
-        const basePath = `projects/${resolvedProject}/repos/${repository}/pull-requests/${pullRequestId}`;
+        const basePath = `projects/${resolvedProject}/repos/${repository}/pull-requests/${prId}`;
 
         const reportsData = await clients.insights
           .get(`${basePath}/reports`)

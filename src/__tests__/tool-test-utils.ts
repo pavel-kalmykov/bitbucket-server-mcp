@@ -68,7 +68,7 @@ export function createTestToolContext(
  * Usage:
  *   describe("Branch tools", () => {
  *     const h = setupToolHarness({
- *       register: registerBranchTools,
+ *       register: registerBranchTools, // from ../../tools/refs.js
  *       defaultProject: "DEFAULT",
  *     });
  *     // inside tests:

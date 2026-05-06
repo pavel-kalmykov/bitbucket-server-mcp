@@ -57,7 +57,7 @@ describe("Insight tools", () => {
       }>(h.client, "get_code_insights", {
         project: "TEST",
         repository: "my-repo",
-        pullRequestId: 1,
+        prId: 1,
       });
 
       expect(parsed.reports).toHaveLength(2);
@@ -76,7 +76,7 @@ describe("Insight tools", () => {
 
       await h.client.callTool({
         name: "get_code_insights",
-        arguments: { repository: "my-repo", pullRequestId: 1 },
+        arguments: { repository: "my-repo", prId: 1 },
       });
 
       expect(h.mockClients.insights.get).toHaveBeenCalledWith(
@@ -105,7 +105,7 @@ describe("Insight tools", () => {
       }>(h.client, "get_code_insights", {
         project: "TEST",
         repository: "my-repo",
-        pullRequestId: 1,
+        prId: 1,
       });
 
       expect(parsed.reports).toHaveLength(1);
@@ -117,7 +117,7 @@ describe("Insight tools", () => {
 
       const result = await h.client.callTool({
         name: "get_code_insights",
-        arguments: { project: "TEST", repository: "my-repo", pullRequestId: 1 },
+        arguments: { project: "TEST", repository: "my-repo", prId: 1 },
       });
 
       expect(result.isError).toBe(true);
@@ -128,7 +128,7 @@ describe("Insight tools", () => {
 
       await h.client.callTool({
         name: "get_code_insights",
-        arguments: { repository: "my-repo", pullRequestId: 1 },
+        arguments: { repository: "my-repo", prId: 1 },
       });
 
       expect(h.mockClients.insights.get).toHaveBeenCalledWith(
@@ -159,7 +159,7 @@ describe("Insight tools", () => {
       await callAndParse(h.client, "get_code_insights", {
         project: "TEST",
         repository: "my-repo",
-        pullRequestId: 1,
+        prId: 1,
       });
 
       const urls = h.mockClients.insights.get.mock.calls.map((c) =>
@@ -197,7 +197,7 @@ describe("Insight tools", () => {
       }>(h.client, "get_code_insights", {
         project: "TEST",
         repository: "my-repo",
-        pullRequestId: 1,
+        prId: 1,
       });
 
       expect(parsed.reports).toHaveLength(2);
@@ -214,7 +214,7 @@ describe("Insight tools", () => {
       }>(h.client, "get_code_insights", {
         project: "TEST",
         repository: "my-repo",
-        pullRequestId: 1,
+        prId: 1,
       });
 
       expect(parsed.reports).toHaveLength(0);
