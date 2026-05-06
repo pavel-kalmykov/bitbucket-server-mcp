@@ -13,7 +13,7 @@ describe("Pull request tools", () => {
     defaultProject: "DEFAULT",
     maxLinesPerFile: 5,
   });
-  describe("get_dashboard_pull_requests", () => {
+  describe("list_dashboard_pull_requests", () => {
     test("should fetch dashboard PRs with params", async () => {
       const mockResponse = {
         values: [{ id: 100, title: "Dashboard PR" }],
@@ -25,7 +25,7 @@ describe("Pull request tools", () => {
 
       const parsed = await callAndParse<{
         values: Array<{ title: string }>;
-      }>(h.client, "get_dashboard_pull_requests", {
+      }>(h.client, "list_dashboard_pull_requests", {
         state: "OPEN",
         role: "REVIEWER",
         limit: 10,
@@ -48,7 +48,7 @@ describe("Pull request tools", () => {
       });
 
       await h.client.callTool({
-        name: "get_dashboard_pull_requests",
+        name: "list_dashboard_pull_requests",
         arguments: {
           closedSince: 1700000000000,
           participantStatus: "APPROVED",

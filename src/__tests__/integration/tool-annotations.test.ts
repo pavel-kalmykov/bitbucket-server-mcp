@@ -3,12 +3,13 @@ import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { InMemoryTransport } from "@modelcontextprotocol/sdk/inMemory.js";
 import { registerRepositoryTools } from "../../tools/repositories.js";
-import { registerBranchTools } from "../../tools/branches.js";
+import { registerBranchTools } from "../../tools/refs.js";
 import { registerPullRequestTools } from "../../tools/pull-requests.js";
 import { registerCommentTools } from "../../tools/comments.js";
-import { registerReviewTools } from "../../tools/reviews.js";
+import { registerReviewTools } from "../../tools/pull-requests.js";
 import { registerSearchTools } from "../../tools/search.js";
 import { registerInsightTools } from "../../tools/insights.js";
+import { registerSystemTools } from "../../tools/system.js";
 import { createMockClients } from "../test-utils.js";
 import { ToolContext } from "../../tools/shared.js";
 import { ApiCache } from "../../http/cache.js";
@@ -39,6 +40,7 @@ describe("Tool annotations", () => {
     registerReviewTools(ctx);
     registerSearchTools(ctx);
     registerInsightTools(ctx);
+    registerSystemTools(ctx);
 
     const [clientTransport, sTransport] = InMemoryTransport.createLinkedPair();
     serverTransport = sTransport;
@@ -69,8 +71,8 @@ describe("Tool annotations", () => {
       "get_file_content",
       "get_pull_request",
       "list_pull_requests",
-      "get_dashboard_pull_requests",
-      "get_pr_activity",
+      "list_dashboard_pull_requests",
+      "get_pull_request_activity",
       "get_diff",
       "list_branches",
       "list_commits",
@@ -80,6 +82,8 @@ describe("Tool annotations", () => {
       "compare_refs",
       "list_tags",
       "get_tag",
+      "get_server_info",
+      "search_emoticons",
     ];
 
     test.each(readOnlyTools)("%s is read-only and idempotent", (name) => {
@@ -95,7 +99,7 @@ describe("Tool annotations", () => {
     const writeTools = [
       "create_pull_request",
       "manage_comment",
-      "submit_review",
+      "manage_review",
       "upload_attachment",
     ];
 

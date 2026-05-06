@@ -13,7 +13,7 @@ describe("Pull request tools", () => {
     defaultProject: "DEFAULT",
     maxLinesPerFile: 5,
   });
-  describe("get_pr_activity", () => {
+  describe("get_pull_request_activity", () => {
     test("should return all activities with pagination info", async () => {
       const mockActivities = {
         values: [
@@ -30,7 +30,7 @@ describe("Pull request tools", () => {
       const parsed = await callAndParse<{
         activities: unknown[];
         isLastPage: boolean;
-      }>(h.client, "get_pr_activity", {
+      }>(h.client, "get_pull_request_activity", {
         project: "PROJ",
         repository: "my-repo",
         prId: 1,
@@ -47,7 +47,7 @@ describe("Pull request tools", () => {
       });
 
       await h.client.callTool({
-        name: "get_pr_activity",
+        name: "get_pull_request_activity",
         arguments: {
           project: "PROJ",
           repository: "my-repo",
@@ -79,7 +79,7 @@ describe("Pull request tools", () => {
 
       const parsed = await callAndParse<{
         activities: Array<{ action: string }>;
-      }>(h.client, "get_pr_activity", {
+      }>(h.client, "get_pull_request_activity", {
         project: "PROJ",
         repository: "my-repo",
         prId: 1,
@@ -109,7 +109,7 @@ describe("Pull request tools", () => {
 
       const parsed = await callAndParse<{
         activities: Array<{ action: string }>;
-      }>(h.client, "get_pr_activity", {
+      }>(h.client, "get_pull_request_activity", {
         project: "PROJ",
         repository: "my-repo",
         prId: 1,
@@ -145,7 +145,7 @@ describe("Pull request tools", () => {
 
       const parsed = await callAndParse<{
         activities: Array<{ user: { name: string } }>;
-      }>(h.client, "get_pr_activity", {
+      }>(h.client, "get_pull_request_activity", {
         project: "PROJ",
         repository: "my-repo",
         prId: 1,
@@ -170,7 +170,7 @@ describe("Pull request tools", () => {
 
       const parsed = await callAndParse<{
         activities: Array<{ action: string; user: { name: string } }>;
-      }>(h.client, "get_pr_activity", {
+      }>(h.client, "get_pull_request_activity", {
         project: "PROJ",
         repository: "my-repo",
         prId: 1,
@@ -197,7 +197,7 @@ describe("Pull request tools", () => {
 
       const parsed = await callAndParse<{
         activities: Array<{ user?: { name: string } }>;
-      }>(h.client, "get_pr_activity", {
+      }>(h.client, "get_pull_request_activity", {
         project: "PROJ",
         repository: "my-repo",
         prId: 1,

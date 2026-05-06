@@ -173,8 +173,8 @@ Or build locally: `docker build -t bitbucket-mcp .`
 | `merge_pull_request` | Merge a PR with optional strategy (`no-ff`, `ff`, `ff-only`, `squash`, `rebase-no-ff`, `rebase-ff-only`, `squash-ff-only`) |
 | `decline_pull_request` | Decline a PR |
 | `list_pull_requests` | List PRs with filtering by state, author, direction |
-| `get_dashboard_pull_requests` | List PRs across all repos for the authenticated user, filtered by role (`AUTHOR`/`REVIEWER`/`PARTICIPANT`), state, and review status |
-| `get_pr_activity` | Get PR activity timeline, filtered by type (`all`, `reviews`, `comments`) |
+| `list_dashboard_pull_requests` | List PRs across all repos for the authenticated user, filtered by role (`AUTHOR`/`REVIEWER`/`PARTICIPANT`), state, and review status |
+| `get_pull_request_activity` | Get PR activity timeline, filtered by type (`all`, `reviews`, `comments`) |
 | `get_diff` | Get PR diff with per-file truncation support. Use `stat: true` for a lightweight summary of changed files instead of the full diff. |
 
 ### Code Review
@@ -182,7 +182,7 @@ Or build locally: `docker build -t bitbucket-mcp .`
 | Tool | Description |
 |------|-------------|
 | `manage_comment` | Unified create/edit/delete for PR comments. Supports inline anchoring (`filePath`/`line`/`lineType`), draft state (`state: PENDING`), task creation (`severity: BLOCKER`), threaded replies (`parentId`), and resolve/unresolve (`state: RESOLVED`/`OPEN`). |
-| `submit_review` | Unified approve/unapprove/publish. Publish transitions all `PENDING` comments to visible and optionally sets `participantStatus` (`APPROVED`/`NEEDS_WORK`). |
+| `manage_review` | Unified approve/unapprove/publish. Publish transitions all `PENDING` comments to visible and optionally sets `participantStatus` (`APPROVED`/`NEEDS_WORK`). |
 
 ### Branches & Commits
 
@@ -238,14 +238,14 @@ Or build locally: `docker build -t bitbucket-mcp .`
 
 ### Read-Only Mode
 
-Set `BITBUCKET_READ_ONLY=true` to restrict the server to read-only operations. Write tools (`create_pull_request`, `update_pull_request`, `merge_pull_request`, `decline_pull_request`, `manage_comment`, `submit_review`, `delete_branch`, `upload_attachment`) are disabled.
+Set `BITBUCKET_READ_ONLY=true` to restrict the server to read-only operations. Write tools (`create_pull_request`, `update_pull_request`, `merge_pull_request`, `decline_pull_request`, `manage_comment`, `manage_review`, `manage_branches`, `manage_tags`, `upload_attachment`) are disabled.
 
 ### Tool Filtering
 
 Set `BITBUCKET_ENABLED_TOOLS` to load only specific tools, reducing context window usage:
 
 ```console
-BITBUCKET_ENABLED_TOOLS=get_pull_request,get_diff,manage_comment,submit_review
+BITBUCKET_ENABLED_TOOLS=get_pull_request,get_diff,manage_comment,manage_review
 ```
 
 ### Response Curation

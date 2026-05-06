@@ -1,5 +1,5 @@
 import { describe, test, expect } from "vitest";
-import { registerBranchTools } from "../../tools/branches.js";
+import { registerBranchTools } from "../../tools/refs.js";
 import { mockJson, mockVoid } from "../test-utils.js";
 import { callAndParse, callRaw, setupToolHarness } from "../tool-test-utils.js";
 

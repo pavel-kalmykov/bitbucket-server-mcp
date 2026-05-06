@@ -4,12 +4,13 @@ import { createApiClients } from "./http/client.js";
 import { ApiCache } from "./http/cache.js";
 import { runStartupHealthcheck } from "./http/healthcheck.js";
 import { registerRepositoryTools } from "./tools/repositories.js";
-import { registerBranchTools } from "./tools/branches.js";
+import { registerBranchTools } from "./tools/refs.js";
 import { registerPullRequestTools } from "./tools/pull-requests.js";
 import { registerCommentTools } from "./tools/comments.js";
-import { registerReviewTools } from "./tools/reviews.js";
+import { registerReviewTools } from "./tools/pull-requests.js";
 import { registerSearchTools } from "./tools/search.js";
 import { registerInsightTools } from "./tools/insights.js";
+import { registerSystemTools } from "./tools/system.js";
 import { registerResources } from "./resources/index.js";
 import { registerPrompts } from "./prompts/index.js";
 import { attachLogger } from "./logging.js";
@@ -25,11 +26,11 @@ Most tools require 'project' and 'repository' params. If not provided, 'project'
 
 Workflow tips:
 - Use list_projects and list_repositories to discover available targets.
-- For code review: create draft comments with manage_comment (state: PENDING), then publish all at once with submit_review (action: publish).
+- For code review: create draft comments with manage_comment (state: PENDING), then publish all at once with manage_review (action: publish).
 - For cross-repo PRs from forks: use sourceProject/sourceRepository in create_pull_request.
-- get_pr_activity returns reviews, comments, and events; use the filter param to narrow results.
+- get_pull_request_activity returns reviews, comments, and events; use the filter param to narrow results.
 - manage_comment consolidates create/edit/delete of comments. Use severity: BLOCKER to create tasks. Use state: RESOLVED/OPEN to resolve/reopen.
-- submit_review consolidates approve/unapprove/publish actions.
+- manage_review consolidates approve/unapprove/publish actions.
 - When reviewing PRs: use get_diff with stat=true first to see which files changed, then get the full diff or read files locally for context.
 - get_build_status accepts either a commitId or a prId (resolves the latest commit automatically). Use it to check CI status before approving.
 - upload_attachment uploads a local file and returns a markdown reference to embed in PR comments (images: ![name](ref), files: [name](ref)).
@@ -103,6 +104,7 @@ export function createServer(options?: BitbucketServerOptions) {
   registerReviewTools(ctx);
   registerSearchTools(ctx);
   registerInsightTools(ctx);
+  registerSystemTools(ctx);
 
   registerResources(server, clients, cache);
   registerPrompts(server);

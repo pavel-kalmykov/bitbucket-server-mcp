@@ -61,11 +61,11 @@ describe("Prompts", () => {
     test.each([
       "get_pull_request",
       "get_diff",
-      "get_pr_activity",
+      "get_pull_request_activity",
       "get_build_status",
       "get_code_insights",
       "manage_comment",
-      "submit_review",
+      "manage_review",
     ])("mentions tool '%s'", (tool) => {
       expect(text).toContain(tool);
     });
