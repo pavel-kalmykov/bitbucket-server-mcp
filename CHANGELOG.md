@@ -1,3 +1,11 @@
+# [0.12.0](https://github.com/pavel-kalmykov/bitbucket-server-mcp/compare/v0.11.1...v0.12.0) (2026-05-07)
+
+
+### Features
+
+* add opt-in file annotations to get_code_insights ([0c0b72a](https://github.com/pavel-kalmykov/bitbucket-server-mcp/commit/0c0b72a6a0e5dd6609e315966df5b63e91818822))
+* add opt-in file annotations to get_code_insights ([9f56889](https://github.com/pavel-kalmykov/bitbucket-server-mcp/commit/9f56889654545430cf874caeb531a2c79e90f727))
+
 ## [0.11.1](https://github.com/pavel-kalmykov/bitbucket-server-mcp/compare/v0.11.0...v0.11.1) (2026-05-06)
 
 
