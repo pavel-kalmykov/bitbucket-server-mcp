@@ -220,6 +220,301 @@ describe("Insight tools", () => {
       expect(parsed.reports).toHaveLength(0);
       expect(parsed.annotations).toEqual({});
     });
+
+    test("should return file annotations keyed by path when includeFileAnnotations is true", async () => {
+      // given: two reports + two changed files, both have annotations
+      h.mockClients.insights.get
+        .mockReturnValueOnce(
+          fakeResponse({
+            json: () =>
+              Promise.resolve({
+                values: [{ key: "sonar", title: "SonarQube", result: "PASS" }],
+              }),
+          }),
+        )
+        .mockReturnValueOnce(
+          fakeResponse({ json: () => Promise.resolve({ values: [] }) }),
+        )
+        .mockReturnValueOnce(
+          fakeResponse({
+            json: () =>
+              Promise.resolve({
+                annotations: [
+                  {
+                    line: 42,
+                    message: "Cognitive Complexity",
+                    severity: "HIGH",
+                    type: "CODE_SMELL",
+                  },
+                ],
+              }),
+          }),
+        )
+        .mockReturnValueOnce(
+          fakeResponse({
+            json: () =>
+              Promise.resolve({
+                annotations: [
+                  {
+                    line: 10,
+                    message: "Unused import",
+                    severity: "LOW",
+                    type: "CODE_SMELL",
+                  },
+                ],
+              }),
+          }),
+        );
+
+      h.mockClients.api.get.mockReturnValueOnce(
+        fakeResponse({
+          json: () =>
+            Promise.resolve({
+              values: [
+                { path: { toString: "src/foo.ts" } },
+                { path: { toString: "src/bar.ts" } },
+              ],
+              isLastPage: true,
+            }),
+        }),
+      );
+
+      // when
+      const parsed = await callAndParse<{
+        reports: unknown[];
+        annotations: Record<string, unknown[]>;
+        fileAnnotations: Record<string, unknown[]>;
+        fileAnnotationsIsLastPage: boolean;
+      }>(h.client, "get_code_insights", {
+        project: "TEST",
+        repository: "my-repo",
+        prId: 1,
+        includeFileAnnotations: true,
+      });
+
+      // then
+      expect(parsed.reports).toHaveLength(1);
+      expect(parsed.fileAnnotations).toEqual({
+        "src/foo.ts": [
+          {
+            line: 42,
+            message: "Cognitive Complexity",
+            severity: "HIGH",
+            type: "CODE_SMELL",
+          },
+        ],
+        "src/bar.ts": [
+          {
+            line: 10,
+            message: "Unused import",
+            severity: "LOW",
+            type: "CODE_SMELL",
+          },
+        ],
+      });
+      expect(parsed.fileAnnotationsIsLastPage).toBe(true);
+      expect(parsed).not.toHaveProperty("fileAnnotationsNextPageStart");
+
+      const apiCalls = h.mockClients.api.get.mock.calls;
+      expect(apiCalls[0][0]).toContain("/changes");
+      expect(apiCalls[0][1]).toEqual(
+        expect.objectContaining({
+          searchParams: expect.objectContaining({ start: 0, limit: 50 }),
+        }),
+      );
+    });
+
+    test("should not include fileAnnotations when flag is omitted", async () => {
+      // given: only reports (no /changes mock)
+      mockJson(h.mockClients.insights.get, { values: [] });
+
+      // when
+      const parsed = await callAndParse<{
+        reports: unknown[];
+        annotations: Record<string, unknown>;
+        fileAnnotations?: unknown;
+      }>(h.client, "get_code_insights", {
+        project: "TEST",
+        repository: "my-repo",
+        prId: 1,
+      });
+
+      // then
+      expect(parsed.reports).toHaveLength(0);
+      expect(parsed.annotations).toEqual({});
+      expect(parsed).not.toHaveProperty("fileAnnotations");
+      expect(h.mockClients.api.get).not.toHaveBeenCalled();
+    });
+
+    test("should not include fileAnnotations when changes endpoint fails", async () => {
+      // given: reports succeed, /changes fails
+      mockJson(h.mockClients.insights.get, {
+        values: [{ key: "sonar", title: "SonarQube", result: "PASS" }],
+      });
+      mockJson(h.mockClients.insights.get, { values: [] });
+      mockError(h.mockClients.api.get, new Error("Changes not available"));
+
+      // when
+      const parsed = await callAndParse<{
+        reports: unknown[];
+        annotations: Record<string, unknown>;
+        fileAnnotations?: unknown;
+      }>(h.client, "get_code_insights", {
+        project: "TEST",
+        repository: "my-repo",
+        prId: 1,
+        includeFileAnnotations: true,
+      });
+
+      // then
+      expect(parsed.reports).toHaveLength(1);
+      expect(parsed).not.toHaveProperty("fileAnnotations");
+    });
+
+    test("should return empty array for a file whose annotations fetch fails", async () => {
+      // given: two changed files, second /annotations call fails
+      mockJson(h.mockClients.insights.get, {
+        values: [{ key: "sonar", title: "SonarQube", result: "PASS" }],
+      });
+      mockJson(h.mockClients.insights.get, { values: [] });
+
+      h.mockClients.api.get.mockReturnValueOnce(
+        fakeResponse({
+          json: () =>
+            Promise.resolve({
+              values: [
+                { path: { toString: "src/ok.ts" } },
+                { path: { toString: "src/broken.ts" } },
+              ],
+              isLastPage: true,
+            }),
+        }),
+      );
+
+      // first file → OK
+      h.mockClients.insights.get.mockReturnValueOnce(
+        fakeResponse({
+          json: () =>
+            Promise.resolve({
+              annotations: [
+                {
+                  line: 1,
+                  message: "Fine",
+                  severity: "LOW",
+                  type: "CODE_SMELL",
+                },
+              ],
+            }),
+        }),
+      );
+      // second file → fails
+      h.mockClients.insights.get.mockReturnValueOnce(
+        fakeResponse({
+          json: () => Promise.reject(new Error("Annotations unavailable")),
+        }),
+      );
+
+      // when
+      const parsed = await callAndParse<{
+        fileAnnotations: Record<string, unknown[]>;
+      }>(h.client, "get_code_insights", {
+        project: "TEST",
+        repository: "my-repo",
+        prId: 1,
+        includeFileAnnotations: true,
+      });
+
+      // then
+      expect(parsed.fileAnnotations["src/ok.ts"]).toHaveLength(1);
+      expect(parsed.fileAnnotations["src/broken.ts"]).toEqual([]);
+    });
+
+    test("should return empty fileAnnotations when there are no changed files", async () => {
+      // given: no changed files
+      mockJson(h.mockClients.insights.get, {
+        values: [{ key: "sonar", title: "SonarQube", result: "PASS" }],
+      });
+      mockJson(h.mockClients.insights.get, { values: [] });
+
+      h.mockClients.api.get.mockReturnValueOnce(
+        fakeResponse({
+          json: () => Promise.resolve({ values: [], isLastPage: true }),
+        }),
+      );
+
+      // when
+      const parsed = await callAndParse<{
+        fileAnnotations: Record<string, unknown[]>;
+        fileAnnotationsIsLastPage: boolean;
+      }>(h.client, "get_code_insights", {
+        project: "TEST",
+        repository: "my-repo",
+        prId: 1,
+        includeFileAnnotations: true,
+      });
+
+      // then
+      expect(parsed.fileAnnotations).toEqual({});
+      expect(parsed.fileAnnotationsIsLastPage).toBe(true);
+    });
+
+    test("should propagate isLastPage and nextPageStart from changes endpoint", async () => {
+      // given: first page of 5 out of 15 files
+      mockJson(h.mockClients.insights.get, {
+        values: [{ key: "sonar", title: "SonarQube", result: "PASS" }],
+      });
+      mockJson(h.mockClients.insights.get, { values: [] });
+
+      h.mockClients.api.get.mockReturnValueOnce(
+        fakeResponse({
+          json: () =>
+            Promise.resolve({
+              values: [
+                { path: { toString: "src/f1.ts" } },
+                { path: { toString: "src/f2.ts" } },
+                { path: { toString: "src/f3.ts" } },
+                { path: { toString: "src/f4.ts" } },
+                { path: { toString: "src/f5.ts" } },
+              ],
+              isLastPage: false,
+              nextPageStart: 15,
+            }),
+        }),
+      );
+
+      // each file returns empty annotations
+      for (let i = 0; i < 5; i++) {
+        h.mockClients.insights.get.mockReturnValueOnce(
+          fakeResponse({ json: () => Promise.resolve({ annotations: [] }) }),
+        );
+      }
+
+      // when
+      const parsed = await callAndParse<{
+        fileAnnotations: Record<string, unknown[]>;
+        fileAnnotationsIsLastPage: boolean;
+        fileAnnotationsNextPageStart?: number;
+      }>(h.client, "get_code_insights", {
+        project: "TEST",
+        repository: "my-repo",
+        prId: 1,
+        includeFileAnnotations: true,
+        fileStart: 10,
+        fileLimit: 5,
+      });
+
+      // then
+      expect(Object.keys(parsed.fileAnnotations)).toHaveLength(5);
+      expect(parsed.fileAnnotationsIsLastPage).toBe(false);
+      expect(parsed.fileAnnotationsNextPageStart).toBe(15);
+
+      const apiCalls = h.mockClients.api.get.mock.calls;
+      expect(apiCalls[0][1]).toEqual(
+        expect.objectContaining({
+          searchParams: expect.objectContaining({ start: 10, limit: 5 }),
+        }),
+      );
+    });
   });
 
   describe("get_build_status", () => {
