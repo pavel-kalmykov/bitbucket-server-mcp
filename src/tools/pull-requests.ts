@@ -60,7 +60,6 @@ interface CreatePrBody {
 
 export function registerPullRequestTools(ctx: ToolContext) {
   const { server, clients } = ctx;
-  // ── create_pull_request ──────────────────────────────────────────────
   server.registerTool(
     "create_pull_request",
     {
@@ -172,7 +171,6 @@ export function registerPullRequestTools(ctx: ToolContext) {
     },
   );
 
-  // ── get_pull_request ─────────────────────────────────────────────────
   server.registerTool(
     "get_pull_request",
     {
@@ -247,7 +245,6 @@ export function registerPullRequestTools(ctx: ToolContext) {
     },
   );
 
-  // ── update_pull_request ──────────────────────────────────────────────
   server.registerTool(
     "update_pull_request",
     {
@@ -322,7 +319,6 @@ export function registerPullRequestTools(ctx: ToolContext) {
     },
   );
 
-  // ── merge_pull_request ───────────────────────────────────────────────
   server.registerTool(
     "merge_pull_request",
     {
@@ -388,7 +384,6 @@ export function registerPullRequestTools(ctx: ToolContext) {
     },
   );
 
-  // ── decline_pull_request ─────────────────────────────────────────────
   server.registerTool(
     "decline_pull_request",
     {
@@ -439,7 +434,6 @@ export function registerPullRequestTools(ctx: ToolContext) {
     },
   );
 
-  // ── list_pull_requests ───────────────────────────────────────────────
   server.registerTool(
     "list_pull_requests",
     {
@@ -540,7 +534,6 @@ export function registerPullRequestTools(ctx: ToolContext) {
     },
   );
 
-  // ── list_dashboard_pull_requests ────────────────────────────────────
   server.registerTool(
     "list_dashboard_pull_requests",
     {
@@ -618,7 +611,6 @@ export function registerPullRequestTools(ctx: ToolContext) {
     },
   );
 
-  // ── get_pull_request_activity ────────────────────────────────────────
   server.registerTool(
     "get_pull_request_activity",
     {
@@ -698,7 +690,6 @@ export function registerPullRequestTools(ctx: ToolContext) {
     },
   );
 
-  // ── get_diff ─────────────────────────────────────────────────────────
   server.registerTool(
     "get_diff",
     {
