@@ -163,4 +163,35 @@ describe("manage_commit_comment", () => {
 
     expect(result.isError).toBe(true);
   });
+
+  test("returns error when edit fails", async () => {
+    h.mockClients.api.put.mockRejectedValueOnce(new Error("Not found"));
+
+    const result = await callRaw(h.client, "manage_commit_comment", {
+      action: "edit",
+      project: "TEST",
+      repository: "my-repo",
+      commitId: "abc123",
+      commentId: 1,
+      version: 1,
+      text: "updated",
+    });
+
+    expect(result.isError).toBe(true);
+  });
+
+  test("returns error when delete fails", async () => {
+    h.mockClients.api.delete.mockRejectedValueOnce(new Error("Forbidden"));
+
+    const result = await callRaw(h.client, "manage_commit_comment", {
+      action: "delete",
+      project: "TEST",
+      repository: "my-repo",
+      commitId: "abc123",
+      commentId: 1,
+      version: 1,
+    });
+
+    expect(result.isError).toBe(true);
+  });
 });

@@ -62,6 +62,26 @@ describe("list_webhooks", () => {
 
     expect(result.isError).toBe(true);
   });
+
+  test("returns isLastPage false for multi-page responses", async () => {
+    mockJson(h.mockClients.api.get, {
+      values: [{ id: 1, name: "hook" }],
+      size: 100,
+      isLastPage: false,
+    });
+
+    const parsed = await callAndParse<{ total: number; isLastPage: boolean }>(
+      h.client,
+      "list_webhooks",
+      {
+        project: "TEST",
+        repository: "my-repo",
+      },
+    );
+
+    expect(parsed.total).toBe(100);
+    expect(parsed.isLastPage).toBe(false);
+  });
 });
 
 describe("manage_webhooks", () => {
@@ -200,6 +220,41 @@ describe("manage_webhooks", () => {
     );
   });
 
+  test("updates a webhook with events only", async () => {
+    mockJson(h.mockClients.api.put, { id: 1, events: ["repo:refs_changed"] });
+
+    await callAndParse(h.client, "manage_webhooks", {
+      action: "update",
+      project: "TEST",
+      repository: "my-repo",
+      webhookId: 1,
+      events: ["repo:refs_changed"],
+    });
+
+    expectCalledWithJson(
+      h.mockClients.api.put,
+      "projects/TEST/repos/my-repo/webhooks/1",
+      { events: ["repo:refs_changed"] },
+    );
+  });
+
+  test("updates a webhook with empty body", async () => {
+    mockJson(h.mockClients.api.put, { id: 1 });
+
+    await callAndParse(h.client, "manage_webhooks", {
+      action: "update",
+      project: "TEST",
+      repository: "my-repo",
+      webhookId: 1,
+    });
+
+    expectCalledWithJson(
+      h.mockClients.api.put,
+      "projects/TEST/repos/my-repo/webhooks/1",
+      {},
+    );
+  });
+
   test("deletes a webhook", async () => {
     mockJson(h.mockClients.api.delete, {});
 
@@ -227,6 +282,33 @@ describe("manage_webhooks", () => {
       repository: "my-repo",
       name: "hook",
       url: "invalid",
+    });
+
+    expect(result.isError).toBe(true);
+  });
+
+  test("returns error when update fails", async () => {
+    h.mockClients.api.put.mockRejectedValueOnce(new Error("Not found"));
+
+    const result = await callRaw(h.client, "manage_webhooks", {
+      action: "update",
+      project: "TEST",
+      repository: "my-repo",
+      webhookId: 999,
+      name: "hook",
+    });
+
+    expect(result.isError).toBe(true);
+  });
+
+  test("returns error when delete fails", async () => {
+    h.mockClients.api.delete.mockRejectedValueOnce(new Error("Not found"));
+
+    const result = await callRaw(h.client, "manage_webhooks", {
+      action: "delete",
+      project: "TEST",
+      repository: "my-repo",
+      webhookId: 999,
     });
 
     expect(result.isError).toBe(true);

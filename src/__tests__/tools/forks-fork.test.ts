@@ -63,6 +63,40 @@ describe("fork_repository", () => {
     });
   });
 
+  test("creates a fork with name only, no target project", async () => {
+    mockJson(h.mockClients.api.post, {
+      slug: "my-fork",
+      project: { key: "SRC" },
+    });
+
+    await callAndParse(h.client, "fork_repository", {
+      project: "SRC",
+      repository: "my-repo",
+      name: "my-fork",
+    });
+
+    expectCalledWithJson(h.mockClients.api.post, "projects/SRC/repos/my-repo", {
+      name: "my-fork",
+    });
+  });
+
+  test("creates a fork with target_project only, no custom name", async () => {
+    mockJson(h.mockClients.api.post, {
+      slug: "my-repo",
+      project: { key: "TARGET" },
+    });
+
+    await callAndParse(h.client, "fork_repository", {
+      project: "SRC",
+      repository: "my-repo",
+      target_project: "TARGET",
+    });
+
+    expectCalledWithJson(h.mockClients.api.post, "projects/SRC/repos/my-repo", {
+      project: { key: "TARGET" },
+    });
+  });
+
   test("uses default project when not provided", async () => {
     mockJson(h.mockClients.api.post, {
       slug: "my-repo",

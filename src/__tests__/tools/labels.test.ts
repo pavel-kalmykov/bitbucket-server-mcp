@@ -54,6 +54,43 @@ describe("list_labels", () => {
     expect(parsed.total).toBe(0);
   });
 
+  test("returns isLastPage false for multi-page responses", async () => {
+    mockJson(h.mockClients.api.get, {
+      values: [{ name: "bug" }],
+      size: 100,
+      isLastPage: false,
+    });
+
+    const parsed = await callAndParse<{ total: number; isLastPage: boolean }>(
+      h.client,
+      "list_labels",
+      {
+        project: "TEST",
+        repository: "my-repo",
+      },
+    );
+
+    expect(parsed.total).toBe(100);
+    expect(parsed.isLastPage).toBe(false);
+  });
+
+  test("uses default project when not provided", async () => {
+    mockJson(h.mockClients.api.get, {
+      values: [],
+      size: 0,
+      isLastPage: true,
+    });
+
+    await callAndParse(h.client, "list_labels", {
+      repository: "my-repo",
+    });
+
+    expect(h.mockClients.api.get).toHaveBeenCalledWith(
+      "projects/DEFAULT/repos/my-repo/labels",
+      expect.anything(),
+    );
+  });
+
   test("returns error when API call fails", async () => {
     h.mockClients.api.get.mockRejectedValueOnce(new Error("Not found"));
 
@@ -124,6 +161,19 @@ describe("manage_labels", () => {
       project: "TEST",
       repository: "my-repo",
       name: "urgent",
+    });
+
+    expect(result.isError).toBe(true);
+  });
+
+  test("returns error when remove fails", async () => {
+    h.mockClients.api.delete.mockRejectedValueOnce(new Error("Not found"));
+
+    const result = await callRaw(h.client, "manage_labels", {
+      action: "remove",
+      project: "TEST",
+      repository: "my-repo",
+      name: "nonexistent",
     });
 
     expect(result.isError).toBe(true);
