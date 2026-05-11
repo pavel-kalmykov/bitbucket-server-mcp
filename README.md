@@ -234,6 +234,7 @@ Or build locally: `docker build -t bitbucket-mcp .`
 | `BITBUCKET_DIFF_MAX_LINES_PER_FILE` | No | Max lines per file in diffs. Set to `0` for no limit. |
 | `BITBUCKET_CACHE_TTL` | No | Cache duration in seconds (default: 300). Set to `0` to disable caching. |
 | `BITBUCKET_ENABLED_TOOLS` | No | Comma-separated list of tool names to enable. If not set, all tools are available. |
+| `BITBUCKET_STARTUP_HEALTHCHECK` | No | Set to `true` to run a connectivity check against Bitbucket on startup (default: `false`). |
 
 *Either `BITBUCKET_TOKEN` or both `BITBUCKET_USERNAME` and `BITBUCKET_PASSWORD` are required.
 
@@ -247,6 +248,19 @@ Set `BITBUCKET_ENABLED_TOOLS` to load only specific tools, reducing context wind
 
 ```console
 BITBUCKET_ENABLED_TOOLS=get_pull_request,get_diff,manage_comment,manage_review
+```
+
+### Startup Healthcheck
+
+When `BITBUCKET_STARTUP_HEALTHCHECK=true`, the server probes
+`/rest/api/1.0/application-properties` on startup and logs whether Bitbucket is
+reachable. If not, it logs a diagnostic line referencing the relevant env vars
+(`BITBUCKET_URL`, `BITBUCKET_TOKEN`, `HTTPS_PROXY`, `NODE_EXTRA_CA_CERTS`)
+without blocking the server. Useful for debugging connectivity issues before
+the first tool call fails with a generic error.
+
+```console
+BITBUCKET_STARTUP_HEALTHCHECK=true
 ```
 
 ### Response Curation
