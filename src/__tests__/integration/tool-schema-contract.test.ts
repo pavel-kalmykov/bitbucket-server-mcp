@@ -532,6 +532,7 @@ describe("Tool schema contract: all expected tools are registered", () => {
       "search",
       "get_code_insights",
       "get_build_status",
+      "list_forks",
     ];
     expect(new Set(names)).toEqual(new Set(expected));
   });
