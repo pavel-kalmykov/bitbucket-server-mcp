@@ -1,23 +1,13 @@
 name: Release
 
 on:
-  # Chained after E2E, which itself is chained after CI. So by the time
-  # this fires, both CI and the E2E matrix have completed successfully
-  # on this commit; semantic-release runs once, no cross-workflow gate.
-  workflow_run:
-    workflows: [E2E]
-    types: [completed]
-    branches: [main]
+  workflow_dispatch:
 
 permissions: {}
 
 jobs:
   release:
     name: Publish to npm
-    # E2E was already conditioned to only run when CI was triggered by
-    # `push`, so by the time we get here the "push on main" gate is
-    # transitive; only the direct conclusion of E2E needs checking.
-    if: github.event.workflow_run.conclusion == 'success'
     runs-on: ubuntu-latest
     environment: npm
     permissions:
