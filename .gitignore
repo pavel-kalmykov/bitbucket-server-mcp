@@ -33,3 +33,4 @@ demo.cast
 assets/
 .playwright-mcp/
 .fallow/
+.mcp.json
