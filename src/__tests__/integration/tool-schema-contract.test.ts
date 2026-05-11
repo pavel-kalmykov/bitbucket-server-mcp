@@ -533,6 +533,17 @@ describe("Tool schema contract: all expected tools are registered", () => {
       "get_code_insights",
       "get_build_status",
       "list_forks",
+      "fork_repository",
+      "list_default_reviewers",
+      "list_branch_restrictions",
+      "get_pull_request_commits",
+      "get_user_profile",
+      "list_labels",
+      "manage_labels",
+      "list_webhooks",
+      "manage_webhooks",
+      "get_commit_comments",
+      "manage_commit_comment",
     ];
     expect(new Set(names)).toEqual(new Set(expected));
   });

@@ -12,6 +12,11 @@ import { registerReviewTools } from "./tools/pull-requests.js";
 import { registerSearchTools } from "./tools/search.js";
 import { registerInsightTools } from "./tools/insights.js";
 import { registerSystemTools } from "./tools/system.js";
+import { registerDefaultReviewerTools } from "./tools/default-reviewers.js";
+import { registerUserTools } from "./tools/users.js";
+import { registerLabelTools } from "./tools/labels.js";
+import { registerWebhookTools } from "./tools/webhooks.js";
+import { registerCommitCommentTools } from "./tools/commit-comments.js";
 import { registerResources } from "./resources/index.js";
 import { registerPrompts } from "./prompts/index.js";
 import { attachLogger } from "./logging.js";
@@ -35,6 +40,14 @@ Workflow tips:
 - When reviewing PRs: use get_diff with stat=true first to see which files changed, then get the full diff or read files locally for context.
 - get_build_status accepts either a commitId or a prId (resolves the latest commit automatically). Use it to check CI status before approving.
 - upload_attachment uploads a local file and returns a markdown reference to embed in PR comments (images: ![name](ref), files: [name](ref)).
+- get_user_profile fetches a user's public profile by username/slug.
+- list_forks and fork_repository manage repository forks. list_fork shows forks of a repo; fork_repository creates a fork.
+- list_labels and manage_labels (Bitbucket 8.5+) manage repository labels.
+- list_webhooks and manage_webhooks manage repository webhooks (create/update/delete).
+- get_commit_comments and manage_commit_comment read and manage comments on individual commits.
+- get_pull_request_commits lists commits in a pull request.
+- list_branch_restrictions shows branch permission restrictions.
+- list_default_reviewers shows default reviewer conditions for a repository.
 
 Response curation:
 Read tools return curated (compact) responses by default. Use the 'fields' parameter to customize:
@@ -107,6 +120,11 @@ export function createServer(options?: BitbucketServerOptions) {
   registerSearchTools(ctx);
   registerInsightTools(ctx);
   registerSystemTools(ctx);
+  registerDefaultReviewerTools(ctx);
+  registerUserTools(ctx);
+  registerLabelTools(ctx);
+  registerWebhookTools(ctx);
+  registerCommitCommentTools(ctx);
 
   registerResources(server, clients, cache);
   registerPrompts(server);

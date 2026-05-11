@@ -799,6 +799,48 @@ export function registerPullRequestTools(ctx: ToolContext) {
       }
     },
   );
+  server.registerTool(
+    "get_pull_request_commits",
+    {
+      description:
+        "List commits for a specific pull request. Returns the commits that are part of the pull request with pagination support.",
+      inputSchema: {
+        project: z
+          .string()
+          .optional()
+          .describe("Project key. Defaults to BITBUCKET_DEFAULT_PROJECT."),
+        repository: z.string().describe("Repository slug."),
+        prId: z.coerce.number().describe("Pull request ID."),
+        limit: z
+          .number()
+          .optional()
+          .describe("Number of commits to return (default: 25)."),
+        start: z
+          .number()
+          .optional()
+          .describe("Start index for pagination (default: 0)."),
+      },
+      annotations: toolAnnotations(),
+    },
+    async ({ project, repository, prId, limit = 25, start = 0 }) => {
+      try {
+        const resolvedProject = ctx.resolveProject(project);
+        const data = await getPaginated(
+          clients.api,
+          `projects/${resolvedProject}/repos/${repository}/pull-requests/${prId}/commits`,
+          { searchParams: { limit, start } },
+        );
+
+        return formatResponse({
+          total: data.size,
+          commits: data.values,
+          isLastPage: data.isLastPage,
+        });
+      } catch (error) {
+        return handleToolError(error);
+      }
+    },
+  );
 }
 
 interface ReviewActionContext {

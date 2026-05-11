@@ -3,6 +3,7 @@ import { registerBranchTools } from "../../tools/refs.js";
 import { fakeResponse, mockJson } from "../test-utils.js";
 import {
   callAndParse,
+  callRaw,
   expectCalledWithSearchParams,
   setupToolHarness,
 } from "../tool-test-utils.js";
@@ -363,6 +364,66 @@ describe("Branch tools", () => {
         { repository: "r", author: "alice" },
       );
       expect(parsed.commits).toHaveLength(1);
+    });
+  });
+
+  describe("list_branch_restrictions", () => {
+    test("returns branch restrictions", async () => {
+      mockJson(h.mockClients.branchUtils.get, {
+        values: [
+          {
+            id: 1,
+            type: "push",
+            matcher: { displayId: "refs/heads/*", type: { id: "PATTERN" } },
+            users: [{ name: "jdoe" }],
+          },
+        ],
+        size: 1,
+        isLastPage: true,
+      });
+
+      const parsed = await callAndParse<{
+        total: number;
+        restrictions: Array<{ id: number }>;
+      }>(h.client, "list_branch_restrictions", {
+        project: "TEST",
+        repository: "my-repo",
+      });
+
+      expect(parsed.total).toBe(1);
+      expect(parsed.restrictions[0].id).toBe(1);
+    });
+
+    test("returns empty list when no restrictions exist", async () => {
+      mockJson(h.mockClients.branchUtils.get, {
+        values: [],
+        size: 0,
+        isLastPage: true,
+      });
+
+      const parsed = await callAndParse<{ total: number }>(
+        h.client,
+        "list_branch_restrictions",
+        {
+          project: "TEST",
+          repository: "my-repo",
+        },
+      );
+
+      expect(parsed.total).toBe(0);
+    });
+
+    test("returns error on API failure", async () => {
+      h.mockClients.branchUtils.get.mockRejectedValueOnce(
+        new Error("Not found"),
+      );
+
+      const result = await callRaw(h.client, "list_branch_restrictions", {
+        project: "TEST",
+        repository: "my-repo",
+      });
+
+      expect(result.isError).toBe(true);
     });
   });
 });
