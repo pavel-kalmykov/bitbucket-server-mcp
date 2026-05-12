@@ -78,7 +78,7 @@ describe("Tool schema contract: descriptions", () => {
     { name: "get_build_status", contains: "commit" },
     { name: "list_forks", contains: "forks" },
     { name: "fork_repository", contains: "Fork" },
-    { name: "list_default_reviewers", contains: "default reviewer" },
+    { name: "list_default_reviewer_conditions", contains: "default reviewer" },
     { name: "list_branch_restrictions", contains: "branch restrictions" },
     { name: "get_pull_request_commits", contains: "pull request" },
     { name: "get_user_profile", contains: "user profile" },
@@ -86,8 +86,8 @@ describe("Tool schema contract: descriptions", () => {
     { name: "manage_labels", contains: "labels" },
     { name: "list_webhooks", contains: "webhooks" },
     { name: "manage_webhooks", contains: "webhooks" },
-    { name: "get_commit_comments", contains: "commit" },
-    { name: "manage_commit_comment", contains: "commit" },
+    { name: "list_commit_comments", contains: "commit" },
+    { name: "manage_commit_comments", contains: "commit" },
   ])("$name description mentions '$contains'", ({ name, contains }) => {
     const tool = getTool(name);
     expect(tool.description).toContain(contains);
@@ -129,7 +129,7 @@ describe("Tool schema contract: required fields", () => {
     { name: "get_code_insights", required: ["repository", "prId"] },
     { name: "list_forks", required: ["repository"] },
     { name: "fork_repository", required: ["repository"] },
-    { name: "list_default_reviewers", required: ["repository"] },
+    { name: "list_default_reviewer_conditions", required: ["repository"] },
     { name: "list_branch_restrictions", required: ["repository"] },
     { name: "get_pull_request_commits", required: ["repository", "prId"] },
     { name: "get_user_profile", required: ["userSlug"] },
@@ -137,9 +137,9 @@ describe("Tool schema contract: required fields", () => {
     { name: "manage_labels", required: ["action", "repository", "name"] },
     { name: "list_webhooks", required: ["repository"] },
     { name: "manage_webhooks", required: ["action", "repository"] },
-    { name: "get_commit_comments", required: ["repository", "commitId"] },
+    { name: "list_commit_comments", required: ["repository", "commitId"] },
     {
-      name: "manage_commit_comment",
+      name: "manage_commit_comments",
       required: ["action", "repository", "commitId"],
     },
   ])("$name requires $required", ({ name, required }) => {
@@ -331,7 +331,7 @@ describe("Tool schema contract: enum values", () => {
       enums: ["create", "update", "delete"],
     },
     {
-      tool: "manage_commit_comment",
+      tool: "manage_commit_comments",
       field: "action",
       enums: ["create", "edit", "delete"],
     },
@@ -423,7 +423,10 @@ describe("Tool schema contract: annotations", () => {
       name: "fork_repository",
       expected: { readOnlyHint: false, idempotentHint: false },
     },
-    { name: "list_default_reviewers", expected: { readOnlyHint: true } },
+    {
+      name: "list_default_reviewer_conditions",
+      expected: { readOnlyHint: true },
+    },
     { name: "list_branch_restrictions", expected: { readOnlyHint: true } },
     { name: "get_pull_request_commits", expected: { readOnlyHint: true } },
     { name: "get_user_profile", expected: { readOnlyHint: true } },
@@ -437,9 +440,9 @@ describe("Tool schema contract: annotations", () => {
       name: "manage_webhooks",
       expected: { readOnlyHint: false, idempotentHint: false },
     },
-    { name: "get_commit_comments", expected: { readOnlyHint: true } },
+    { name: "list_commit_comments", expected: { readOnlyHint: true } },
     {
-      name: "manage_commit_comment",
+      name: "manage_commit_comments",
       expected: { readOnlyHint: false, idempotentHint: false },
     },
   ])("$name has annotations $expected", ({ name, expected }) => {
@@ -600,7 +603,7 @@ describe("Tool schema contract: all expected tools are registered", () => {
       "get_build_status",
       "list_forks",
       "fork_repository",
-      "list_default_reviewers",
+      "list_default_reviewer_conditions",
       "list_branch_restrictions",
       "get_pull_request_commits",
       "get_user_profile",
@@ -608,8 +611,8 @@ describe("Tool schema contract: all expected tools are registered", () => {
       "manage_labels",
       "list_webhooks",
       "manage_webhooks",
-      "get_commit_comments",
-      "manage_commit_comment",
+      "list_commit_comments",
+      "manage_commit_comments",
     ];
     expect(new Set(names)).toEqual(new Set(expected));
   });

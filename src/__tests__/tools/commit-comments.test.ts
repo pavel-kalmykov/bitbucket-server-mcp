@@ -8,7 +8,7 @@ import {
   setupToolHarness,
 } from "../tool-test-utils.js";
 
-describe("get_commit_comments", () => {
+describe("list_commit_comments", () => {
   const h = setupToolHarness({
     register: registerCommitCommentTools,
     defaultProject: "DEFAULT",
@@ -30,7 +30,7 @@ describe("get_commit_comments", () => {
     const parsed = await callAndParse<{
       total: number;
       comments: Array<{ id: number; text: string }>;
-    }>(h.client, "get_commit_comments", {
+    }>(h.client, "list_commit_comments", {
       project: "TEST",
       repository: "my-repo",
       commitId: "abc123",
@@ -49,7 +49,7 @@ describe("get_commit_comments", () => {
 
     const parsed = await callAndParse<{ total: number }>(
       h.client,
-      "get_commit_comments",
+      "list_commit_comments",
       {
         project: "TEST",
         repository: "my-repo",
@@ -63,7 +63,7 @@ describe("get_commit_comments", () => {
   test("returns error on API failure", async () => {
     h.mockClients.api.get.mockRejectedValueOnce(new Error("Not found"));
 
-    const result = await callRaw(h.client, "get_commit_comments", {
+    const result = await callRaw(h.client, "list_commit_comments", {
       project: "TEST",
       repository: "my-repo",
       commitId: "abc123",
@@ -73,7 +73,7 @@ describe("get_commit_comments", () => {
   });
 });
 
-describe("manage_commit_comment", () => {
+describe("manage_commit_comments", () => {
   const h = setupToolHarness({
     register: registerCommitCommentTools,
     defaultProject: "DEFAULT",
@@ -84,7 +84,7 @@ describe("manage_commit_comment", () => {
 
     const parsed = await callAndParse<{ id: number; text: string }>(
       h.client,
-      "manage_commit_comment",
+      "manage_commit_comments",
       {
         action: "create",
         project: "TEST",
@@ -111,7 +111,7 @@ describe("manage_commit_comment", () => {
 
     const parsed = await callAndParse<{ text: string }>(
       h.client,
-      "manage_commit_comment",
+      "manage_commit_comments",
       {
         action: "edit",
         project: "TEST",
@@ -135,7 +135,7 @@ describe("manage_commit_comment", () => {
 
     const parsed = await callAndParse<{ deleted: boolean; commentId: number }>(
       h.client,
-      "manage_commit_comment",
+      "manage_commit_comments",
       {
         action: "delete",
         project: "TEST",
@@ -153,7 +153,7 @@ describe("manage_commit_comment", () => {
   test("returns error when create fails", async () => {
     h.mockClients.api.post.mockRejectedValueOnce(new Error("Forbidden"));
 
-    const result = await callRaw(h.client, "manage_commit_comment", {
+    const result = await callRaw(h.client, "manage_commit_comments", {
       action: "create",
       project: "TEST",
       repository: "my-repo",
@@ -167,7 +167,7 @@ describe("manage_commit_comment", () => {
   test("returns error when edit fails", async () => {
     h.mockClients.api.put.mockRejectedValueOnce(new Error("Not found"));
 
-    const result = await callRaw(h.client, "manage_commit_comment", {
+    const result = await callRaw(h.client, "manage_commit_comments", {
       action: "edit",
       project: "TEST",
       repository: "my-repo",
@@ -183,7 +183,7 @@ describe("manage_commit_comment", () => {
   test("returns error when delete fails", async () => {
     h.mockClients.api.delete.mockRejectedValueOnce(new Error("Forbidden"));
 
-    const result = await callRaw(h.client, "manage_commit_comment", {
+    const result = await callRaw(h.client, "manage_commit_comments", {
       action: "delete",
       project: "TEST",
       repository: "my-repo",

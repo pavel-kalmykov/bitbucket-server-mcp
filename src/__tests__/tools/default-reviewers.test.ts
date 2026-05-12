@@ -8,7 +8,7 @@ import {
   setupToolHarness,
 } from "../tool-test-utils.js";
 
-describe("list_default_reviewers", () => {
+describe("list_default_reviewer_conditions", () => {
   const h = setupToolHarness({
     register: registerDefaultReviewerTools,
     defaultProject: "DEFAULT",
@@ -27,7 +27,7 @@ describe("list_default_reviewers", () => {
 
     const parsed = await callAndParse<Array<{ id: number }>>(
       h.client,
-      "list_default_reviewers",
+      "list_default_reviewer_conditions",
       {
         project: "TEST",
         repository: "my-repo",
@@ -43,7 +43,7 @@ describe("list_default_reviewers", () => {
 
     const parsed = await callAndParse<unknown[]>(
       h.client,
-      "list_default_reviewers",
+      "list_default_reviewer_conditions",
       {
         project: "TEST",
         repository: "my-repo",
@@ -56,7 +56,7 @@ describe("list_default_reviewers", () => {
   test("uses default project when not provided", async () => {
     mockJson(h.mockClients.defaultReviewers.get, []);
 
-    await callAndParse(h.client, "list_default_reviewers", {
+    await callAndParse(h.client, "list_default_reviewer_conditions", {
       repository: "my-repo",
     });
 
@@ -71,7 +71,7 @@ describe("list_default_reviewers", () => {
       new Error("Not found"),
     );
 
-    const result = await callRaw(h.client, "list_default_reviewers", {
+    const result = await callRaw(h.client, "list_default_reviewer_conditions", {
       project: "TEST",
       repository: "my-repo",
     });

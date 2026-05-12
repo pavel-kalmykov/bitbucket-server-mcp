@@ -44,10 +44,10 @@ Workflow tips:
 - list_forks and fork_repository manage repository forks. list_fork shows forks of a repo; fork_repository creates a fork.
 - list_labels and manage_labels (Bitbucket 8.5+) manage repository labels.
 - list_webhooks and manage_webhooks manage repository webhooks (create/update/delete).
-- get_commit_comments and manage_commit_comment read and manage comments on individual commits.
+- list_commit_comments and manage_commit_comments read and manage comments on individual commits.
 - get_pull_request_commits lists commits in a pull request.
 - list_branch_restrictions shows branch permission restrictions.
-- list_default_reviewers shows default reviewer conditions for a repository.
+- list_default_reviewer_conditions shows default reviewer conditions for a repository.
 
 Response curation:
 Read tools return curated (compact) responses by default. Use the 'fields' parameter to customize:

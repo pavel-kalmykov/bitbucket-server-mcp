@@ -68,7 +68,7 @@ export function registerCommitCommentTools(ctx: ToolContext) {
   const { server, clients } = ctx;
 
   server.registerTool(
-    "get_commit_comments",
+    "list_commit_comments",
     {
       description:
         "Get comments for a specific commit. Returns all comments on the commit with pagination support.",
@@ -111,7 +111,7 @@ export function registerCommitCommentTools(ctx: ToolContext) {
   );
 
   server.registerTool(
-    "manage_commit_comment",
+    "manage_commit_comments",
     {
       description:
         'Manage comments on a commit. Actions: "create" (add a new comment), "edit" (update an existing comment), "delete" (remove a comment).',

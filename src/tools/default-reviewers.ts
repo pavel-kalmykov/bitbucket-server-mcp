@@ -16,7 +16,7 @@ export function registerDefaultReviewerTools(ctx: ToolContext) {
   const { server, clients } = ctx;
 
   server.registerTool(
-    "list_default_reviewers",
+    "list_default_reviewer_conditions",
     {
       description:
         "List default reviewer conditions for a repository. These conditions determine which users are automatically added as reviewers to pull requests.",
