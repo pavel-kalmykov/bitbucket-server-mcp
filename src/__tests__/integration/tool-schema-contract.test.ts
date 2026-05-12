@@ -76,6 +76,18 @@ describe("Tool schema contract: descriptions", () => {
     { name: "search", contains: "code or files" },
     { name: "get_code_insights", contains: "annotations" },
     { name: "get_build_status", contains: "commit" },
+    { name: "list_forks", contains: "forks" },
+    { name: "fork_repository", contains: "Fork" },
+    { name: "list_default_reviewer_conditions", contains: "default reviewer" },
+    { name: "list_branch_restrictions", contains: "branch restrictions" },
+    { name: "get_pull_request_commits", contains: "pull request" },
+    { name: "get_user_profile", contains: "user profile" },
+    { name: "list_labels", contains: "labels" },
+    { name: "manage_labels", contains: "labels" },
+    { name: "list_webhooks", contains: "webhooks" },
+    { name: "manage_webhooks", contains: "webhooks" },
+    { name: "list_commit_comments", contains: "commit" },
+    { name: "manage_commit_comments", contains: "commit" },
   ])("$name description mentions '$contains'", ({ name, contains }) => {
     const tool = getTool(name);
     expect(tool.description).toContain(contains);
@@ -115,6 +127,21 @@ describe("Tool schema contract: required fields", () => {
     { name: "manage_review", required: ["action", "repository", "prId"] },
     { name: "search", required: ["query"] },
     { name: "get_code_insights", required: ["repository", "prId"] },
+    { name: "list_forks", required: ["repository"] },
+    { name: "fork_repository", required: ["repository"] },
+    { name: "list_default_reviewer_conditions", required: ["repository"] },
+    { name: "list_branch_restrictions", required: ["repository"] },
+    { name: "get_pull_request_commits", required: ["repository", "prId"] },
+    { name: "get_user_profile", required: ["userSlug"] },
+    { name: "list_labels", required: ["repository"] },
+    { name: "manage_labels", required: ["action", "repository", "name"] },
+    { name: "list_webhooks", required: ["repository"] },
+    { name: "manage_webhooks", required: ["action", "repository"] },
+    { name: "list_commit_comments", required: ["repository", "commitId"] },
+    {
+      name: "manage_commit_comments",
+      required: ["action", "repository", "commitId"],
+    },
   ])("$name requires $required", ({ name, required }) => {
     const tool = getTool(name);
     expect(tool.inputSchema.required).toEqual(expect.arrayContaining(required));
@@ -293,6 +320,21 @@ describe("Tool schema contract: enum values", () => {
         "rebase-ff-only",
       ],
     },
+    {
+      tool: "manage_labels",
+      field: "action",
+      enums: ["add", "remove"],
+    },
+    {
+      tool: "manage_webhooks",
+      field: "action",
+      enums: ["create", "update", "delete"],
+    },
+    {
+      tool: "manage_commit_comments",
+      field: "action",
+      enums: ["create", "edit", "delete"],
+    },
   ])("$tool.$field has enum $enums", ({ tool, field, enums }) => {
     const t = getTool(tool);
     const prop = getProp(t, field);
@@ -374,6 +416,33 @@ describe("Tool schema contract: annotations", () => {
     },
     {
       name: "edit_file",
+      expected: { readOnlyHint: false, idempotentHint: false },
+    },
+    { name: "list_forks", expected: { readOnlyHint: true } },
+    {
+      name: "fork_repository",
+      expected: { readOnlyHint: false, idempotentHint: false },
+    },
+    {
+      name: "list_default_reviewer_conditions",
+      expected: { readOnlyHint: true },
+    },
+    { name: "list_branch_restrictions", expected: { readOnlyHint: true } },
+    { name: "get_pull_request_commits", expected: { readOnlyHint: true } },
+    { name: "get_user_profile", expected: { readOnlyHint: true } },
+    { name: "list_labels", expected: { readOnlyHint: true } },
+    {
+      name: "manage_labels",
+      expected: { readOnlyHint: false, idempotentHint: false },
+    },
+    { name: "list_webhooks", expected: { readOnlyHint: true } },
+    {
+      name: "manage_webhooks",
+      expected: { readOnlyHint: false, idempotentHint: false },
+    },
+    { name: "list_commit_comments", expected: { readOnlyHint: true } },
+    {
+      name: "manage_commit_comments",
       expected: { readOnlyHint: false, idempotentHint: false },
     },
   ])("$name has annotations $expected", ({ name, expected }) => {
@@ -533,6 +602,17 @@ describe("Tool schema contract: all expected tools are registered", () => {
       "get_code_insights",
       "get_build_status",
       "list_forks",
+      "fork_repository",
+      "list_default_reviewer_conditions",
+      "list_branch_restrictions",
+      "get_pull_request_commits",
+      "get_user_profile",
+      "list_labels",
+      "manage_labels",
+      "list_webhooks",
+      "manage_webhooks",
+      "list_commit_comments",
+      "manage_commit_comments",
     ];
     expect(new Set(names)).toEqual(new Set(expected));
   });

@@ -99,3 +99,12 @@ export const VERSIONS_WITH_THREAD_RESOLVED = SELECTED_VERSIONS.filter((v) =>
 export const VERSIONS_WITHOUT_THREAD_RESOLVED = SELECTED_VERSIONS.filter((v) =>
   lt(v, THREAD_RESOLVED_SINCE),
 );
+
+/** Labels API was introduced in 8.5. */
+export const LABELS_SINCE = "8.5";
+export const VERSIONS_WITH_LABELS = SELECTED_VERSIONS.filter((v) =>
+  gte(v, LABELS_SINCE),
+);
+export const VERSIONS_WITHOUT_LABELS = SELECTED_VERSIONS.filter((v) =>
+  lt(v, LABELS_SINCE),
+);

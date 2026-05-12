@@ -63,6 +63,49 @@ const branchActions: Record<
 
 export function registerBranchTools(ctx: ToolContext) {
   const { server, clients } = ctx;
+
+  server.registerTool(
+    "list_branch_restrictions",
+    {
+      description:
+        "List branch restrictions for a repository. These control which users/groups can push to or delete specific branches or branch patterns.",
+      inputSchema: {
+        project: z
+          .string()
+          .optional()
+          .describe("Project key. Defaults to BITBUCKET_DEFAULT_PROJECT."),
+        repository: z.string().describe("Repository slug."),
+        limit: z
+          .number()
+          .optional()
+          .describe("Number of restrictions to return (default: 25)."),
+        start: z
+          .number()
+          .optional()
+          .describe("Start index for pagination (default: 0)."),
+      },
+      annotations: toolAnnotations(),
+    },
+    async ({ project, repository, limit = 25, start = 0 }) => {
+      try {
+        const resolvedProject = ctx.resolveProject(project);
+        const data = await getPaginated(
+          clients.branchUtils,
+          `projects/${resolvedProject}/repos/${repository}/restrictions`,
+          { searchParams: { limit, start } },
+        );
+
+        return formatResponse({
+          total: data.size,
+          restrictions: data.values,
+          isLastPage: data.isLastPage,
+        });
+      } catch (error) {
+        return handleToolError(error);
+      }
+    },
+  );
+
   server.registerTool(
     "list_branches",
     {
