@@ -100,9 +100,7 @@ export function registerPullRequestTools(ctx: ToolContext) {
         draft: z
           .boolean()
           .optional()
-          .describe(
-            "Create the pull request as a draft. Requires Bitbucket Server 8.5+.",
-          ),
+          .describe("Create the pull request as a draft."),
       },
       annotations: toolAnnotations({
         readOnlyHint: false,
