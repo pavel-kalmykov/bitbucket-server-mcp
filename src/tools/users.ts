@@ -4,16 +4,6 @@ import { toolAnnotations } from "../response/annotations.js";
 import { handleToolError } from "../http/errors.js";
 import type { ToolContext } from "./shared.js";
 
-interface UserProfile {
-  name: string;
-  emailAddress: string;
-  displayName: string;
-  slug: string;
-  active: boolean;
-  id?: number;
-  type?: string;
-}
-
 export function registerUserTools(ctx: ToolContext) {
   const { server, clients } = ctx;
 
@@ -29,9 +19,7 @@ export function registerUserTools(ctx: ToolContext) {
     },
     async ({ userSlug }) => {
       try {
-        const data = await clients.api
-          .get(`users/${userSlug}`)
-          .json<UserProfile>();
+        const data = await clients.api.get(`users/${userSlug}`).json();
 
         return formatResponse(data);
       } catch (error) {
