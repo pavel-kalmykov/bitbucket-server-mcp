@@ -34,12 +34,9 @@ export function registerMergeCheckTools(ctx: ToolContext) {
             }>;
           }>();
 
-        const mergeCheckHooks = hooks.values.filter(
-          (h) =>
-            h.key.includes("merge") ||
-            h.key.includes("Merge") ||
-            h.key.includes("requiredBuilds") ||
-            h.key.includes("RequiredBuilds"),
+        const mergeCheckKeys = ["merge", "requiredBuilds"];
+        const mergeCheckHooks = hooks.values.filter((h) =>
+          mergeCheckKeys.some((k) => h.key.toLowerCase().includes(k)),
         );
 
         const checks = await Promise.all(

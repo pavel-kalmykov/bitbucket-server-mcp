@@ -6,6 +6,15 @@ import { ApiCache } from "../../http/cache.js";
 import { ToolContext } from "../../tools/shared.js";
 import { registerCommentTools } from "../../tools/comments.js";
 import { registerLabelTools } from "../../tools/labels.js";
+import { registerForkTools } from "../../tools/forks.js";
+import { registerBranchTools } from "../../tools/refs.js";
+import { registerPullRequestTools } from "../../tools/pull-requests.js";
+import { registerUserTools } from "../../tools/users.js";
+import { registerDefaultReviewerTools } from "../../tools/default-reviewers.js";
+import { registerWebhookTools } from "../../tools/webhooks.js";
+import { registerRepositoryTools } from "../../tools/repositories.js";
+import { registerSshKeyTools } from "../../tools/ssh-keys.js";
+import { registerGpgKeyTools } from "../../tools/gpg-keys.js";
 import { logger } from "../../logging.js";
 import type { BitbucketConfig } from "../../types.js";
 import type { StartedBitbucket } from "./bitbucket-container.js";
@@ -15,15 +24,6 @@ export interface McpAgainstBitbucket {
   close(): Promise<void>;
 }
 
-/**
- * Wire an MCP server + in-memory client against the real ky clients
- * that point at a live Bitbucket container, and register the comment
- * tools on it. The resulting `client` goes through the same code path
- * a real MCP consumer would exercise: zod validation, the tool
- * handler, ky against the live server, and `formatResponse` on the
- * way back. `X-Atlassian-Token: no-check` goes through `customHeaders`
- * because Bitbucket rejects basic-auth mutations without it.
- */
 export async function setupMcpAgainst(
   bb: StartedBitbucket,
 ): Promise<McpAgainstBitbucket> {
@@ -46,6 +46,15 @@ export async function setupMcpAgainst(
   });
   registerCommentTools(ctx);
   registerLabelTools(ctx);
+  registerForkTools(ctx);
+  registerBranchTools(ctx);
+  registerPullRequestTools(ctx);
+  registerUserTools(ctx);
+  registerDefaultReviewerTools(ctx);
+  registerWebhookTools(ctx);
+  registerRepositoryTools(ctx);
+  registerSshKeyTools(ctx);
+  registerGpgKeyTools(ctx);
 
   const [clientTransport, serverTransport] =
     InMemoryTransport.createLinkedPair();

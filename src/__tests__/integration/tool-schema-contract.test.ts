@@ -92,6 +92,14 @@ describe("Tool schema contract: descriptions", () => {
     { name: "get_file_blame", contains: "blame" },
     { name: "create_repository", contains: "new repository" },
     { name: "delete_repository", contains: "irreversible" },
+    { name: "search_users", contains: "Search" },
+    { name: "list_repository_hooks", contains: "hooks" },
+    { name: "manage_repository_hooks", contains: "hook settings" },
+    { name: "list_merge_checks", contains: "merge check" },
+    { name: "manage_merge_checks", contains: "merge check" },
+    { name: "list_reviewer_groups", contains: "reviewer groups" },
+    { name: "manage_reviewer_groups", contains: "reviewer groups" },
+    { name: "list_secret_scanning_rules", contains: "secret scanning" },
   ])("$name description mentions '$contains'", ({ name, contains }) => {
     const tool = getTool(name);
     expect(tool.description).toContain(contains);
@@ -150,6 +158,23 @@ describe("Tool schema contract: required fields", () => {
     { name: "get_file_blame", required: ["repository", "filePath"] },
     { name: "create_repository", required: ["name"] },
     { name: "delete_repository", required: ["repository"] },
+    { name: "search_users", required: ["filter"] },
+    { name: "list_repository_hooks", required: ["repository"] },
+    {
+      name: "manage_repository_hooks",
+      required: ["action", "repository", "hookKey"],
+    },
+    { name: "list_merge_checks", required: ["repository"] },
+    {
+      name: "manage_merge_checks",
+      required: ["repository", "hookKey", "settings"],
+    },
+    { name: "list_reviewer_groups", required: ["repository"] },
+    {
+      name: "manage_reviewer_groups",
+      required: ["action", "repository", "name"],
+    },
+    { name: "list_secret_scanning_rules", required: ["repository"] },
   ])("$name requires $required", ({ name, required }) => {
     const tool = getTool(name);
     expect(tool.inputSchema.required).toEqual(expect.arrayContaining(required));
@@ -467,6 +492,23 @@ describe("Tool schema contract: annotations", () => {
         idempotentHint: false,
       },
     },
+    { name: "search_users", expected: { readOnlyHint: true } },
+    { name: "list_repository_hooks", expected: { readOnlyHint: true } },
+    {
+      name: "manage_repository_hooks",
+      expected: { readOnlyHint: false, idempotentHint: false },
+    },
+    { name: "list_merge_checks", expected: { readOnlyHint: true } },
+    {
+      name: "manage_merge_checks",
+      expected: { readOnlyHint: false, idempotentHint: false },
+    },
+    { name: "list_reviewer_groups", expected: { readOnlyHint: true } },
+    {
+      name: "manage_reviewer_groups",
+      expected: { readOnlyHint: false, idempotentHint: false },
+    },
+    { name: "list_secret_scanning_rules", expected: { readOnlyHint: true } },
   ])("$name has annotations $expected", ({ name, expected }) => {
     const tool = getTool(name);
     expect(tool.annotations).toBeDefined();
@@ -639,6 +681,18 @@ describe("Tool schema contract: all expected tools are registered", () => {
       "get_file_blame",
       "create_repository",
       "delete_repository",
+      "search_users",
+      "list_repository_hooks",
+      "manage_repository_hooks",
+      "list_merge_checks",
+      "manage_merge_checks",
+      "list_reviewer_groups",
+      "manage_reviewer_groups",
+      "list_secret_scanning_rules",
+      "list_ssh_keys",
+      "manage_ssh_keys",
+      "list_gpg_keys",
+      "manage_gpg_keys",
     ];
     expect(new Set(names)).toEqual(new Set(expected));
   });

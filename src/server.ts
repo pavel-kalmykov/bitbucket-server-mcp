@@ -17,6 +17,12 @@ import { registerUserTools } from "./tools/users.js";
 import { registerLabelTools } from "./tools/labels.js";
 import { registerWebhookTools } from "./tools/webhooks.js";
 import { registerCommitCommentTools } from "./tools/commit-comments.js";
+import { registerHookTools } from "./tools/hooks.js";
+import { registerMergeCheckTools } from "./tools/merge-checks.js";
+import { registerReviewerGroupTools } from "./tools/reviewer-groups.js";
+import { registerSecretScanningTools } from "./tools/secret-scanning.js";
+import { registerSshKeyTools } from "./tools/ssh-keys.js";
+import { registerGpgKeyTools } from "./tools/gpg-keys.js";
 import { registerResources } from "./resources/index.js";
 import { registerPrompts } from "./prompts/index.js";
 import { attachLogger } from "./logging.js";
@@ -125,6 +131,12 @@ export function createServer(options?: BitbucketServerOptions) {
   registerLabelTools(ctx);
   registerWebhookTools(ctx);
   registerCommitCommentTools(ctx);
+  registerHookTools(ctx);
+  registerMergeCheckTools(ctx);
+  registerReviewerGroupTools(ctx);
+  registerSecretScanningTools(ctx);
+  registerSshKeyTools(ctx);
+  registerGpgKeyTools(ctx);
 
   registerResources(server, clients, cache);
   registerPrompts(server);
