@@ -27,4 +27,45 @@ export function registerUserTools(ctx: ToolContext) {
       }
     },
   );
+
+  server.registerTool(
+    "search_users",
+    {
+      description:
+        "Search Bitbucket users by filter query. Returns matching users.",
+      inputSchema: {
+        filter: z
+          .string()
+          .describe(
+            "Filter query substring to match against user names and display names.",
+          ),
+        limit: z
+          .number()
+          .optional()
+          .describe("Number of users to return (default: 25)."),
+        start: z
+          .number()
+          .optional()
+          .describe("Start index for pagination (default: 0)."),
+      },
+      annotations: toolAnnotations(),
+    },
+    async ({ filter, limit = 25, start = 0 }) => {
+      try {
+        const data = await clients.api
+          .get("users", {
+            searchParams: { filter, limit, start },
+          })
+          .json<{ values: unknown[]; size: number; isLastPage: boolean }>();
+
+        return formatResponse({
+          total: data.size,
+          users: data.values,
+          isLastPage: data.isLastPage,
+        });
+      } catch (error) {
+        return handleToolError(error);
+      }
+    },
+  );
 }
