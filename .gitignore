@@ -34,3 +34,6 @@ assets/
 .playwright-mcp/
 .fallow/
 .mcp.json
+
+# OpenCode project memory (local only)
+AGENTS.md
