@@ -88,6 +88,10 @@ describe("Tool schema contract: descriptions", () => {
     { name: "manage_webhooks", contains: "webhooks" },
     { name: "list_commit_comments", contains: "commit" },
     { name: "manage_commit_comments", contains: "commit" },
+    { name: "get_commit_pull_requests", contains: "commit" },
+    { name: "get_file_blame", contains: "blame" },
+    { name: "create_repository", contains: "new repository" },
+    { name: "delete_repository", contains: "irreversible" },
   ])("$name description mentions '$contains'", ({ name, contains }) => {
     const tool = getTool(name);
     expect(tool.description).toContain(contains);
@@ -142,6 +146,10 @@ describe("Tool schema contract: required fields", () => {
       name: "manage_commit_comments",
       required: ["action", "repository", "commitId"],
     },
+    { name: "get_commit_pull_requests", required: ["repository", "commitId"] },
+    { name: "get_file_blame", required: ["repository", "filePath"] },
+    { name: "create_repository", required: ["name"] },
+    { name: "delete_repository", required: ["repository"] },
   ])("$name requires $required", ({ name, required }) => {
     const tool = getTool(name);
     expect(tool.inputSchema.required).toEqual(expect.arrayContaining(required));
@@ -445,6 +453,20 @@ describe("Tool schema contract: annotations", () => {
       name: "manage_commit_comments",
       expected: { readOnlyHint: false, idempotentHint: false },
     },
+    { name: "get_commit_pull_requests", expected: { readOnlyHint: true } },
+    { name: "get_file_blame", expected: { readOnlyHint: true } },
+    {
+      name: "create_repository",
+      expected: { readOnlyHint: false, idempotentHint: false },
+    },
+    {
+      name: "delete_repository",
+      expected: {
+        readOnlyHint: false,
+        destructiveHint: true,
+        idempotentHint: false,
+      },
+    },
   ])("$name has annotations $expected", ({ name, expected }) => {
     const tool = getTool(name);
     expect(tool.annotations).toBeDefined();
@@ -613,6 +635,10 @@ describe("Tool schema contract: all expected tools are registered", () => {
       "manage_webhooks",
       "list_commit_comments",
       "manage_commit_comments",
+      "get_commit_pull_requests",
+      "get_file_blame",
+      "create_repository",
+      "delete_repository",
     ];
     expect(new Set(names)).toEqual(new Set(expected));
   });
