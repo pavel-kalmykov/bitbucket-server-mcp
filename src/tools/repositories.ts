@@ -332,4 +332,113 @@ export function registerRepositoryTools(ctx: ToolContext) {
       }
     },
   );
+
+  server.registerTool(
+    "get_file_blame",
+    {
+      description:
+        "Get blame/history information for a file. Returns line-by-line commit authorship data.",
+      inputSchema: {
+        project: z
+          .string()
+          .optional()
+          .describe("Project key. Defaults to BITBUCKET_DEFAULT_PROJECT."),
+        repository: z.string().describe("Repository slug."),
+        filePath: z.string().describe("Path to the file in the repository."),
+        branch: z
+          .string()
+          .optional()
+          .describe("Branch or commit hash (default: default branch)."),
+      },
+      annotations: toolAnnotations(),
+    },
+    async ({ project, repository, filePath, branch }) => {
+      try {
+        const resolvedProject = ctx.resolveProject(project);
+        const searchParams: Record<string, string> = { blame: "" };
+        if (branch) searchParams.at = branch;
+
+        const data = await clients.api
+          .get(
+            `projects/${resolvedProject}/repos/${repository}/browse/${filePath}`,
+            { searchParams },
+          )
+          .json();
+
+        return formatResponse(data);
+      } catch (error) {
+        return handleToolError(error);
+      }
+    },
+  );
+
+  server.registerTool(
+    "create_repository",
+    {
+      description: "Create a new repository in a project.",
+      inputSchema: {
+        project: z
+          .string()
+          .optional()
+          .describe("Project key. Defaults to BITBUCKET_DEFAULT_PROJECT."),
+        name: z.string().describe("Repository name."),
+        description: z.string().optional().describe("Repository description."),
+        defaultBranch: z
+          .string()
+          .optional()
+          .describe("Default branch name (defaults to 'main' if not set)."),
+      },
+      annotations: toolAnnotations({
+        readOnlyHint: false,
+        idempotentHint: false,
+      }),
+    },
+    async ({ project, name, description, defaultBranch }) => {
+      try {
+        const resolvedProject = ctx.resolveProject(project);
+        const body: Record<string, unknown> = { name };
+        if (description) body.description = description;
+        if (defaultBranch) body.defaultBranch = defaultBranch;
+
+        const data = await clients.api
+          .post(`projects/${resolvedProject}/repos`, { json: body })
+          .json();
+
+        return formatResponse(data);
+      } catch (error) {
+        return handleToolError(error);
+      }
+    },
+  );
+
+  server.registerTool(
+    "delete_repository",
+    {
+      description: "Delete a repository. This action is irreversible.",
+      inputSchema: {
+        project: z
+          .string()
+          .optional()
+          .describe("Project key. Defaults to BITBUCKET_DEFAULT_PROJECT."),
+        repository: z.string().describe("Repository slug."),
+      },
+      annotations: toolAnnotations({
+        readOnlyHint: false,
+        destructiveHint: true,
+        idempotentHint: false,
+      }),
+    },
+    async ({ project, repository }) => {
+      try {
+        const resolvedProject = ctx.resolveProject(project);
+        await clients.api.delete(
+          `projects/${resolvedProject}/repos/${repository}`,
+        );
+
+        return formatResponse({ deleted: true, repository });
+      } catch (error) {
+        return handleToolError(error);
+      }
+    },
+  );
 }

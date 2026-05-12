@@ -47,6 +47,7 @@ type Activity = PullRequestActivity & {
 interface CreatePrBody {
   title: string;
   description?: string;
+  draft?: boolean;
   fromRef: {
     id: string;
     repository: { slug: string; project: { key: string } };
@@ -96,6 +97,12 @@ export function registerPullRequestTools(ctx: ToolContext) {
           .describe(
             "Merge default reviewers into the reviewer list (default: true).",
           ),
+        draft: z
+          .boolean()
+          .optional()
+          .describe(
+            "Create the pull request as a draft. Requires Bitbucket Server 8.5+.",
+          ),
       },
       annotations: toolAnnotations({
         readOnlyHint: false,
@@ -113,6 +120,7 @@ export function registerPullRequestTools(ctx: ToolContext) {
       sourceRepository,
       reviewers,
       includeDefaultReviewers,
+      draft,
     }) => {
       try {
         const resolvedProject = ctx.resolveProject(project);
@@ -140,6 +148,7 @@ export function registerPullRequestTools(ctx: ToolContext) {
         const body: CreatePrBody = {
           title,
           description,
+          draft,
           fromRef: {
             id: `refs/heads/${sourceBranch}`,
             repository: {
@@ -834,6 +843,49 @@ export function registerPullRequestTools(ctx: ToolContext) {
         return formatResponse({
           total: data.size,
           commits: data.values,
+          isLastPage: data.isLastPage,
+        });
+      } catch (error) {
+        return handleToolError(error);
+      }
+    },
+  );
+
+  server.registerTool(
+    "get_commit_pull_requests",
+    {
+      description:
+        "List pull requests that contain a specific commit. Returns the PRs that include the given commit.",
+      inputSchema: {
+        project: z
+          .string()
+          .optional()
+          .describe("Project key. Defaults to BITBUCKET_DEFAULT_PROJECT."),
+        repository: z.string().describe("Repository slug."),
+        commitId: z.string().describe("Full commit hash."),
+        limit: z
+          .number()
+          .optional()
+          .describe("Number of PRs to return (default: 25)."),
+        start: z
+          .number()
+          .optional()
+          .describe("Start index for pagination (default: 0)."),
+      },
+      annotations: toolAnnotations(),
+    },
+    async ({ project, repository, commitId, limit = 25, start = 0 }) => {
+      try {
+        const resolvedProject = ctx.resolveProject(project);
+        const data = await getPaginated(
+          clients.api,
+          `projects/${resolvedProject}/repos/${repository}/commits/${commitId}/pull-requests`,
+          { searchParams: { limit, start } },
+        );
+
+        return formatResponse({
+          total: data.size,
+          pullRequests: data.values,
           isLastPage: data.isLastPage,
         });
       } catch (error) {
