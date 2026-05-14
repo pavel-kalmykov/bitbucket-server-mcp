@@ -1,3 +1,23 @@
+# [0.13.0](https://github.com/pavel-kalmykov/bitbucket-server-mcp/compare/v0.12.0...v0.13.0) (2026-05-14)
+
+
+### Bug Fixes
+
+* handle 404 on empty branch restrictions gracefully ([6f16d03](https://github.com/pavel-kalmykov/bitbucket-server-mcp/commit/6f16d03bbb968bb4ed43f9c0b4c763028128755b))
+* relax labels E2E test on unsupported versions ([98749c1](https://github.com/pavel-kalmykov/bitbucket-server-mcp/commit/98749c12eb6bd8f24d58d87dc3d77ec77c23f3e0))
+* remove draft PR E2E test (create_pull_request fails via MCP on some versions) ([6ac1fa4](https://github.com/pavel-kalmykov/bitbucket-server-mcp/commit/6ac1fa4912c81858659e3af07b2d695c34a14e6a))
+* replace generic types with proper interfaces in default-reviewers and users ([aa35a2b](https://github.com/pavel-kalmykov/bitbucket-server-mcp/commit/aa35a2b2873c5775aaa2f410a36880961d8dd738))
+* update draft PR version note ([816eb23](https://github.com/pavel-kalmykov/bitbucket-server-mcp/commit/816eb23e327c850af0b565feb0c39b0f3eb5f811))
+
+
+### Features
+
+* add hooks, merge checks, reviewer groups, secret scanning, user search, SSH, and GPG key tools ([d373ebc](https://github.com/pavel-kalmykov/bitbucket-server-mcp/commit/d373ebcb19e31aca80767bf6b9b9e00afb6a9f84))
+* add list_forks tool ([d4403f1](https://github.com/pavel-kalmykov/bitbucket-server-mcp/commit/d4403f1a34f5cd67390c1365249aa2bf7a3fceac))
+* implement Phase 1 tools (forks, labels, webhooks, users, comments, reviewers, restrictions) ([5ca4a69](https://github.com/pavel-kalmykov/bitbucket-server-mcp/commit/5ca4a6986e88a1463c545b6b2d67ffefc3f71862))
+* implement Phase 1 tools with systematic test design ([ac75eb3](https://github.com/pavel-kalmykov/bitbucket-server-mcp/commit/ac75eb317e575faa6f75a113356237549b31baa4))
+* implement Phase 2 tools (commit PRs, blame, repo CRUD, draft PR) ([e184621](https://github.com/pavel-kalmykov/bitbucket-server-mcp/commit/e184621e7a4893dd9774edc6b76662977be445dc))
+
 # [0.12.0](https://github.com/pavel-kalmykov/bitbucket-server-mcp/compare/v0.11.1...v0.12.0) (2026-05-07)
 
 
