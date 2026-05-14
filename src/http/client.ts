@@ -14,6 +14,8 @@ export interface ApiClients {
   defaultReviewers: KyInstance;
   git: KyInstance;
   ui: KyInstance;
+  ssh: KyInstance;
+  gpg: KyInstance;
 }
 
 // Build a redactor from the actual credential values in config so that any
@@ -117,6 +119,8 @@ export function createApiClients(config: BitbucketConfig): ApiClients {
     defaultReviewers: create("/rest/default-reviewers/1.0"),
     git: create("/rest/git/1.0"),
     ui: create("/rest/ui/latest"),
+    ssh: create("/rest/ssh/1.0"),
+    gpg: create("/rest/gpg/1.0"),
   };
 }
 

@@ -163,12 +163,15 @@ Or build locally: `docker build -t bitbucket-mcp .`
 | `upload_attachment` | Upload a local file and get a markdown reference for PR comments |
 | `edit_file` | Edit a file by committing a new version via the REST API |
 | `get_server_info` | Get Bitbucket Server version and properties |
+| `get_file_blame` | Get line-by-line blame/history for a file |
+| `create_repository` | Create a new repository |
+| `delete_repository` | Delete a repository (irreversible) |
 
 ### Pull Requests
 
 | Tool | Description |
 |------|-------------|
-| `create_pull_request` | Create a PR, including cross-repo from forks (`sourceProject`/`sourceRepository`). Auto-fetches default reviewers unless `includeDefaultReviewers: false`. |
+| `create_pull_request` | Create a PR, including cross-repo from forks (`sourceProject`/`sourceRepository`) and drafts (`draft: true`). Auto-fetches default reviewers unless `includeDefaultReviewers: false`. |
 | `get_pull_request` | Get PR details |
 | `update_pull_request` | Safely update title, description, or reviewers (read-modify-write, preserves fields not explicitly changed) |
 | `merge_pull_request` | Merge a PR with optional strategy (`no-ff`, `ff`, `ff-only`, `squash`, `rebase-no-ff`, `rebase-ff-only`, `squash-ff-only`) |
@@ -177,6 +180,8 @@ Or build locally: `docker build -t bitbucket-mcp .`
 | `list_dashboard_pull_requests` | List PRs across all repos for the authenticated user, filtered by role (`AUTHOR`/`REVIEWER`/`PARTICIPANT`), state, and review status |
 | `get_pull_request_activity` | Get PR activity timeline, filtered by type (`all`, `reviews`, `comments`) |
 | `get_diff` | Get PR diff with per-file truncation support. Use `stat: true` for a lightweight summary of changed files instead of the full diff. |
+| `get_pull_request_commits` | List commits in a pull request |
+| `get_commit_pull_requests` | List pull requests containing a specific commit |
 
 ### Code Review
 
@@ -205,6 +210,64 @@ Or build locally: `docker build -t bitbucket-mcp .`
 | `search` | Search code and files across repositories |
 | `get_code_insights` | Fetch Code Insights reports (SonarQube, security scans) and annotations |
 | `get_build_status` | Get CI build status (state, name, URL) by commit ID or PR. When using prId, resolves the latest commit automatically. |
+
+### Forks
+
+| Tool | Description |
+|------|-------------|
+| `list_forks` | List forks of a repository |
+| `fork_repository` | Fork a repository into a target project |
+
+### Users
+
+| Tool | Description |
+|------|-------------|
+| `get_user_profile` | Get a user profile by slug |
+| `search_users` | Search users by filter query |
+
+### Labels (Bitbucket 8.5+)
+
+| Tool | Description |
+|------|-------------|
+| `list_labels` | List labels for a repository |
+| `manage_labels` | Add or remove repository labels |
+
+### Webhooks
+
+| Tool | Description |
+|------|-------------|
+| `list_webhooks` | List webhooks for a repository |
+| `manage_webhooks` | Create, update, or delete webhooks |
+
+### Commit Comments
+
+| Tool | Description |
+|------|-------------|
+| `list_commit_comments` | List comments on a specific commit |
+| `manage_commit_comments` | Create, edit, or delete comments on a commit |
+
+### Repository Settings
+
+| Tool | Description |
+|------|-------------|
+| `list_default_reviewer_conditions` | List default reviewer conditions |
+| `list_branch_restrictions` | List branch permission restrictions |
+| `list_repository_hooks` | List repository hooks and their status |
+| `manage_repository_hooks` | Enable, disable, or configure repository hooks |
+| `list_merge_checks` | List merge check configurations |
+| `manage_merge_checks` | Configure merge check settings |
+| `list_reviewer_groups` | List reviewer groups |
+| `manage_reviewer_groups` | Create or delete reviewer groups |
+| `list_secret_scanning_rules` | List secret scanning allowlist rules (8.5+) |
+
+### Keys
+
+| Tool | Description |
+|------|-------------|
+| `list_ssh_keys` | List SSH keys for the authenticated user |
+| `manage_ssh_keys` | Add or delete SSH keys |
+| `list_gpg_keys` | List GPG keys for the authenticated user |
+| `manage_gpg_keys` | Add or delete GPG keys |
 
 ### Prompts
 
@@ -240,7 +303,7 @@ Or build locally: `docker build -t bitbucket-mcp .`
 
 ### Read-Only Mode
 
-Set `BITBUCKET_READ_ONLY=true` to restrict the server to read-only operations. Write tools (`create_pull_request`, `update_pull_request`, `merge_pull_request`, `decline_pull_request`, `manage_comment`, `manage_review`, `manage_branches`, `manage_tags`, `upload_attachment`, `edit_file`) are disabled.
+Set `BITBUCKET_READ_ONLY=true` to restrict the server to read-only operations. All `create_*`, `update_*`, `delete_*`, `manage_*`, `merge_*`, `decline_*`, `fork_*`, `upload_*`, and `edit_*` tools are disabled.
 
 ### Tool Filtering
 

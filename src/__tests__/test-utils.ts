@@ -19,6 +19,8 @@ export function createMockClients(): MockApiClients {
     defaultReviewers: mock<KyInstance>(),
     git: mock<KyInstance>(),
     ui: mock<KyInstance>(),
+    ssh: mock<KyInstance>(),
+    gpg: mock<KyInstance>(),
   };
 }
 
