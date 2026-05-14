@@ -93,7 +93,17 @@ export function registerBranchTools(ctx: ToolContext) {
           clients.branchUtils,
           `projects/${resolvedProject}/repos/${repository}/restrictions`,
           { searchParams: { limit, start } },
-        );
+        ).catch((e) => {
+          if (
+            e &&
+            typeof e === "object" &&
+            "response" in e &&
+            (e as { response?: { status?: number } }).response?.status === 404
+          ) {
+            return { values: [], size: 0, isLastPage: true } as const;
+          }
+          throw e;
+        });
 
         return formatResponse({
           total: data.size,
