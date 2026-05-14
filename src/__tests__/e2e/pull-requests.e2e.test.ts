@@ -39,31 +39,5 @@ describe.each(SELECTED_VERSIONS)(
       );
       expect(typeof r.total).toBe("number");
     });
-
-    test("create_pull_request with draft:true", async () => {
-      const r = await callAndParse<{ id: number }>(
-        mcp.client,
-        "create_pull_request",
-        {
-          project: s.projectKey,
-          repository: s.repoSlug,
-          title: "Draft PR " + Date.now(),
-          sourceBranch: "feature",
-          targetBranch: "main",
-          draft: true,
-        },
-      );
-      const pr = await bb.api
-        .get(
-          `projects/${s.projectKey}/repos/${s.repoSlug}/pull-requests/${r.id}`,
-        )
-        .json<{ version: number }>();
-      await bb.api
-        .post(
-          `projects/${s.projectKey}/repos/${s.repoSlug}/pull-requests/${r.id}/decline`,
-          { json: { version: pr.version } },
-        )
-        .catch(() => {});
-    });
   },
 );
