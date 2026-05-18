@@ -104,11 +104,17 @@ describe.each(VERSIONS_WITHOUT_LABELS)(
       await bb?.stop();
     });
 
-    test("list_labels does not crash on unsupported versions", async () => {
-      await callAndParse(mcp.client, "list_labels", {
-        project: scenario.projectKey,
-        repository: scenario.repoSlug,
-      });
+    test("list_labels returns empty list on unsupported versions", async () => {
+      const parsed = await callAndParse<{ total: number; labels: unknown[] }>(
+        mcp.client,
+        "list_labels",
+        {
+          project: scenario.projectKey,
+          repository: scenario.repoSlug,
+        },
+      );
+      expect(parsed.total).toBe(0);
+      expect(parsed.labels).toHaveLength(0);
     });
   },
 );
