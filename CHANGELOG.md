@@ -1,3 +1,10 @@
+## [0.13.1](https://github.com/pavel-kalmykov/bitbucket-server-mcp/compare/v0.13.0...v0.13.1) (2026-05-18)
+
+
+### Bug Fixes
+
+* restore and properly fix E2E tests ([140f503](https://github.com/pavel-kalmykov/bitbucket-server-mcp/commit/140f503fd437c968f57064c0223d89f0821542cf))
+
 # [0.13.0](https://github.com/pavel-kalmykov/bitbucket-server-mcp/compare/v0.12.0...v0.13.0) (2026-05-14)
 
 
