@@ -15,6 +15,7 @@ import { registerWebhookTools } from "../../tools/webhooks.js";
 import { registerRepositoryTools } from "../../tools/repositories.js";
 import { registerSshKeyTools } from "../../tools/ssh-keys.js";
 import { registerGpgKeyTools } from "../../tools/gpg-keys.js";
+import { registerDeploymentTools } from "../../tools/deployments.js";
 import { logger } from "../../logging.js";
 import type { BitbucketConfig } from "../../types.js";
 import type { StartedBitbucket } from "./bitbucket-container.js";
@@ -55,6 +56,7 @@ export async function setupMcpAgainst(
   registerRepositoryTools(ctx);
   registerSshKeyTools(ctx);
   registerGpgKeyTools(ctx);
+  registerDeploymentTools(ctx);
 
   const [clientTransport, serverTransport] =
     InMemoryTransport.createLinkedPair();
