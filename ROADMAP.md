@@ -9,44 +9,8 @@ surface that an MCP client needs. The bar is "no plausible operation missing."
 Benchmarked against the major Git-platform MCP servers (GitHub, GitLab,
 Bitbucket), the most active forks of the upstream project, and some other similar solutions for this product.
 
-**Exit pre-release when**: all Phase 1 + Phase 2 implemented and tested against
-7.21/8.5/8.9/8.19/9.4/10.2 with ephemeral containers, and cleanup items are
-crossed off.
-
----
-
-## Phase 1: forks + additional repository tooling
-
-Forks are priority by explicit request.
-
-| # | Tool | Endpoint | Since |
-|---|------|----------|-------|
-| 1 | `list_forks` | `GET /rest/api/1.0/projects/{key}/repos/{slug}/forks` | 7.0 |
-| 2 | `fork_repository` | `POST /rest/api/1.0/projects/{key}/repos/{slug}` | 7.0 |
-| 3 | `list_default_reviewers` | `GET /rest/default-reviewers/1.0/projects/{key}/repos/{slug}/conditions` | 7.0 |
-| 4 | `list_branch_restrictions` | `GET /rest/branch-utils/1.0/projects/{key}/repos/{slug}/restrictions` | 7.0 |
-| 5 | `get_pull_request_commits` | `GET /rest/api/1.0/projects/{key}/repos/{slug}/pull-requests/{id}/commits` | 7.0 |
-| 6 | `get_user_profile` | `GET /rest/api/1.0/users/{userSlug}` | 7.0 |
-| 7 | `list_labels` | `GET /rest/api/1.0/projects/{key}/repos/{slug}/labels` | 8.5 |
-| 8 | `manage_labels` | `POST/DELETE /rest/api/1.0/projects/{key}/repos/{slug}/labels` | 8.5 |
-| 9 | `list_webhooks` | `GET /rest/api/1.0/projects/{key}/repos/{slug}/webhooks` | 7.0 |
-| 10 | `manage_webhooks` | `POST/PUT/DELETE /rest/api/1.0/projects/{key}/repos/{slug}/webhooks/{id}` | 7.0 |
-| 11 | `get_commit_comments` | `GET /rest/api/1.0/projects/{key}/repos/{slug}/commits/{id}/comments` | 7.0 |
-| 12 | `manage_commit_comment` | `POST/PUT/DELETE /rest/api/1.0/projects/{key}/repos/{slug}/commits/{id}/comments` | 7.0 |
-
----
-
-## Phase 2: repo management + deployments + blame
-
-| # | Tool | Endpoint | Since |
-|---|------|----------|-------|
-| 13 | `get_commit_pull_requests` | `GET /rest/api/1.0/projects/{key}/repos/{slug}/commits/{id}/pull-requests` | 7.0 |
-| 14 | `get_file_blame` | `GET /rest/api/1.0/projects/{key}/repos/{slug}/browse/{path}?blame=true` | 7.0 |
-| 15 | `create_repository` | `POST /rest/api/1.0/projects/{key}/repos` | 7.0 |
-| 16 | `delete_repository` | `DELETE /rest/api/1.0/projects/{key}/repos/{slug}` | 7.0 |
-| 17 | `list_deployments` | `GET /api/latest/projects/{key}/repos/{slug}/commits/{id}/deployments` | 7.0 |
-| 18 | `create_deployment` | `POST /api/latest/projects/{key}/repos/{slug}/commits/{id}/deployments` | 7.0 |
-| 19 | Draft PR support | `draft` param on `create_pull_request` | 8.5 |
+**Exit pre-release when**: all Phase 3 implemented and tested against
+7.21/8.5/8.9/8.19/9.4/10.2 with ephemeral containers.
 
 ---
 
@@ -127,4 +91,3 @@ internal needs call for them.
 - `export_repository` — archive download
 - `link_jira_issue` / `get_jira_issues` — cross-linking with Jira
 - `permission_audit` — project/repository permission report
-
