@@ -1,9 +1,11 @@
 import type { KyInstance } from "ky";
+import type { RestComment } from "../../generated/types.js";
 
 export interface Scenario {
   readonly projectKey: string;
   readonly repoSlug: string;
   readonly prId: number;
+  readonly mainCommitId: string;
 }
 
 /**
@@ -26,22 +28,21 @@ export async function bootstrap(api: KyInstance): Promise<Scenario> {
     content: string,
     message: string,
     sourceBranch?: string,
-  ) => {
+  ): Promise<string> => {
     const form = new FormData();
     form.append("content", content);
     form.append("message", message);
     form.append("branch", branch);
     if (sourceBranch !== undefined) form.append("sourceBranch", sourceBranch);
-    await api.put(`projects/${projectKey}/repos/${repoSlug}/browse/${path}`, {
-      body: form,
-    });
+    const result = await api
+      .put(`projects/${projectKey}/repos/${repoSlug}/browse/${path}`, {
+        body: form,
+      })
+      .json<{ id: string }>();
+    return result.id;
   };
 
-  // Two distinct paths: the second commit creates a fresh file on a
-  // new branch derived from `main`, so Bitbucket does not require a
-  // `sourceCommitId` to disambiguate from a modification to an
-  // existing file.
-  await commit("main", "README.md", "hello\n", "init");
+  const mainCommitId = await commit("main", "README.md", "hello\n", "init");
   await commit("feature", "CHANGE.md", "change\n", "change", "main");
 
   const pr = await api
@@ -60,17 +61,13 @@ export async function bootstrap(api: KyInstance): Promise<Scenario> {
     })
     .json<{ id: number }>();
 
-  return { projectKey, repoSlug, prId: pr.id };
+  return { projectKey, repoSlug, prId: pr.id, mainCommitId };
 }
 
-interface CommentResponse {
-  id: number;
-  version: number;
-  text: string;
-  state: "OPEN" | "PENDING" | "RESOLVED";
-  severity: "NORMAL" | "BLOCKER";
-  threadResolved?: boolean;
-}
+type CommentResponse = Pick<
+  RestComment,
+  "id" | "version" | "text" | "state" | "severity"
+> & { threadResolved?: boolean };
 
 export async function createComment(
   api: KyInstance,

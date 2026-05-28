@@ -10,14 +10,12 @@ import {
 import { bootstrap, createComment, type Scenario } from "./bootstrap.js";
 import { setupMcpAgainst, type McpAgainstBitbucket } from "./mcp-harness.js";
 import { callAndParse } from "../tool-test-utils.js";
+import type { RestComment } from "../../generated/types.js";
 
-interface CommentPayload {
-  id: number;
-  version: number;
-  state: "OPEN" | "PENDING" | "RESOLVED";
-  severity: "NORMAL" | "BLOCKER";
-  threadResolved?: boolean;
-}
+type CommentPayload = Pick<
+  RestComment,
+  "id" | "version" | "state" | "severity"
+> & { threadResolved?: boolean };
 
 /**
  * Two mirrored suites (one per supported / unsupported partition) keep

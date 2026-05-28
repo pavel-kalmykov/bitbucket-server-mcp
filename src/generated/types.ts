@@ -21,6 +21,12 @@ export type PullRequestActivity =
 // CI / Insights
 export type InsightReport = components["schemas"]["RestInsightReport"];
 
+// Comments
+export type RestComment = components["schemas"]["RestComment"];
+
+// Deployments
+export type Deployment = components["schemas"]["RestDeployment"];
+
 // Request bodies
 export type PullRequestMergeRequest =
   components["schemas"]["RestPullRequestMergeRequest"];

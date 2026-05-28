@@ -23,6 +23,7 @@ import { registerReviewerGroupTools } from "./tools/reviewer-groups.js";
 import { registerSecretScanningTools } from "./tools/secret-scanning.js";
 import { registerSshKeyTools } from "./tools/ssh-keys.js";
 import { registerGpgKeyTools } from "./tools/gpg-keys.js";
+import { registerDeploymentTools } from "./tools/deployments.js";
 import { registerResources } from "./resources/index.js";
 import { registerPrompts } from "./prompts/index.js";
 import { attachLogger } from "./logging.js";
@@ -54,6 +55,7 @@ Workflow tips:
 - get_pull_request_commits lists commits in a pull request.
 - list_branch_restrictions shows branch permission restrictions.
 - list_default_reviewer_conditions shows default reviewer conditions for a repository.
+- manage_deployments records deployment status on a commit (get/create/delete). Use it to track which environments received a commit.
 
 Response curation:
 Read tools return curated (compact) responses by default. Use the 'fields' parameter to customize:
@@ -137,6 +139,7 @@ export function createServer(options?: BitbucketServerOptions) {
   registerSecretScanningTools(ctx);
   registerSshKeyTools(ctx);
   registerGpgKeyTools(ctx);
+  registerDeploymentTools(ctx);
 
   registerResources(server, clients, cache);
   registerPrompts(server);

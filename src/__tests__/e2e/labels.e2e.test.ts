@@ -104,17 +104,16 @@ describe.each(VERSIONS_WITHOUT_LABELS)(
       await bb?.stop();
     });
 
-    test("list_labels returns empty list on unsupported versions", async () => {
-      const parsed = await callAndParse<{ total: number; labels: unknown[] }>(
-        mcp.client,
-        "list_labels",
-        {
+    test("list_labels returns an error on unsupported versions", async () => {
+      const result = await mcp.client.callTool({
+        name: "list_labels",
+        arguments: {
           project: scenario.projectKey,
           repository: scenario.repoSlug,
         },
-      );
-      expect(parsed.total).toBe(0);
-      expect(parsed.labels).toHaveLength(0);
+      });
+
+      expect(result.isError).toBe(true);
     });
   },
 );
