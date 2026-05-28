@@ -28,6 +28,14 @@ Bitbucket), the most active forks of the upstream project, and some other simila
 
 ---
 
+## Phase 4: quality and cleanup (pre-1.0)
+
+- Improve mutation score (128 survivors remaining)
+- Extend E2E test coverage for tools that only have unit tests
+- Refactor `formatResponse` to be generic so tool return types preserve data shape
+
+---
+
 ## Multi-version verification (per phase)
 
 Every tool is tested against at least 2 Bitbucket versions (the minimum that
@@ -43,8 +51,8 @@ supports it and the latest). Target versions:
 | 10.2 | `atlassian/bitbucket:10.2` |
 
 Features unavailable on a given version degrade gracefully (404 → clear
-message, no crash). `scripts/start-eph-bitbucket.ts` starts the container;
-requires `BITBUCKET_TIMEBOMB_LICENSE` and a running Docker daemon.
+message, no crash). E2E tests use ephemeral Bitbucket containers via
+`testcontainers`; requires `BITBUCKET_TIMEBOMB_LICENSE` and a running Docker daemon.
 
 ---
 
