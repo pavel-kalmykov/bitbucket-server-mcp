@@ -60,6 +60,7 @@
     "@types/node": "^25.3.5",
     "@vitest/coverage-v8": "^4.0.18",
     "eslint": "^10.0.2",
+    "eslint-plugin-import-x": "^4.16.2",
     "eslint-plugin-sonarjs": "^4.0.3",
     "fallow": "^2.54.3",
     "globals": "^17.4.0",

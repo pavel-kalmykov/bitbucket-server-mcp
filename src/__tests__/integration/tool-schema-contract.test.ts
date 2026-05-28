@@ -693,6 +693,7 @@ describe("Tool schema contract: all expected tools are registered", () => {
       "manage_ssh_keys",
       "list_gpg_keys",
       "manage_gpg_keys",
+      "manage_deployments",
     ];
     expect(new Set(names)).toEqual(new Set(expected));
   });
