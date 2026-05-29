@@ -16,6 +16,14 @@ import { registerRepositoryTools } from "../../tools/repositories.js";
 import { registerSshKeyTools } from "../../tools/ssh-keys.js";
 import { registerGpgKeyTools } from "../../tools/gpg-keys.js";
 import { registerDeploymentTools } from "../../tools/deployments.js";
+import { registerHookTools } from "../../tools/hooks.js";
+import { registerMergeCheckTools } from "../../tools/merge-checks.js";
+import { registerReviewerGroupTools } from "../../tools/reviewer-groups.js";
+import { registerSecretScanningTools } from "../../tools/secret-scanning.js";
+import { registerCommitCommentTools } from "../../tools/commit-comments.js";
+import { registerInsightTools } from "../../tools/insights.js";
+import { registerSearchTools } from "../../tools/search.js";
+import { registerSystemTools } from "../../tools/system.js";
 import { logger } from "../../logging.js";
 import type { BitbucketConfig } from "../../types.js";
 import type { StartedBitbucket } from "./bitbucket-container.js";
@@ -57,6 +65,14 @@ export async function setupMcpAgainst(
   registerSshKeyTools(ctx);
   registerGpgKeyTools(ctx);
   registerDeploymentTools(ctx);
+  registerHookTools(ctx);
+  registerMergeCheckTools(ctx);
+  registerReviewerGroupTools(ctx);
+  registerSecretScanningTools(ctx);
+  registerCommitCommentTools(ctx);
+  registerInsightTools(ctx);
+  registerSearchTools(ctx);
+  registerSystemTools(ctx);
 
   const [clientTransport, serverTransport] =
     InMemoryTransport.createLinkedPair();

@@ -14,20 +14,6 @@ Bitbucket), the most active forks of the upstream project, and some other simila
 
 ---
 
-## Phase 3: keys, hooks, merge checks, secret scanning
-
-| # | Tool | Endpoint | Since |
-|---|------|----------|-------|
-| 20 | `list_ssh_keys` / `manage_ssh_keys` | `GET/POST/DELETE /rest/ssh/1.0/keys` | 7.0 |
-| 21 | `list_gpg_keys` / `manage_gpg_keys` | `GET/POST/DELETE /rest/gpg/1.0/keys` | 7.0 |
-| 22 | `list_repository_hooks` / `manage_repository_hooks` | `GET/PUT/DELETE /rest/api/1.0/projects/{key}/repos/{slug}/settings/hooks` | 7.0 |
-| 23 | `list_merge_checks` / `manage_merge_checks` | `GET/POST/DELETE .../settings/hooks/com.atlassian.bitbucket.server.bitbucket-build.requiredBuildsMergeCheck` | 7.0 |
-| 24 | `list_reviewer_groups` / `manage_reviewer_groups` | `GET/POST/DELETE /rest/api/1.0/projects/{key}/repos/{slug}/settings/reviewer-groups` | 7.0 |
-| 25 | `search_users` | `GET /rest/api/1.0/users?filter={query}` | 7.0 |
-| 26 | `list_secret_scanning_rules` | `GET /api/latest/projects/{key}/repos/{slug}/secret-scanning/allowlist` | 8.5 |
-
----
-
 ## Phase 4: quality and cleanup (pre-1.0)
 
 - Improve mutation score (128 survivors remaining)
