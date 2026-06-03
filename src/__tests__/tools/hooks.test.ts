@@ -1,6 +1,6 @@
 import { describe, test, expect } from "vitest";
 import { registerHookTools } from "../../tools/hooks.js";
-import { mockJson } from "../test-utils.js";
+import { mockJson, mockReject } from "../test-utils.js";
 import {
   callAndParse,
   callRaw,
@@ -26,6 +26,10 @@ describe("list_repository_hooks", () => {
       { project: "P", repository: "r" },
     );
     expect(p.total).toBe(1);
+    expect(h.mockClients.api.get).toHaveBeenCalledWith(
+      "projects/P/repos/r/settings/hooks",
+      expect.objectContaining({ searchParams: { limit: 25, start: 0 } }),
+    );
   });
 
   test("returns empty", async () => {
@@ -39,7 +43,7 @@ describe("list_repository_hooks", () => {
   });
 
   test("API error", async () => {
-    h.mockClients.api.get.mockRejectedValueOnce(new Error("fail"));
+    mockReject(h.mockClients.api.get, new Error("fail"));
     const r = await callRaw(h.client, "list_repository_hooks", {
       project: "P",
       repository: "r",
@@ -65,35 +69,26 @@ describe("manage_repository_hooks", () => {
     defaultProject: "D",
   });
 
-  test("enable hook", async () => {
-    mockJson(h.mockClients.api.put, {});
-    const p = await callAndParse<{ enabled: boolean }>(
-      h.client,
-      "manage_repository_hooks",
-      {
-        action: "enable",
-        project: "P",
-        repository: "r",
-        hookKey: "hk",
-      },
-    );
-    expect(p.enabled).toBe(true);
-  });
-
-  test("disable hook", async () => {
-    mockJson(h.mockClients.api.put, {});
-    const p = await callAndParse<{ enabled: boolean }>(
-      h.client,
-      "manage_repository_hooks",
-      {
-        action: "disable",
-        project: "P",
-        repository: "r",
-        hookKey: "hk",
-      },
-    );
-    expect(p.enabled).toBe(false);
-  });
+  test.each([
+    { action: "enable" as const, expectedEnabled: true },
+    { action: "disable" as const, expectedEnabled: false },
+  ])(
+    "$action hook returns enabled=$expectedEnabled",
+    async ({ action, expectedEnabled }) => {
+      mockJson(h.mockClients.api.put, {});
+      const p = await callAndParse<{ enabled: boolean }>(
+        h.client,
+        "manage_repository_hooks",
+        { action, project: "P", repository: "r", hookKey: "hk" },
+      );
+      expect(p.enabled).toBe(expectedEnabled);
+      expectCalledWithJson(
+        h.mockClients.api.put,
+        "projects/P/repos/r/settings/hooks/hk/settings",
+        {},
+      );
+    },
+  );
 
   test("configure hook", async () => {
     mockJson(h.mockClients.api.put, { ok: true });
@@ -116,14 +111,17 @@ describe("manage_repository_hooks", () => {
     );
   });
 
-  test("configure error", async () => {
-    h.mockClients.api.put.mockRejectedValueOnce(new Error("fail"));
-    const r = await callRaw(h.client, "manage_repository_hooks", {
-      action: "configure",
-      project: "P",
-      repository: "r",
-      hookKey: "hk",
-    });
-    expect(r.isError).toBe(true);
-  });
+  test.each(["enable", "disable", "configure"] as const)(
+    "$action error returns isError",
+    async (action) => {
+      mockReject(h.mockClients.api.put, new Error("fail"));
+      const r = await callRaw(h.client, "manage_repository_hooks", {
+        action,
+        project: "P",
+        repository: "r",
+        hookKey: "hk",
+      });
+      expect(r.isError).toBe(true);
+    },
+  );
 });

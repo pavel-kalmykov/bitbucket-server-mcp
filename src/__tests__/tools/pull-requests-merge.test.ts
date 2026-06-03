@@ -1,8 +1,9 @@
 import { describe, test, expect } from "vitest";
 import { registerPullRequestTools } from "../../tools/pull-requests.js";
-import { mockJson } from "../test-utils.js";
+import { mockJson, mockReject } from "../test-utils.js";
 import {
   callAndParse,
+  callRaw,
   expectCalledWithSearchParams,
   setupToolHarness,
 } from "../tool-test-utils.js";
@@ -70,6 +71,16 @@ describe("Pull request tools", () => {
           searchParams: { strategyId: "no-ff" },
         }),
       );
+    });
+
+    test("version GET fails", async () => {
+      mockReject(h.mockClients.api.get, new Error("fail"));
+      const r = await callRaw(h.client, "merge_pull_request", {
+        project: "PROJ",
+        repository: "my-repo",
+        prId: 5,
+      });
+      expect(r.isError).toBe(true);
     });
 
     test("should merge without strategy or message", async () => {

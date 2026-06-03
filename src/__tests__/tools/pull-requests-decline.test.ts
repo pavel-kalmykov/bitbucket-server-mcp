@@ -1,8 +1,9 @@
 import { describe, test, expect } from "vitest";
 import { registerPullRequestTools } from "../../tools/pull-requests.js";
-import { mockJson } from "../test-utils.js";
+import { mockJson, mockReject } from "../test-utils.js";
 import {
   callAndParse,
+  callRaw,
   expectCalledWithJson,
   setupToolHarness,
 } from "../tool-test-utils.js";
@@ -42,6 +43,16 @@ describe("Pull request tools", () => {
       expect(h.mockClients.api.get).toHaveBeenCalledWith(
         "projects/PROJ/repos/my-repo/pull-requests/7",
       );
+    });
+
+    test("version GET fails", async () => {
+      mockReject(h.mockClients.api.get, new Error("fail"));
+      const r = await callRaw(h.client, "decline_pull_request", {
+        project: "PROJ",
+        repository: "my-repo",
+        prId: 7,
+      });
+      expect(r.isError).toBe(true);
     });
 
     test("should decline without message (no comment in body)", async () => {

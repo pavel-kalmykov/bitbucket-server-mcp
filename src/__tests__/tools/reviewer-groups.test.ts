@@ -1,6 +1,6 @@
 import { describe, test, expect } from "vitest";
 import { registerReviewerGroupTools } from "../../tools/reviewer-groups.js";
-import { mockJson } from "../test-utils.js";
+import { mockJson, mockReject } from "../test-utils.js";
 import {
   callAndParse,
   callRaw,
@@ -24,6 +24,9 @@ describe("list_reviewer_groups", () => {
       { project: "P", repository: "r" },
     );
     expect(parsed[0].name).toBe("seniors");
+    expect(h.mockClients.api.get).toHaveBeenCalledWith(
+      "projects/P/repos/r/settings/reviewer-groups",
+    );
   });
 
   test("returns empty array", async () => {
@@ -37,7 +40,7 @@ describe("list_reviewer_groups", () => {
   });
 
   test("API error", async () => {
-    h.mockClients.api.get.mockRejectedValueOnce(new Error("fail"));
+    mockReject(h.mockClients.api.get, new Error("fail"));
     const r = await callRaw(h.client, "list_reviewer_groups", {
       project: "P",
       repository: "r",
@@ -90,15 +93,21 @@ describe("manage_reviewer_groups", () => {
       { action: "delete", project: "P", repository: "r", name: "team-a" },
     );
     expect(parsed.deleted).toBe(true);
+    expect(h.mockClients.api.delete).toHaveBeenCalledWith(
+      "projects/P/repos/r/settings/reviewer-groups/team-a",
+    );
   });
 
-  test("create error", async () => {
-    h.mockClients.api.post.mockRejectedValueOnce(new Error("fail"));
+  test.each([
+    { action: "delete" as const, mockMethod: "delete" as const, name: "x" },
+    { action: "create" as const, mockMethod: "post" as const, name: "x" },
+  ])("$action error", async ({ action, mockMethod, name }) => {
+    mockReject(h.mockClients.api[mockMethod], new Error("fail"));
     const r = await callRaw(h.client, "manage_reviewer_groups", {
-      action: "create",
+      action,
       project: "P",
       repository: "r",
-      name: "x",
+      name,
     });
     expect(r.isError).toBe(true);
   });

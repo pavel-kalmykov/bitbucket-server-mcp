@@ -1,8 +1,9 @@
 import { describe, test, expect } from "vitest";
 import { registerPullRequestTools } from "../../tools/pull-requests.js";
-import { mockJson } from "../test-utils.js";
+import { mockJson, mockReject } from "../test-utils.js";
 import {
   callAndParse,
+  callRaw,
   expectCalledWithSearchParams,
   setupToolHarness,
 } from "../tool-test-utils.js";
@@ -180,6 +181,16 @@ describe("Pull request tools", () => {
       expect(parsed.activities).toHaveLength(2);
       const actions = parsed.activities.map((a) => a.action);
       expect(actions).not.toContain("COMMENTED");
+    });
+
+    test("API error", async () => {
+      mockReject(h.mockClients.api.get, new Error("fail"));
+      const r = await callRaw(h.client, "get_pull_request_activity", {
+        project: "PROJ",
+        repository: "my-repo",
+        prId: 1,
+      });
+      expect(r.isError).toBe(true);
     });
 
     test("should exclude user matching on comment.author when user is missing", async () => {

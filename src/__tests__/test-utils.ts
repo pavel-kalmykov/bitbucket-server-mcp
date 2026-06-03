@@ -56,3 +56,12 @@ export function mockVoid(fn: MockProxy<KyInstance>["delete"]) {
 export function mockError(fn: MockProxy<KyInstance>["get"], error: Error) {
   fn.mockReturnValue(fakeResponse({ json: () => Promise.reject(error) }));
 }
+
+export function mockReject(
+  fn: MockProxy<KyInstance>[keyof KyInstance],
+  error: Error,
+) {
+  (
+    fn as unknown as { mockRejectedValueOnce: (e: Error) => void }
+  ).mockRejectedValueOnce(error);
+}

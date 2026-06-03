@@ -159,6 +159,30 @@ describe("Pull request tools", () => {
       });
       expect(parsed.pullRequests).toHaveLength(1);
     });
+
+    test("forwards direction and order as searchParams", async () => {
+      mockJson(h.mockClients.api.get, {
+        values: [],
+        size: 0,
+        isLastPage: true,
+      });
+
+      await h.client.callTool({
+        name: "list_pull_requests",
+        arguments: {
+          project: "PROJ",
+          repository: "my-repo",
+          direction: "OUTGOING",
+          order: "NEWEST",
+        },
+      });
+
+      expectCalledWithSearchParams(
+        h.mockClients.api.get,
+        expect.stringContaining("/pull-requests"),
+        { direction: "OUTGOING", order: "NEWEST" },
+      );
+    });
   });
 
   describe("list_pull_requests (each-value coverage of state/direction/order)", () => {

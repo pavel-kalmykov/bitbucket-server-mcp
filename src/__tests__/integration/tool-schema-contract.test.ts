@@ -85,9 +85,9 @@ describe("Tool schema contract: descriptions", () => {
     { name: "list_labels", contains: "labels" },
     { name: "manage_labels", contains: "labels" },
     { name: "list_webhooks", contains: "webhooks" },
-    { name: "manage_webhooks", contains: "webhooks" },
+    { name: "manage_webhooks", contains: "create" },
     { name: "list_commit_comments", contains: "commit" },
-    { name: "manage_commit_comments", contains: "commit" },
+    { name: "manage_commit_comments", contains: "edit" },
     { name: "get_commit_pull_requests", contains: "commit" },
     { name: "get_file_blame", contains: "blame" },
     { name: "create_repository", contains: "new repository" },
@@ -100,6 +100,11 @@ describe("Tool schema contract: descriptions", () => {
     { name: "list_reviewer_groups", contains: "reviewer groups" },
     { name: "manage_reviewer_groups", contains: "reviewer groups" },
     { name: "list_secret_scanning_rules", contains: "secret scanning" },
+    { name: "manage_deployments", contains: "Actions" },
+    { name: "list_ssh_keys", contains: "SSH" },
+    { name: "manage_ssh_keys", contains: "SSH" },
+    { name: "list_gpg_keys", contains: "GPG" },
+    { name: "manage_gpg_keys", contains: "GPG" },
   ])("$name description mentions '$contains'", ({ name, contains }) => {
     const tool = getTool(name);
     expect(tool.description).toContain(contains);
@@ -242,6 +247,12 @@ describe("Tool schema contract: field descriptions", () => {
     { tool: "list_commits", field: "author", contains: "case-insensitive" },
     { tool: "manage_branches", field: "action", contains: "Operation" },
     { tool: "manage_branches", field: "startPoint", contains: "branch from" },
+    {
+      tool: "get_code_insights",
+      field: "includeFileAnnotations",
+      contains: "fileAnnotations",
+    },
+    { tool: "list_gpg_keys", field: "userSlug", contains: "Filter" },
     { tool: "get_commit", field: "commitId", contains: "commit hash" },
     { tool: "compare_refs", field: "from", contains: "Source ref" },
     { tool: "compare_refs", field: "to", contains: "Target ref" },
@@ -509,6 +520,37 @@ describe("Tool schema contract: annotations", () => {
       expected: { readOnlyHint: false, idempotentHint: false },
     },
     { name: "list_secret_scanning_rules", expected: { readOnlyHint: true } },
+    {
+      name: "manage_deployments",
+      expected: { readOnlyHint: false, idempotentHint: false },
+    },
+    { name: "list_ssh_keys", expected: { readOnlyHint: true } },
+    {
+      name: "manage_ssh_keys",
+      expected: { readOnlyHint: false, idempotentHint: false },
+    },
+    { name: "list_gpg_keys", expected: { readOnlyHint: true } },
+    {
+      name: "manage_gpg_keys",
+      expected: { readOnlyHint: false, idempotentHint: false },
+    },
+    { name: "get_code_insights", expected: { readOnlyHint: true } },
+    { name: "get_build_status", expected: { readOnlyHint: true } },
+    { name: "list_commits", expected: { readOnlyHint: true } },
+    { name: "list_pull_requests", expected: { readOnlyHint: true } },
+    {
+      name: "list_dashboard_pull_requests",
+      expected: { readOnlyHint: true },
+    },
+    { name: "list_repositories", expected: { readOnlyHint: true } },
+    { name: "browse_repository", expected: { readOnlyHint: true } },
+    { name: "get_file_content", expected: { readOnlyHint: true } },
+    {
+      name: "get_pull_request_activity",
+      expected: { readOnlyHint: true },
+    },
+    { name: "get_server_info", expected: { readOnlyHint: true } },
+    { name: "search_emoticons", expected: { readOnlyHint: true } },
   ])("$name has annotations $expected", ({ name, expected }) => {
     const tool = getTool(name);
     expect(tool.annotations).toBeDefined();

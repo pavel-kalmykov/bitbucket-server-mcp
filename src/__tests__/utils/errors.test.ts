@@ -249,6 +249,27 @@ describe("extractBitbucketMessage — reviewerErrors and validReviewers extracti
     expect(result).toContain("reviewer: alice is not an active user");
   });
 
+  test("reviewerErrors with primitive elements (string, number) are skipped", () => {
+    const body = {
+      errors: [
+        {
+          message: "Some reviewers are not active",
+          exceptionName:
+            "com.atlassian.bitbucket.pull.InvalidPullRequestReviewersException",
+          reviewerErrors: [
+            "string-element",
+            42,
+            { context: "valid", message: "ok" },
+          ],
+        },
+      ],
+    } as unknown as ExtendedErrors;
+    const result = extractBitbucketMessage(body);
+    expect(result).toContain('reviewer "valid": ok');
+    expect(result).not.toContain("string-element");
+    expect(result).not.toContain("42");
+  });
+
   test("reviewerErrors that is not an array is silently ignored", () => {
     const body = {
       errors: [
@@ -328,6 +349,36 @@ describe("extractBitbucketMessage — reviewerErrors and validReviewers extracti
           exceptionName:
             "com.atlassian.bitbucket.pull.InvalidPullRequestReviewersException",
           validReviewers: [{ displayName: "John Doe" }],
+        },
+      ],
+    };
+    const result = extractBitbucketMessage(body);
+    expect(result).toContain("validReviewers: [[object Object]]");
+  });
+
+  test("validReviewer where user is a truthy non-object (string) falls back to String(vr)", () => {
+    const body: ExtendedErrors = {
+      errors: [
+        {
+          message: "Some reviewers are not active",
+          exceptionName:
+            "com.atlassian.bitbucket.pull.InvalidPullRequestReviewersException",
+          validReviewers: [{ user: "not-an-object" }],
+        },
+      ],
+    };
+    const result = extractBitbucketMessage(body);
+    expect(result).toContain("validReviewers: [[object Object]]");
+  });
+
+  test("validReviewer where user is null falls back to String(vr)", () => {
+    const body: ExtendedErrors = {
+      errors: [
+        {
+          message: "Some reviewers are not active",
+          exceptionName:
+            "com.atlassian.bitbucket.pull.InvalidPullRequestReviewersException",
+          validReviewers: [{ user: null }],
         },
       ],
     };
@@ -642,6 +693,52 @@ describe("handleToolError (real ky HTTPError via msw)", () => {
     const result = handleToolError(fake);
     expect(result.content[0].text).toContain("Unexpected error");
     expect(result.content[0].text).not.toContain("won't happen");
+  });
+
+  test("handleToolError with reviewerErrors includes reviewer context", async () => {
+    const body: ExtendedErrors = {
+      errors: [
+        {
+          message: "Invalid reviewers",
+          exceptionName:
+            "com.atlassian.bitbucket.pull.InvalidPullRequestReviewersException",
+          reviewerErrors: [{ context: "alice", message: "not found" }],
+        },
+      ],
+    };
+    server.use(
+      http.get("https://git.example.com/rest/api/1.0/pulls", () =>
+        HttpResponse.json(body, { status: 409 }),
+      ),
+    );
+
+    const error = await throwHttpError("pulls");
+    const result = handleToolError(error);
+
+    expect(result.content[0].text).toContain('reviewer "alice": not found');
+  });
+
+  test("handleToolError with validReviewers includes reviewer names", async () => {
+    const body: ExtendedErrors = {
+      errors: [
+        {
+          message: "Invalid reviewers",
+          exceptionName:
+            "com.atlassian.bitbucket.pull.InvalidPullRequestReviewersException",
+          validReviewers: [{ user: { name: "bob" } }],
+        },
+      ],
+    };
+    server.use(
+      http.get("https://git.example.com/rest/api/1.0/pulls", () =>
+        HttpResponse.json(body, { status: 409 }),
+      ),
+    );
+
+    const error = await throwHttpError("pulls");
+    const result = handleToolError(error);
+
+    expect(result.content[0].text).toContain("validReviewers: [bob]");
   });
 
   test("always returns isError: true", async () => {

@@ -1,6 +1,6 @@
 import { describe, test, expect } from "vitest";
 import { registerBranchTools } from "../../tools/refs.js";
-import { fakeResponse, mockJson } from "../test-utils.js";
+import { mockError, mockJson } from "../test-utils.js";
 import {
   callAndParse,
   callRaw,
@@ -16,26 +16,18 @@ describe("Branch tools", () => {
 
   describe("list_branches", () => {
     test("should list branches and include default branch", async () => {
-      const branchesResponse = {
+      mockJson(h.mockClients.api.get, {
         values: [
           { displayId: "main", id: "refs/heads/main", isDefault: true },
           { displayId: "develop", id: "refs/heads/develop", isDefault: false },
         ],
         size: 2,
         isLastPage: true,
-      };
-      const defaultBranchResponse = {
+      });
+      mockJson(h.mockClients.api.get, {
         displayId: "main",
         id: "refs/heads/main",
-      };
-
-      h.mockClients.api.get
-        .mockReturnValueOnce(
-          fakeResponse({ json: () => Promise.resolve(branchesResponse) }),
-        )
-        .mockReturnValueOnce(
-          fakeResponse({ json: () => Promise.resolve(defaultBranchResponse) }),
-        );
+      });
 
       const parsed = await callAndParse<{
         total: number;
@@ -53,16 +45,12 @@ describe("Branch tools", () => {
     });
 
     test("should use default project when not provided", async () => {
-      h.mockClients.api.get
-        .mockReturnValueOnce(
-          fakeResponse({
-            json: () =>
-              Promise.resolve({ values: [], size: 0, isLastPage: true }),
-          }),
-        )
-        .mockReturnValueOnce(
-          fakeResponse({ json: () => Promise.resolve(null) }),
-        );
+      mockJson(h.mockClients.api.get, {
+        values: [],
+        size: 0,
+        isLastPage: true,
+      });
+      mockJson(h.mockClients.api.get, null);
 
       await callAndParse(h.client, "list_branches", { repository: "my-repo" });
 
@@ -73,7 +61,7 @@ describe("Branch tools", () => {
     });
 
     test("should return raw output when fields is '*all'", async () => {
-      const branchesResponse = {
+      mockJson(h.mockClients.api.get, {
         values: [
           {
             displayId: "main",
@@ -87,20 +75,12 @@ describe("Branch tools", () => {
         ],
         size: 1,
         isLastPage: true,
-      };
-      const defaultBranchResponse = {
+      });
+      mockJson(h.mockClients.api.get, {
         displayId: "main",
         id: "refs/heads/main",
         extraField: "also kept",
-      };
-
-      h.mockClients.api.get
-        .mockReturnValueOnce(
-          fakeResponse({ json: () => Promise.resolve(branchesResponse) }),
-        )
-        .mockReturnValueOnce(
-          fakeResponse({ json: () => Promise.resolve(defaultBranchResponse) }),
-        );
+      });
 
       const parsed = await callAndParse<{
         branches: Array<{ extraField: string }>;
@@ -116,19 +96,12 @@ describe("Branch tools", () => {
     });
 
     test("should handle default branch fetch failure gracefully", async () => {
-      const branchesResponse = {
+      mockJson(h.mockClients.api.get, {
         values: [{ displayId: "main", id: "refs/heads/main" }],
         size: 1,
         isLastPage: true,
-      };
-
-      h.mockClients.api.get
-        .mockReturnValueOnce(
-          fakeResponse({ json: () => Promise.resolve(branchesResponse) }),
-        )
-        .mockReturnValueOnce(
-          fakeResponse({ json: () => Promise.reject(new Error("Not found")) }),
-        );
+      });
+      mockError(h.mockClients.api.get, new Error("Not found"));
 
       const parsed = await callAndParse<{
         total: number;
@@ -137,6 +110,24 @@ describe("Branch tools", () => {
 
       expect(parsed.total).toBe(1);
       expect(parsed.defaultBranch).toBeNull();
+    });
+
+    test("should fetch default branch from the correct endpoint", async () => {
+      mockJson(h.mockClients.api.get, {
+        values: [],
+        size: 0,
+        isLastPage: true,
+      });
+      mockJson(h.mockClients.api.get, { displayId: "main" });
+
+      await callAndParse(h.client, "list_branches", {
+        project: "PROJ",
+        repository: "repo",
+      });
+
+      expect(h.mockClients.api.get).toHaveBeenCalledWith(
+        "projects/PROJ/repos/repo/default-branch",
+      );
     });
   });
 
@@ -413,10 +404,28 @@ describe("Branch tools", () => {
       expect(parsed.total).toBe(0);
     });
 
-    test("returns error on API failure", async () => {
-      h.mockClients.branchUtils.get.mockRejectedValueOnce(
-        new Error("Not found"),
-      );
+    test("returns empty list when API returns 404", async () => {
+      const error404 = Object.assign(new Error("Not Found"), {
+        response: { status: 404 },
+      });
+      mockError(h.mockClients.branchUtils.get, error404);
+
+      const parsed = await callAndParse<{
+        total: number;
+        restrictions: unknown[];
+        isLastPage: boolean;
+      }>(h.client, "list_branch_restrictions", {
+        project: "TEST",
+        repository: "my-repo",
+      });
+
+      expect(parsed.total).toBe(0);
+      expect(parsed.restrictions).toEqual([]);
+      expect(parsed.isLastPage).toBe(true);
+    });
+
+    test("returns error on non-404 API failure", async () => {
+      mockError(h.mockClients.branchUtils.get, new Error("Server error"));
 
       const result = await callRaw(h.client, "list_branch_restrictions", {
         project: "TEST",

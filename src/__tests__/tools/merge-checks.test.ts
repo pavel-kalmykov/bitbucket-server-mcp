@@ -1,6 +1,6 @@
 import { describe, test, expect } from "vitest";
 import { registerMergeCheckTools } from "../../tools/merge-checks.js";
-import { fakeResponse, mockJson } from "../test-utils.js";
+import { mockError, mockJson, mockReject } from "../test-utils.js";
 import {
   callAndParse,
   callRaw,
@@ -36,6 +36,12 @@ describe("list_merge_checks", () => {
     );
     expect(parsed.length).toBe(1);
     expect(parsed[0].key.toLowerCase()).toMatch(/merge|requiredbuilds/);
+    expect(h.mockClients.api.get).toHaveBeenCalledWith(
+      "projects/P/repos/r/settings/hooks",
+    );
+    expect(h.mockClients.api.get).toHaveBeenCalledWith(
+      "projects/P/repos/r/settings/hooks/com.atlassian.bitbucket.server.bitbucket-build.requiredBuildsMergeCheck/settings",
+    );
   });
 
   test("returns empty when no merge checks configured", async () => {
@@ -52,22 +58,15 @@ describe("list_merge_checks", () => {
   });
 
   test("handles settings fetch failure gracefully", async () => {
-    h.mockClients.api.get.mockReturnValueOnce(
-      fakeResponse({
-        json: () =>
-          Promise.resolve({
-            values: [
-              {
-                key: "com.atlassian.bitbucket.server.bitbucket-build.requiredBuildsMergeCheck",
-                enabled: false,
-              },
-            ],
-          }),
-      }),
-    );
-    h.mockClients.api.get.mockReturnValueOnce(
-      fakeResponse({ json: () => Promise.reject(new Error("not found")) }),
-    );
+    mockJson(h.mockClients.api.get, {
+      values: [
+        {
+          key: "com.atlassian.bitbucket.server.bitbucket-build.requiredBuildsMergeCheck",
+          enabled: false,
+        },
+      ],
+    });
+    mockError(h.mockClients.api.get, new Error("not found"));
 
     const parsed = await callAndParse<
       Array<{ settings: Record<string, unknown> }>
@@ -76,7 +75,7 @@ describe("list_merge_checks", () => {
   });
 
   test("API error on hooks list", async () => {
-    h.mockClients.api.get.mockRejectedValueOnce(new Error("fail"));
+    mockReject(h.mockClients.api.get, new Error("fail"));
     const r = await callRaw(h.client, "list_merge_checks", {
       project: "P",
       repository: "r",
@@ -113,7 +112,7 @@ describe("manage_merge_checks", () => {
   });
 
   test("API error on configure", async () => {
-    h.mockClients.api.put.mockRejectedValueOnce(new Error("fail"));
+    mockReject(h.mockClients.api.put, new Error("fail"));
     const r = await callRaw(h.client, "manage_merge_checks", {
       project: "P",
       repository: "r",

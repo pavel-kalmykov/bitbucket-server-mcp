@@ -1,6 +1,6 @@
 import { describe, test, expect } from "vitest";
 import { registerDefaultReviewerTools } from "../../tools/default-reviewers.js";
-import { mockJson } from "../test-utils.js";
+import { mockJson, mockReject } from "../test-utils.js";
 import {
   callAndParse,
   callRaw,
@@ -67,9 +67,7 @@ describe("list_default_reviewer_conditions", () => {
   });
 
   test("returns error when API call fails", async () => {
-    h.mockClients.defaultReviewers.get.mockRejectedValueOnce(
-      new Error("Not found"),
-    );
+    mockReject(h.mockClients.defaultReviewers.get, new Error("Not found"));
 
     const result = await callRaw(h.client, "list_default_reviewer_conditions", {
       project: "TEST",
