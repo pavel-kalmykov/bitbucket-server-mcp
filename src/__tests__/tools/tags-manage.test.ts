@@ -1,6 +1,6 @@
 import { describe, test, expect } from "vitest";
 import { registerBranchTools } from "../../tools/refs.js";
-import { mockJson, mockVoid } from "../test-utils.js";
+import { mockJson, mockVoid, mockReject } from "../test-utils.js";
 import { callAndParse, callRaw, setupToolHarness } from "../tool-test-utils.js";
 
 describe("manage_tags", () => {
@@ -84,9 +84,7 @@ describe("manage_tags", () => {
     });
 
     test("returns error when API call fails", async () => {
-      h.mockClients.api.post.mockRejectedValueOnce(
-        new Error("Tag already exists"),
-      );
+      mockReject(h.mockClients.api.post, new Error("Tag already exists"));
 
       const result = await callRaw(h.client, "manage_tags", {
         action: "create",
@@ -137,9 +135,7 @@ describe("manage_tags", () => {
     });
 
     test("returns error when API call fails", async () => {
-      h.mockClients.git.delete.mockRejectedValueOnce(
-        new Error("Tag not found"),
-      );
+      mockReject(h.mockClients.git.delete, new Error("Tag not found"));
 
       const result = await callRaw(h.client, "manage_tags", {
         action: "delete",

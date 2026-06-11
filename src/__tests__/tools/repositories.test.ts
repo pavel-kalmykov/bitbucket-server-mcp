@@ -3,7 +3,7 @@ import { join } from "node:path";
 import { tmpdir } from "node:os";
 import { describe, test, expect } from "vitest";
 import { registerRepositoryTools } from "../../tools/repositories.js";
-import { mockError, mockJson } from "../test-utils.js";
+import { mockError, mockJson, mockReject } from "../test-utils.js";
 import {
   callAndParse,
   callAndParseFull,
@@ -711,7 +711,7 @@ describe("Repository tools", () => {
 
     describe("error handling", () => {
       test("returns error on HTTP 404", async () => {
-        h.mockClients.api.put.mockRejectedValueOnce(new Error("Not Found"));
+        mockReject(h.mockClients.api.put, new Error("Not Found"));
 
         const result = await callRaw(h.client, "edit_file", {
           project: "TEST",
@@ -726,7 +726,7 @@ describe("Repository tools", () => {
       });
 
       test("returns error on HTTP 409 conflict", async () => {
-        h.mockClients.api.put.mockRejectedValueOnce(new Error("Conflict"));
+        mockReject(h.mockClients.api.put, new Error("Conflict"));
 
         const result = await callRaw(h.client, "edit_file", {
           project: "TEST",

@@ -1,6 +1,6 @@
 import { describe, test, expect } from "vitest";
 import { registerDeploymentTools } from "../../tools/deployments.js";
-import { mockJson, mockVoid } from "../test-utils.js";
+import { mockJson, mockVoid, mockReject } from "../test-utils.js";
 import {
   callAndParse,
   callRaw,
@@ -79,11 +79,20 @@ describe("manage_deployments", () => {
     });
 
     test("returns error when API call fails", async () => {
-      h.mockClients.api.get.mockRejectedValueOnce(new Error("Not found"));
+      mockReject(h.mockClients.api.get, new Error("Not found"));
 
       const result = await callRaw(h.client, "manage_deployments", {
         action: "get",
         ...GET_REQUIRED_PARAMS,
+      });
+      expect(result.isError).toBe(true);
+    });
+
+    test("requireParams rejects empty string", async () => {
+      const result = await callRaw(h.client, "manage_deployments", {
+        action: "get",
+        ...GET_REQUIRED_PARAMS,
+        key: "",
       });
       expect(result.isError).toBe(true);
     });
@@ -124,7 +133,7 @@ describe("manage_deployments", () => {
     });
 
     test("returns error when API call fails", async () => {
-      h.mockClients.api.delete.mockRejectedValueOnce(new Error("Forbidden"));
+      mockReject(h.mockClients.api.delete, new Error("Forbidden"));
 
       const result = await callRaw(h.client, "manage_deployments", {
         action: "delete",
@@ -161,6 +170,55 @@ describe("manage_deployments", () => {
           key: "prod",
         },
       });
+    });
+
+    test("create without environmentType omits it from body", async () => {
+      mockJson(h.mockClients.api.post, { key: "deploy-1" });
+
+      await callAndParse(h.client, "manage_deployments", {
+        action: "create",
+        ...CREATE_REQUIRED_PARAMS,
+      });
+
+      expectCalledWithJson(h.mockClients.api.post, BASE_URL, {
+        environment: {
+          displayName: "Production",
+          key: "prod",
+        },
+      });
+
+      const body = h.mockClients.api.post.mock.calls[0][1] as {
+        json: Record<string, unknown>;
+      };
+      expect(
+        (body.json.environment as Record<string, unknown>).type,
+      ).toBeUndefined();
+    });
+
+    test("create without url omits it from body", async () => {
+      mockJson(h.mockClients.api.post, { key: "deploy-1" });
+
+      await callAndParse(h.client, "manage_deployments", {
+        action: "create",
+        ...CREATE_REQUIRED_PARAMS,
+      });
+
+      expectCalledWithJson(h.mockClients.api.post, BASE_URL, {
+        deploymentSequenceNumber: 1,
+        description: "Deploy to prod",
+        displayName: "Prod Deploy",
+        key: "deploy-1",
+        state: "SUCCESSFUL",
+        environment: {
+          displayName: "Production",
+          key: "prod",
+        },
+      });
+
+      const body = h.mockClients.api.post.mock.calls[0][1] as {
+        json: Record<string, unknown>;
+      };
+      expect(body.json).not.toHaveProperty("url");
     });
 
     test("includes environmentType when provided", async () => {
@@ -215,6 +273,26 @@ describe("manage_deployments", () => {
       });
     });
 
+    test("requireParams lists all missing fields in error", async () => {
+      const result = await callRaw(h.client, "manage_deployments", {
+        action: "create",
+        project: "TEST",
+        repository: "my-repo",
+        commitId: "abc123",
+      });
+
+      expect(result.isError).toBe(true);
+      const text = (result.content as Array<{ type: string; text: string }>)[0]
+        .text;
+      expect(text).toContain("deploymentSequenceNumber");
+      expect(text).toContain("description");
+      expect(text).toContain("displayName");
+      expect(text).toContain("key");
+      expect(text).toContain("environmentKey");
+      expect(text).toContain("environmentDisplayName");
+      expect(text).toContain("state");
+    });
+
     test.each([
       ["description", { ...CREATE_REQUIRED_PARAMS, description: undefined }],
       ["displayName", { ...CREATE_REQUIRED_PARAMS, displayName: undefined }],
@@ -232,7 +310,7 @@ describe("manage_deployments", () => {
     });
 
     test("returns error when API call fails", async () => {
-      h.mockClients.api.post.mockRejectedValueOnce(new Error("Conflict"));
+      mockReject(h.mockClients.api.post, new Error("Conflict"));
 
       const result = await callRaw(h.client, "manage_deployments", {
         action: "create",
@@ -272,5 +350,32 @@ describe("manage_deployments", () => {
       BASE_URL,
       expect.anything(),
     );
+  });
+
+  test("whitespace-only param is not treated as missing", async () => {
+    mockJson(h.mockClients.api.get, { key: "deploy-1" });
+
+    await callAndParse(h.client, "manage_deployments", {
+      action: "get",
+      project: "TEST",
+      repository: "my-repo",
+      commitId: "abc123",
+      key: "  ",
+      environmentKey: "prod",
+      deploymentSequenceNumber: 1,
+    });
+
+    expect(h.mockClients.api.get).toHaveBeenCalledWith(
+      BASE_URL,
+      expect.anything(),
+    );
+  });
+
+  test("tool description mentions GET, POST, and DELETE", async () => {
+    const { tools } = await h.client.listTools();
+    const tool = tools.find((t) => t.name === "manage_deployments");
+    expect(tool?.description).toContain("GET requires");
+    expect(tool?.description).toContain("POST body requires");
+    expect(tool?.description).toContain("DELETE requires");
   });
 });

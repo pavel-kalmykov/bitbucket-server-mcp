@@ -1,8 +1,9 @@
 import { describe, test, expect } from "vitest";
 import { registerPullRequestTools } from "../../tools/pull-requests.js";
-import { mockJson } from "../test-utils.js";
+import { mockJson, mockReject } from "../test-utils.js";
 import {
   callAndParse,
+  callRaw,
   expectCalledWithJson,
   expectCalledWithStrictJson,
   setupToolHarness,
@@ -125,32 +126,42 @@ describe("Pull request tools", () => {
       });
     });
 
-    test("should preserve title and description when only reviewers updated", async () => {
-      const existingPr = {
-        id: 10,
-        version: 5,
-        title: "Original",
-        description: "Original desc",
-        toRef: { id: "refs/heads/main", displayId: "main" },
-        reviewers: [],
-      };
+    test.each([
+      { title: "Original", description: "Original desc", reviewer: "alice" },
+      {
+        title: "Current Title",
+        description: "Current Desc",
+        reviewer: "carol",
+      },
+    ])(
+      "preserves title/description when only reviewers updated (title=$title)",
+      async ({ title, description, reviewer }) => {
+        const existingPr = {
+          id: 10,
+          version: 5,
+          title,
+          description,
+          toRef: { id: "refs/heads/main", displayId: "main" },
+          reviewers: [],
+        };
 
-      mockJson(h.mockClients.api.get, existingPr);
-      mockJson(h.mockClients.api.put, existingPr);
+        mockJson(h.mockClients.api.get, existingPr);
+        mockJson(h.mockClients.api.put, existingPr);
 
-      await callAndParse(h.client, "update_pull_request", {
-        project: "PROJ",
-        repository: "my-repo",
-        prId: 10,
-        reviewers: ["alice"],
-      });
+        await callAndParse(h.client, "update_pull_request", {
+          project: "PROJ",
+          repository: "my-repo",
+          prId: 10,
+          reviewers: [reviewer],
+        });
 
-      expectCalledWithJson(h.mockClients.api.put, expect.any(String), {
-        title: "Original",
-        description: "Original desc",
-        reviewers: [{ user: { name: "alice" } }],
-      });
-    });
+        expectCalledWithJson(h.mockClients.api.put, expect.any(String), {
+          title,
+          description,
+          reviewers: [{ user: { name: reviewer } }],
+        });
+      },
+    );
 
     test("should update description without changing title", async () => {
       const existingPr = {
@@ -179,8 +190,6 @@ describe("Pull request tools", () => {
     });
 
     test("should not send author field in PUT body", async () => {
-      // The GET response includes `author`, which the Bitbucket PUT endpoint
-      // rejects with 400. Verify the tool strips it before sending.
       const existingPr = {
         id: 12,
         version: 2,
@@ -213,6 +222,28 @@ describe("Pull request tools", () => {
           reviewers: [],
         },
       );
+    });
+
+    test("GET current PR fails", async () => {
+      mockReject(h.mockClients.api.get, new Error("fail"));
+      const r = await callRaw(h.client, "update_pull_request", {
+        project: "PROJ",
+        repository: "my-repo",
+        prId: 10,
+        title: "New title",
+      });
+      expect(r.isError).toBe(true);
+    });
+
+    test("API error when GET current PR fails", async () => {
+      mockReject(h.mockClients.api.get, new Error("fail"));
+      const r = await callRaw(h.client, "update_pull_request", {
+        project: "PROJ",
+        repository: "my-repo",
+        prId: 10,
+        title: "New title",
+      });
+      expect(r.isError).toBe(true);
     });
   });
 });

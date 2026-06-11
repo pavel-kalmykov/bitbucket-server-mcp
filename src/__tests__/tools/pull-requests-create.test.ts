@@ -1,8 +1,9 @@
 import { describe, test, expect } from "vitest";
 import { registerPullRequestTools } from "../../tools/pull-requests.js";
-import { mockJson } from "../test-utils.js";
+import { mockJson, mockReject } from "../test-utils.js";
 import {
   callAndParse,
+  callRaw,
   expectCalledWithJson,
   setupToolHarness,
 } from "../tool-test-utils.js";
@@ -146,6 +147,31 @@ describe("Pull request tools", () => {
       expect(h.mockClients.defaultReviewers.get).not.toHaveBeenCalled();
     });
 
+    test("skips default reviewers when includeDefaultReviewers is explicitly false and explicit reviewers provided", async () => {
+      mockJson(h.mockClients.api.post, { id: 8, state: "OPEN" });
+
+      await callAndParse(h.client, "create_pull_request", {
+        project: "PROJ",
+        repository: "my-repo",
+        title: "Explicit only",
+        sourceBranch: "feature/x",
+        targetBranch: "main",
+        reviewers: ["alice", "bob"],
+        includeDefaultReviewers: false,
+      });
+
+      expect(h.mockClients.api.get).not.toHaveBeenCalled();
+      expect(h.mockClients.defaultReviewers.get).not.toHaveBeenCalled();
+
+      expectCalledWithJson(
+        h.mockClients.api.post,
+        "projects/PROJ/repos/my-repo/pull-requests",
+        {
+          reviewers: [{ user: { name: "alice" } }, { user: { name: "bob" } }],
+        },
+      );
+    });
+
     test("should include description in body when provided", async () => {
       mockJson(h.mockClients.api.post, { id: 5, state: "OPEN" });
 
@@ -183,6 +209,19 @@ describe("Pull request tools", () => {
         "projects/PROJ/repos/my-repo/pull-requests",
         { reviewers: [] },
       );
+    });
+
+    test("API error", async () => {
+      mockReject(h.mockClients.api.post, new Error("fail"));
+      const r = await callRaw(h.client, "create_pull_request", {
+        project: "PROJ",
+        repository: "my-repo",
+        title: "Error PR",
+        sourceBranch: "feature/x",
+        targetBranch: "main",
+        includeDefaultReviewers: false,
+      });
+      expect(r.isError).toBe(true);
     });
   });
 });

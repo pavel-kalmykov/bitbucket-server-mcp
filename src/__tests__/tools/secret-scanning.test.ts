@@ -1,6 +1,6 @@
 import { describe, test, expect } from "vitest";
 import { registerSecretScanningTools } from "../../tools/secret-scanning.js";
-import { mockJson } from "../test-utils.js";
+import { mockJson, mockReject } from "../test-utils.js";
 import { callAndParse, callRaw, setupToolHarness } from "../tool-test-utils.js";
 
 describe("list_secret_scanning_rules", () => {
@@ -17,6 +17,9 @@ describe("list_secret_scanning_rules", () => {
       { project: "P", repository: "r" },
     );
     expect(p[0].id).toBe(1);
+    expect(h.mockClients.api.get).toHaveBeenCalledWith(
+      "projects/P/repos/r/secret-scanning/allowlist",
+    );
   });
 
   test("returns empty", async () => {
@@ -30,7 +33,7 @@ describe("list_secret_scanning_rules", () => {
   });
 
   test("API error", async () => {
-    h.mockClients.api.get.mockRejectedValueOnce(new Error("fail"));
+    mockReject(h.mockClients.api.get, new Error("fail"));
     const r = await callRaw(h.client, "list_secret_scanning_rules", {
       project: "P",
       repository: "r",

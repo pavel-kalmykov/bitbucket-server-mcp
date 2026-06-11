@@ -1,6 +1,6 @@
 import { describe, test, expect } from "vitest";
 import { registerForkTools } from "../../tools/forks.js";
-import { mockJson } from "../test-utils.js";
+import { mockJson, mockReject } from "../test-utils.js";
 import {
   callAndParse,
   callRaw,
@@ -114,7 +114,7 @@ describe("fork_repository", () => {
   });
 
   test("returns error when API call fails", async () => {
-    h.mockClients.api.post.mockRejectedValueOnce(new Error("Conflict"));
+    mockReject(h.mockClients.api.post, new Error("Conflict"));
 
     const result = await callRaw(h.client, "fork_repository", {
       project: "SRC",

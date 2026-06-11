@@ -1,6 +1,6 @@
 import { describe, test, expect } from "vitest";
 import { registerWebhookTools } from "../../tools/webhooks.js";
-import { mockJson } from "../test-utils.js";
+import { mockJson, mockReject } from "../test-utils.js";
 import {
   callAndParse,
   callRaw,
@@ -31,6 +31,10 @@ describe("list_webhooks", () => {
 
     expect(parsed.total).toBe(1);
     expect(parsed.webhooks[0].name).toBe("ci-hook");
+    expect(h.mockClients.api.get).toHaveBeenCalledWith(
+      "projects/TEST/repos/my-repo/webhooks",
+      expect.objectContaining({ searchParams: { limit: 25, start: 0 } }),
+    );
   });
 
   test("returns empty list", async () => {
@@ -53,7 +57,7 @@ describe("list_webhooks", () => {
   });
 
   test("returns error on API failure", async () => {
-    h.mockClients.api.get.mockRejectedValueOnce(new Error("Forbidden"));
+    mockReject(h.mockClients.api.get, new Error("Forbidden"));
 
     const result = await callRaw(h.client, "list_webhooks", {
       project: "TEST",
@@ -145,115 +149,76 @@ describe("manage_webhooks", () => {
     );
   });
 
-  test("updates a webhook", async () => {
-    mockJson(h.mockClients.api.put, { id: 1, name: "updated-hook" });
+  test("creates a webhook without active omits it from body", async () => {
+    mockJson(h.mockClients.api.post, { id: 3, name: "no-active" });
 
-    const parsed = await callAndParse<{ name: string }>(
-      h.client,
-      "manage_webhooks",
-      {
-        action: "update",
-        project: "TEST",
-        repository: "my-repo",
-        webhookId: 1,
-        name: "updated-hook",
-      },
-    );
+    await callAndParse(h.client, "manage_webhooks", {
+      action: "create",
+      project: "TEST",
+      repository: "my-repo",
+      name: "no-active",
+      url: "https://example.com/hook",
+      events: ["repo:refs_changed"],
+    });
 
-    expect(parsed.name).toBe("updated-hook");
-    expectCalledWithJson(
-      h.mockClients.api.put,
-      "projects/TEST/repos/my-repo/webhooks/1",
-      { name: "updated-hook" },
+    expect(h.mockClients.api.post).toHaveBeenCalledWith(
+      expect.any(String),
+      expect.objectContaining({
+        json: expect.not.objectContaining({ active: expect.anything() }),
+      }),
     );
   });
 
-  test("updates a webhook with all fields", async () => {
-    mockJson(h.mockClients.api.put, {
-      id: 1,
-      name: "h",
-      url: "u",
-      active: true,
-    });
-
-    await callAndParse(h.client, "manage_webhooks", {
-      action: "update",
-      project: "TEST",
-      repository: "my-repo",
-      webhookId: 1,
-      name: "h",
-      url: "u",
-      events: ["repo:refs_changed"],
-      active: true,
-    });
-
-    expectCalledWithJson(
-      h.mockClients.api.put,
-      "projects/TEST/repos/my-repo/webhooks/1",
-      {
+  test.each([
+    {
+      description: "name only",
+      extraArgs: { name: "updated-hook" },
+      expectedJson: { name: "updated-hook" },
+    },
+    {
+      description: "all fields",
+      extraArgs: {
         name: "h",
         url: "u",
         events: ["repo:refs_changed"],
         active: true,
       },
-    );
-  });
-
-  test("updates a webhook with url only", async () => {
-    mockJson(h.mockClients.api.put, {
-      id: 1,
-      url: "https://new.example.com/hook",
-    });
-
-    await callAndParse(h.client, "manage_webhooks", {
-      action: "update",
-      project: "TEST",
-      repository: "my-repo",
-      webhookId: 1,
-      url: "https://new.example.com/hook",
-    });
-
-    expectCalledWithJson(
-      h.mockClients.api.put,
-      "projects/TEST/repos/my-repo/webhooks/1",
-      { url: "https://new.example.com/hook" },
-    );
-  });
-
-  test("updates a webhook with events only", async () => {
-    mockJson(h.mockClients.api.put, { id: 1, events: ["repo:refs_changed"] });
-
-    await callAndParse(h.client, "manage_webhooks", {
-      action: "update",
-      project: "TEST",
-      repository: "my-repo",
-      webhookId: 1,
-      events: ["repo:refs_changed"],
-    });
-
-    expectCalledWithJson(
-      h.mockClients.api.put,
-      "projects/TEST/repos/my-repo/webhooks/1",
-      { events: ["repo:refs_changed"] },
-    );
-  });
-
-  test("updates a webhook with empty body", async () => {
-    mockJson(h.mockClients.api.put, { id: 1 });
-
-    await callAndParse(h.client, "manage_webhooks", {
-      action: "update",
-      project: "TEST",
-      repository: "my-repo",
-      webhookId: 1,
-    });
-
-    expectCalledWithJson(
-      h.mockClients.api.put,
-      "projects/TEST/repos/my-repo/webhooks/1",
-      {},
-    );
-  });
+      expectedJson: {
+        name: "h",
+        url: "u",
+        events: ["repo:refs_changed"],
+        active: true,
+      },
+    },
+    {
+      description: "url only",
+      extraArgs: { url: "https://new.example.com/hook" },
+      expectedJson: { url: "https://new.example.com/hook" },
+    },
+    {
+      description: "events only",
+      extraArgs: { events: ["repo:refs_changed"] },
+      expectedJson: { events: ["repo:refs_changed"] },
+    },
+    { description: "empty body", extraArgs: {}, expectedJson: {} },
+  ])(
+    "updates a webhook with $description",
+    async ({ extraArgs, expectedJson }) => {
+      mockJson(h.mockClients.api.put, { id: 1 });
+      await callAndParse(h.client, "manage_webhooks", {
+        action: "update",
+        project: "TEST",
+        repository: "my-repo",
+        webhookId: 1,
+        ...extraArgs,
+      });
+      expectCalledWithJson(
+        h.mockClients.api.put,
+        "projects/TEST/repos/my-repo/webhooks/1",
+        expectedJson,
+      );
+    },
+  );
 
   test("deletes a webhook", async () => {
     mockJson(h.mockClients.api.delete, {});
@@ -273,44 +238,33 @@ describe("manage_webhooks", () => {
     expect(parsed.webhookId).toBe(1);
   });
 
-  test("returns error when create fails", async () => {
-    h.mockClients.api.post.mockRejectedValueOnce(new Error("Invalid URL"));
-
-    const result = await callRaw(h.client, "manage_webhooks", {
-      action: "create",
-      project: "TEST",
-      repository: "my-repo",
-      name: "hook",
-      url: "invalid",
-    });
-
-    expect(result.isError).toBe(true);
-  });
-
-  test("returns error when update fails", async () => {
-    h.mockClients.api.put.mockRejectedValueOnce(new Error("Not found"));
-
-    const result = await callRaw(h.client, "manage_webhooks", {
-      action: "update",
-      project: "TEST",
-      repository: "my-repo",
-      webhookId: 999,
-      name: "hook",
-    });
-
-    expect(result.isError).toBe(true);
-  });
-
-  test("returns error when delete fails", async () => {
-    h.mockClients.api.delete.mockRejectedValueOnce(new Error("Not found"));
-
-    const result = await callRaw(h.client, "manage_webhooks", {
-      action: "delete",
-      project: "TEST",
-      repository: "my-repo",
-      webhookId: 999,
-    });
-
-    expect(result.isError).toBe(true);
-  });
+  test.each([
+    {
+      action: "create" as const,
+      mockMethod: "post" as const,
+      extraArgs: { name: "hook", url: "invalid" },
+    },
+    {
+      action: "update" as const,
+      mockMethod: "put" as const,
+      extraArgs: { webhookId: 999, name: "hook" },
+    },
+    {
+      action: "delete" as const,
+      mockMethod: "delete" as const,
+      extraArgs: { webhookId: 999 },
+    },
+  ])(
+    "returns error when $action fails",
+    async ({ action, mockMethod, extraArgs }) => {
+      mockReject(h.mockClients.api[mockMethod], new Error("fail"));
+      const result = await callRaw(h.client, "manage_webhooks", {
+        action,
+        project: "TEST",
+        repository: "my-repo",
+        ...extraArgs,
+      });
+      expect(result.isError).toBe(true);
+    },
+  );
 });

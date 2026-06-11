@@ -1,6 +1,6 @@
 import { describe, test, expect } from "vitest";
 import { registerInsightTools } from "../../tools/insights.js";
-import { fakeResponse, mockError, mockJson } from "../test-utils.js";
+import { mockError, mockJson } from "../test-utils.js";
 import { callAndParse, setupToolHarness } from "../tool-test-utils.js";
 
 describe("Insight tools", () => {
@@ -40,16 +40,9 @@ describe("Insight tools", () => {
         ],
       };
 
-      h.mockClients.insights.get
-        .mockReturnValueOnce(
-          fakeResponse({ json: () => Promise.resolve(mockReports) }),
-        )
-        .mockReturnValueOnce(
-          fakeResponse({ json: () => Promise.resolve(sonarAnnotations) }),
-        )
-        .mockReturnValueOnce(
-          fakeResponse({ json: () => Promise.resolve(coverageAnnotations) }),
-        );
+      mockJson(h.mockClients.insights.get, mockReports);
+      mockJson(h.mockClients.insights.get, sonarAnnotations);
+      mockJson(h.mockClients.insights.get, coverageAnnotations);
 
       const parsed = await callAndParse<{
         reports: Array<{ key: string }>;
@@ -89,15 +82,11 @@ describe("Insight tools", () => {
         values: [{ key: "broken-report", title: "Broken", result: "PASS" }],
       };
 
-      h.mockClients.insights.get
-        .mockReturnValueOnce(
-          fakeResponse({ json: () => Promise.resolve(mockReports) }),
-        )
-        .mockReturnValueOnce(
-          fakeResponse({
-            json: () => Promise.reject(new Error("Annotations not available")),
-          }),
-        );
+      mockJson(h.mockClients.insights.get, mockReports);
+      mockError(
+        h.mockClients.insights.get,
+        new Error("Annotations not available"),
+      );
 
       const parsed = await callAndParse<{
         reports: Array<{ key: string }>;
@@ -123,38 +112,15 @@ describe("Insight tools", () => {
       expect(result.isError).toBe(true);
     });
 
-    test("should use default project when not provided", async () => {
-      mockJson(h.mockClients.insights.get, { values: [] });
-
-      await h.client.callTool({
-        name: "get_code_insights",
-        arguments: { repository: "my-repo", prId: 1 },
-      });
-
-      expect(h.mockClients.insights.get).toHaveBeenCalledWith(
-        "projects/DEFAULT/repos/my-repo/pull-requests/1/reports",
-      );
-    });
-
     test("should query annotations for each report by key", async () => {
-      h.mockClients.insights.get
-        .mockReturnValueOnce(
-          fakeResponse({
-            json: () =>
-              Promise.resolve({
-                values: [
-                  { key: "sonar", title: "Sonar", result: "PASS" },
-                  { key: "coverage", title: "Coverage", result: "FAIL" },
-                ],
-              }),
-          }),
-        )
-        .mockReturnValueOnce(
-          fakeResponse({ json: () => Promise.resolve({ values: [] }) }),
-        )
-        .mockReturnValueOnce(
-          fakeResponse({ json: () => Promise.resolve({ values: [] }) }),
-        );
+      mockJson(h.mockClients.insights.get, {
+        values: [
+          { key: "sonar", title: "Sonar", result: "PASS" },
+          { key: "coverage", title: "Coverage", result: "FAIL" },
+        ],
+      });
+      mockJson(h.mockClients.insights.get, { values: [] });
+      mockJson(h.mockClients.insights.get, { values: [] });
 
       await callAndParse(h.client, "get_code_insights", {
         project: "TEST",
@@ -181,15 +147,8 @@ describe("Insight tools", () => {
         ],
       };
 
-      h.mockClients.insights.get
-        .mockReturnValueOnce(
-          fakeResponse({ json: () => Promise.resolve(reportsList) }),
-        )
-        .mockReturnValueOnce(
-          fakeResponse({
-            json: () => Promise.resolve({ values: [{ message: "Bug" }] }),
-          }),
-        );
+      mockJson(h.mockClients.insights.get, reportsList);
+      mockJson(h.mockClients.insights.get, { values: [{ message: "Bug" }] });
 
       const parsed = await callAndParse<{
         reports: unknown[];
@@ -223,61 +182,38 @@ describe("Insight tools", () => {
 
     test("should return file annotations keyed by path when includeFileAnnotations is true", async () => {
       // given: two reports + two changed files, both have annotations
-      h.mockClients.insights.get
-        .mockReturnValueOnce(
-          fakeResponse({
-            json: () =>
-              Promise.resolve({
-                values: [{ key: "sonar", title: "SonarQube", result: "PASS" }],
-              }),
-          }),
-        )
-        .mockReturnValueOnce(
-          fakeResponse({ json: () => Promise.resolve({ values: [] }) }),
-        )
-        .mockReturnValueOnce(
-          fakeResponse({
-            json: () =>
-              Promise.resolve({
-                annotations: [
-                  {
-                    line: 42,
-                    message: "Cognitive Complexity",
-                    severity: "HIGH",
-                    type: "CODE_SMELL",
-                  },
-                ],
-              }),
-          }),
-        )
-        .mockReturnValueOnce(
-          fakeResponse({
-            json: () =>
-              Promise.resolve({
-                annotations: [
-                  {
-                    line: 10,
-                    message: "Unused import",
-                    severity: "LOW",
-                    type: "CODE_SMELL",
-                  },
-                ],
-              }),
-          }),
-        );
+      mockJson(h.mockClients.insights.get, {
+        values: [{ key: "sonar", title: "SonarQube", result: "PASS" }],
+      });
+      mockJson(h.mockClients.insights.get, { values: [] });
+      mockJson(h.mockClients.insights.get, {
+        annotations: [
+          {
+            line: 42,
+            message: "Cognitive Complexity",
+            severity: "HIGH",
+            type: "CODE_SMELL",
+          },
+        ],
+      });
+      mockJson(h.mockClients.insights.get, {
+        annotations: [
+          {
+            line: 10,
+            message: "Unused import",
+            severity: "LOW",
+            type: "CODE_SMELL",
+          },
+        ],
+      });
 
-      h.mockClients.api.get.mockReturnValueOnce(
-        fakeResponse({
-          json: () =>
-            Promise.resolve({
-              values: [
-                { path: { toString: "src/foo.ts" } },
-                { path: { toString: "src/bar.ts" } },
-              ],
-              isLastPage: true,
-            }),
-        }),
-      );
+      mockJson(h.mockClients.api.get, {
+        values: [
+          { path: { toString: "src/foo.ts" } },
+          { path: { toString: "src/bar.ts" } },
+        ],
+        isLastPage: true,
+      });
 
       // when
       const parsed = await callAndParse<{
@@ -320,6 +256,29 @@ describe("Insight tools", () => {
       expect(apiCalls[0][1]).toEqual(
         expect.objectContaining({
           searchParams: expect.objectContaining({ start: 0, limit: 50 }),
+        }),
+      );
+
+      const fileAnnotationCalls = h.mockClients.insights.get.mock.calls.filter(
+        (c) =>
+          String(c[0]).endsWith("/annotations") &&
+          !String(c[0]).includes("/reports/"),
+      );
+      expect(fileAnnotationCalls).toHaveLength(2);
+      expect(fileAnnotationCalls[0][0]).toBe(
+        "projects/TEST/repos/my-repo/pull-requests/1/annotations",
+      );
+      expect(fileAnnotationCalls[0][1]).toEqual(
+        expect.objectContaining({
+          searchParams: { path: "src/foo.ts", annotationLocation: "FILES" },
+        }),
+      );
+      expect(fileAnnotationCalls[1][0]).toBe(
+        "projects/TEST/repos/my-repo/pull-requests/1/annotations",
+      );
+      expect(fileAnnotationCalls[1][1]).toEqual(
+        expect.objectContaining({
+          searchParams: { path: "src/bar.ts", annotationLocation: "FILES" },
         }),
       );
     });
@@ -378,40 +337,27 @@ describe("Insight tools", () => {
       });
       mockJson(h.mockClients.insights.get, { values: [] });
 
-      h.mockClients.api.get.mockReturnValueOnce(
-        fakeResponse({
-          json: () =>
-            Promise.resolve({
-              values: [
-                { path: { toString: "src/ok.ts" } },
-                { path: { toString: "src/broken.ts" } },
-              ],
-              isLastPage: true,
-            }),
-        }),
-      );
+      mockJson(h.mockClients.api.get, {
+        values: [
+          { path: { toString: "src/ok.ts" } },
+          { path: { toString: "src/broken.ts" } },
+        ],
+        isLastPage: true,
+      });
 
-      // first file → OK
-      h.mockClients.insights.get.mockReturnValueOnce(
-        fakeResponse({
-          json: () =>
-            Promise.resolve({
-              annotations: [
-                {
-                  line: 1,
-                  message: "Fine",
-                  severity: "LOW",
-                  type: "CODE_SMELL",
-                },
-              ],
-            }),
-        }),
-      );
-      // second file → fails
-      h.mockClients.insights.get.mockReturnValueOnce(
-        fakeResponse({
-          json: () => Promise.reject(new Error("Annotations unavailable")),
-        }),
+      mockJson(h.mockClients.insights.get, {
+        annotations: [
+          {
+            line: 1,
+            message: "Fine",
+            severity: "LOW",
+            type: "CODE_SMELL",
+          },
+        ],
+      });
+      mockError(
+        h.mockClients.insights.get,
+        new Error("Annotations unavailable"),
       );
 
       // when
@@ -436,11 +382,7 @@ describe("Insight tools", () => {
       });
       mockJson(h.mockClients.insights.get, { values: [] });
 
-      h.mockClients.api.get.mockReturnValueOnce(
-        fakeResponse({
-          json: () => Promise.resolve({ values: [], isLastPage: true }),
-        }),
-      );
+      mockJson(h.mockClients.api.get, { values: [], isLastPage: true });
 
       // when
       const parsed = await callAndParse<{
@@ -458,6 +400,62 @@ describe("Insight tools", () => {
       expect(parsed.fileAnnotationsIsLastPage).toBe(true);
     });
 
+    test("defaults fileAnnotationsIsLastPage to true when isLastPage absent", async () => {
+      mockJson(h.mockClients.insights.get, {
+        values: [{ key: "sonar", title: "SonarQube", result: "PASS" }],
+      });
+      mockJson(h.mockClients.insights.get, { values: [] });
+
+      mockJson(h.mockClients.api.get, {
+        values: [{ path: { toString: "src/a.ts" } }],
+      });
+
+      mockJson(h.mockClients.insights.get, { annotations: [] });
+
+      const parsed = await callAndParse<{
+        fileAnnotationsIsLastPage: boolean;
+        fileAnnotationsNextPageStart?: number;
+      }>(h.client, "get_code_insights", {
+        project: "TEST",
+        repository: "my-repo",
+        prId: 1,
+        includeFileAnnotations: true,
+      });
+
+      expect(parsed.fileAnnotationsIsLastPage).toBe(true);
+      expect(parsed).not.toHaveProperty("fileAnnotationsNextPageStart");
+    });
+
+    test("forwards fileStart and fileLimit as start and limit searchParams", async () => {
+      mockJson(h.mockClients.insights.get, {
+        values: [{ key: "sonar", title: "SonarQube", result: "PASS" }],
+      });
+      mockJson(h.mockClients.insights.get, { values: [] });
+
+      mockJson(h.mockClients.api.get, {
+        values: [{ path: { toString: "src/f1.ts" } }],
+        isLastPage: true,
+      });
+
+      mockJson(h.mockClients.insights.get, { annotations: [] });
+
+      await callAndParse(h.client, "get_code_insights", {
+        project: "TEST",
+        repository: "my-repo",
+        prId: 1,
+        includeFileAnnotations: true,
+        fileStart: 10,
+        fileLimit: 5,
+      });
+
+      const apiCalls = h.mockClients.api.get.mock.calls;
+      expect(apiCalls[0][1]).toEqual(
+        expect.objectContaining({
+          searchParams: expect.objectContaining({ start: 10, limit: 5 }),
+        }),
+      );
+    });
+
     test("should propagate isLastPage and nextPageStart from changes endpoint", async () => {
       // given: first page of 5 out of 15 files
       mockJson(h.mockClients.insights.get, {
@@ -465,28 +463,20 @@ describe("Insight tools", () => {
       });
       mockJson(h.mockClients.insights.get, { values: [] });
 
-      h.mockClients.api.get.mockReturnValueOnce(
-        fakeResponse({
-          json: () =>
-            Promise.resolve({
-              values: [
-                { path: { toString: "src/f1.ts" } },
-                { path: { toString: "src/f2.ts" } },
-                { path: { toString: "src/f3.ts" } },
-                { path: { toString: "src/f4.ts" } },
-                { path: { toString: "src/f5.ts" } },
-              ],
-              isLastPage: false,
-              nextPageStart: 15,
-            }),
-        }),
-      );
+      mockJson(h.mockClients.api.get, {
+        values: [
+          { path: { toString: "src/f1.ts" } },
+          { path: { toString: "src/f2.ts" } },
+          { path: { toString: "src/f3.ts" } },
+          { path: { toString: "src/f4.ts" } },
+          { path: { toString: "src/f5.ts" } },
+        ],
+        isLastPage: false,
+        nextPageStart: 15,
+      });
 
-      // each file returns empty annotations
       for (let i = 0; i < 5; i++) {
-        h.mockClients.insights.get.mockReturnValueOnce(
-          fakeResponse({ json: () => Promise.resolve({ annotations: [] }) }),
-        );
+        mockJson(h.mockClients.insights.get, { annotations: [] });
       }
 
       // when
@@ -622,5 +612,36 @@ describe("Insight tools", () => {
         expect(parsed[0].state).toBe(state);
       },
     );
+
+    test("prId takes precedence over commitId when both provided", async () => {
+      mockJson(h.mockClients.api.get, {
+        fromRef: { latestCommit: "resolved999" },
+      });
+
+      mockJson(h.mockClients.buildStatus.get, {
+        values: [{ state: "SUCCESSFUL" }],
+      });
+
+      await callAndParse<Array<{ state: string }>>(
+        h.client,
+        "get_build_status",
+        {
+          project: "P",
+          repository: "R",
+          prId: 1,
+          commitId: "should-be-ignored",
+        },
+      );
+
+      expect(h.mockClients.api.get).toHaveBeenCalledWith(
+        "projects/P/repos/R/pull-requests/1",
+      );
+      expect(h.mockClients.buildStatus.get).toHaveBeenCalledWith(
+        "commits/resolved999",
+      );
+      expect(h.mockClients.buildStatus.get).not.toHaveBeenCalledWith(
+        "commits/should-be-ignored",
+      );
+    });
   });
 });

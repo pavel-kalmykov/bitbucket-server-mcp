@@ -1,6 +1,6 @@
 import { describe, test, expect } from "vitest";
 import { registerCommitCommentTools } from "../../tools/commit-comments.js";
-import { mockJson } from "../test-utils.js";
+import { mockJson, mockReject } from "../test-utils.js";
 import {
   callAndParse,
   callRaw,
@@ -38,6 +38,10 @@ describe("list_commit_comments", () => {
 
     expect(parsed.total).toBe(1);
     expect(parsed.comments[0].text).toBe("Looks good");
+    expect(h.mockClients.api.get).toHaveBeenCalledWith(
+      "projects/TEST/repos/my-repo/commits/abc123/comments",
+      expect.objectContaining({ searchParams: { limit: 25, start: 0 } }),
+    );
   });
 
   test("returns empty list when no comments exist", async () => {
@@ -61,7 +65,7 @@ describe("list_commit_comments", () => {
   });
 
   test("returns error on API failure", async () => {
-    h.mockClients.api.get.mockRejectedValueOnce(new Error("Not found"));
+    mockReject(h.mockClients.api.get, new Error("Not found"));
 
     const result = await callRaw(h.client, "list_commit_comments", {
       project: "TEST",
@@ -148,50 +152,40 @@ describe("manage_commit_comments", () => {
 
     expect(parsed.deleted).toBe(true);
     expect(parsed.commentId).toBe(1);
+    expect(h.mockClients.api.delete).toHaveBeenCalledWith(
+      "projects/TEST/repos/my-repo/commits/abc123/comments/1",
+      expect.objectContaining({ searchParams: { version: 1 } }),
+    );
   });
 
-  test("returns error when create fails", async () => {
-    h.mockClients.api.post.mockRejectedValueOnce(new Error("Forbidden"));
-
-    const result = await callRaw(h.client, "manage_commit_comments", {
-      action: "create",
-      project: "TEST",
-      repository: "my-repo",
-      commitId: "abc123",
-      text: "comment",
-    });
-
-    expect(result.isError).toBe(true);
-  });
-
-  test("returns error when edit fails", async () => {
-    h.mockClients.api.put.mockRejectedValueOnce(new Error("Not found"));
-
-    const result = await callRaw(h.client, "manage_commit_comments", {
-      action: "edit",
-      project: "TEST",
-      repository: "my-repo",
-      commitId: "abc123",
-      commentId: 1,
-      version: 1,
-      text: "updated",
-    });
-
-    expect(result.isError).toBe(true);
-  });
-
-  test("returns error when delete fails", async () => {
-    h.mockClients.api.delete.mockRejectedValueOnce(new Error("Forbidden"));
-
-    const result = await callRaw(h.client, "manage_commit_comments", {
-      action: "delete",
-      project: "TEST",
-      repository: "my-repo",
-      commitId: "abc123",
-      commentId: 1,
-      version: 1,
-    });
-
-    expect(result.isError).toBe(true);
-  });
+  test.each([
+    {
+      action: "create" as const,
+      mockMethod: "post" as const,
+      extraArgs: { text: "comment" },
+    },
+    {
+      action: "edit" as const,
+      mockMethod: "put" as const,
+      extraArgs: { commentId: 1, version: 1, text: "updated" },
+    },
+    {
+      action: "delete" as const,
+      mockMethod: "delete" as const,
+      extraArgs: { commentId: 1, version: 1 },
+    },
+  ])(
+    "returns error when $action fails",
+    async ({ action, mockMethod, extraArgs }) => {
+      mockReject(h.mockClients.api[mockMethod], new Error("fail"));
+      const result = await callRaw(h.client, "manage_commit_comments", {
+        action,
+        project: "TEST",
+        repository: "my-repo",
+        commitId: "abc123",
+        ...extraArgs,
+      });
+      expect(result.isError).toBe(true);
+    },
+  );
 });

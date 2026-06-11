@@ -58,22 +58,20 @@ describe("truncateDiff", () => {
     const diff = makeDiff([{ name: "src/path/file.ts", lines }]);
     const result = truncateDiff(diff, 10);
 
-    test("diff --git header kept", () => {
-      expect(result).toContain(
-        "diff --git a/src/path/file.ts b/src/path/file.ts",
-      );
-    });
-    test("index kept", () => {
-      expect(result).toContain("index abc1234..def5678 100644");
-    });
-    test("--- kept", () => {
-      expect(result).toContain("--- a/src/path/file.ts");
-    });
-    test("+++ kept", () => {
-      expect(result).toContain("+++ b/src/path/file.ts");
-    });
-    test("filename in truncation message", () => {
-      expect(result).toContain("hidden from src/path/file.ts");
+    test.each([
+      {
+        description: "diff --git header",
+        expected: "diff --git a/src/path/file.ts b/src/path/file.ts",
+      },
+      { description: "index line", expected: "index abc1234..def5678 100644" },
+      { description: "--- line", expected: "--- a/src/path/file.ts" },
+      { description: "+++ line", expected: "+++ b/src/path/file.ts" },
+      {
+        description: "filename in truncation message",
+        expected: "hidden from src/path/file.ts",
+      },
+    ])("preserves $description", ({ expected }) => {
+      expect(result).toContain(expected);
     });
   });
 
@@ -316,6 +314,22 @@ describe("truncateDiff", () => {
       ].join("\n");
       const result = truncateDiff(diff, 100);
       expect(result).toContain("similarity index 90%");
+    });
+  });
+
+  describe("content lines that happen to end with @@ are not mistaken for hunk headers", () => {
+    test("line ending with @@ but not starting with @@ is treated as content", () => {
+      const diff = [
+        "diff --git a/f.ts b/f.ts",
+        "@@ -1 +1 @@",
+        "+content @@", // ends with @@ but is content, not a hunk header
+        "+other",
+      ].join("\n");
+      const result = truncateDiff(diff, 100);
+      expect(result).toContain("+content @@");
+      expect(result).toContain("+other");
+      const hunkCount = (result.match(/@@ -1 \+1 @@/g) ?? []).length;
+      expect(hunkCount).toBe(1);
     });
   });
 });

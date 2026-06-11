@@ -1,6 +1,6 @@
 import { describe, test, expect } from "vitest";
 import { registerRepositoryTools } from "../../tools/repositories.js";
-import { mockJson } from "../test-utils.js";
+import { mockJson, mockReject } from "../test-utils.js";
 import {
   callAndParse,
   callRaw,
@@ -58,7 +58,7 @@ describe("get_file_blame", () => {
   });
 
   test("returns error on API failure", async () => {
-    h.mockClients.api.get.mockRejectedValueOnce(new Error("Not found"));
+    mockReject(h.mockClients.api.get, new Error("Not found"));
     const result = await callRaw(h.client, "get_file_blame", {
       project: "TEST",
       repository: "my-repo",
@@ -138,7 +138,7 @@ describe("create_repository", () => {
   });
 
   test("returns error on API failure", async () => {
-    h.mockClients.api.post.mockRejectedValueOnce(new Error("Conflict"));
+    mockReject(h.mockClients.api.post, new Error("Conflict"));
     const result = await callRaw(h.client, "create_repository", {
       project: "TEST",
       name: "r",
@@ -175,7 +175,7 @@ describe("delete_repository", () => {
   });
 
   test("returns error on API failure", async () => {
-    h.mockClients.api.delete.mockRejectedValueOnce(new Error("Forbidden"));
+    mockReject(h.mockClients.api.delete, new Error("Forbidden"));
     const result = await callRaw(h.client, "delete_repository", {
       project: "TEST",
       repository: "my-repo",

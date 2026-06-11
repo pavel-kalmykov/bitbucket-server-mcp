@@ -1,6 +1,6 @@
 import { describe, test, expect } from "vitest";
 import { registerPullRequestTools } from "../../tools/pull-requests.js";
-import { mockJson } from "../test-utils.js";
+import { mockJson, mockReject } from "../test-utils.js";
 import {
   callAndParse,
   callRaw,
@@ -84,7 +84,7 @@ describe("get_pull_request_commits", () => {
   });
 
   test("returns error when API call fails", async () => {
-    h.mockClients.api.get.mockRejectedValueOnce(new Error("Not found"));
+    mockReject(h.mockClients.api.get, new Error("Not found"));
 
     const result = await callRaw(h.client, "get_pull_request_commits", {
       project: "TEST",

@@ -1,6 +1,6 @@
 import { describe, test, expect, vi, afterEach } from "vitest";
 import { http, HttpResponse } from "msw";
-import { createApiClients } from "../../http/client.js";
+import { createApiClients, getPaginated } from "../../http/client.js";
 import type { BitbucketConfig } from "../../types.js";
 import { setupHttpCapture } from "../http-test-utils.js";
 import { logger } from "../../logging.js";
@@ -428,6 +428,34 @@ describe("createApiClients", () => {
       expect(warnSpy).toHaveBeenCalledWith(
         expect.stringContaining("Rate limited (429); reset in"),
       );
+    });
+  });
+
+  describe("getPaginated", () => {
+    test("returns first page without second request when isLastPage=true", async () => {
+      const respond = vi.fn().mockReturnValue(
+        HttpResponse.json({
+          values: [{ id: 1 }],
+          isLastPage: true,
+          size: 1,
+        }),
+      );
+      server.use(
+        http.get(
+          "https://git.example.com/rest/api/1.0/projects/TEST/repos/my-repo/webhooks",
+          respond,
+        ),
+      );
+
+      const clients = createApiClients(baseConfig({ token: "t" }));
+      const result = await getPaginated(
+        clients.api,
+        "projects/TEST/repos/my-repo/webhooks",
+      );
+
+      expect(respond).toHaveBeenCalledTimes(1);
+      expect(result.isLastPage).toBe(true);
+      expect(result.values).toHaveLength(1);
     });
   });
 });
