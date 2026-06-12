@@ -100,8 +100,8 @@ export const VERSIONS_WITHOUT_THREAD_RESOLVED = SELECTED_VERSIONS.filter((v) =>
   lt(v, THREAD_RESOLVED_SINCE),
 );
 
-/** Labels API was introduced in 8.5. */
-export const LABELS_SINCE = "8.5";
+/** Labels were introduced in Bitbucket Server 5.13, below our minimum of 7.21. */
+export const LABELS_SINCE = "7.21";
 export const VERSIONS_WITH_LABELS = SELECTED_VERSIONS.filter((v) =>
   gte(v, LABELS_SINCE),
 );
