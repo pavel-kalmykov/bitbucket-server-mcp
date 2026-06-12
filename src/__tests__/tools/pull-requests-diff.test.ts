@@ -1,8 +1,9 @@
 import { describe, test, expect } from "vitest";
 import { registerPullRequestTools } from "../../tools/pull-requests.js";
-import { mockJson, mockText, mockError } from "../test-utils.js";
+import { mockJson, mockText, mockError, mockReject } from "../test-utils.js";
 import {
   callAndParse,
+  callRaw,
   expectCalledWithSearchParams,
   setupToolHarness,
 } from "../tool-test-utils.js";
@@ -110,6 +111,16 @@ describe("Pull request tools", () => {
       expect(content[0].text).toContain("TRUNCATED");
     });
 
+    test("API error", async () => {
+      mockReject(h.mockClients.api.get, new Error("fail"));
+      const r = await callRaw(h.client, "get_diff", {
+        project: "PROJ",
+        repository: "my-repo",
+        prId: 1,
+      });
+      expect(r.isError).toBe(true);
+    });
+
     test("should return file list with stat=true", async () => {
       mockJson(h.mockClients.api.get, {
         values: [
@@ -198,6 +209,71 @@ describe("Pull request tools", () => {
         "projects/PROJ/repos/my-repo/pull-requests/1/diff/src/index.ts",
         expect.anything(),
       );
+    });
+
+    test("stat mode omits summary when diff-stats-summary fails", async () => {
+      mockJson(h.mockClients.api.get, {
+        values: [
+          {
+            path: { toString: "README.md" },
+            type: "ADD",
+            nodeType: "FILE",
+          },
+          {
+            path: { toString: "src/deleted.ts" },
+            type: "DELETE",
+            nodeType: "FILE",
+          },
+        ],
+      });
+
+      mockError(h.mockClients.api.get, new Error("endpoint not available"));
+
+      const parsed = await callAndParse<{
+        totalFiles: number;
+        files: Array<{ path: string; type: string }>;
+        summary?: unknown;
+      }>(h.client, "get_diff", {
+        project: "PROJ",
+        repository: "my-repo",
+        prId: 5,
+        stat: true,
+      });
+
+      expect(parsed.totalFiles).toBe(2);
+      expect(parsed.files[0]).toEqual({ path: "README.md", type: "ADD" });
+      expect(parsed.files[1]).toEqual({
+        path: "src/deleted.ts",
+        type: "DELETE",
+      });
+      expect(parsed.summary).toBeUndefined();
+    });
+
+    test("maxLinesPerFile=0 skips truncation for long diffs", async () => {
+      const rawDiff = [
+        "diff --git a/big.ts b/big.ts",
+        "index abc..def 100644",
+        "--- a/big.ts",
+        "+++ b/big.ts",
+        "@@ -1 +1 @@",
+        ...Array.from({ length: 500 }, (_, i) => `+line${i}`),
+      ].join("\n");
+
+      mockText(h.mockClients.api.get, rawDiff);
+
+      const result = await h.client.callTool({
+        name: "get_diff",
+        arguments: {
+          project: "PROJ",
+          repository: "my-repo",
+          prId: 3,
+          maxLinesPerFile: 0,
+        },
+      });
+
+      const content = result.content as Array<{ type: string; text: string }>;
+      expect(content[0].text).not.toContain("TRUNCATED");
+      expect(content[0].text).toContain("+line499");
     });
   });
 });

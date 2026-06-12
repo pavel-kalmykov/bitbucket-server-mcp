@@ -1,6 +1,6 @@
 import { describe, test, expect } from "vitest";
 import { registerBranchTools } from "../../tools/refs.js";
-import { mockJson } from "../test-utils.js";
+import { mockJson, mockReject } from "../test-utils.js";
 import {
   callAndParse,
   callRaw,
@@ -129,7 +129,7 @@ describe("list_tags", () => {
   });
 
   test("returns error when API call fails", async () => {
-    h.mockClients.api.get.mockRejectedValueOnce(new Error("Not found"));
+    mockReject(h.mockClients.api.get, new Error("Not found"));
 
     const result = await callRaw(h.client, "list_tags", {
       project: "TEST",

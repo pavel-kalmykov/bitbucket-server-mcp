@@ -1,6 +1,6 @@
 import { describe, test, expect } from "vitest";
 import { registerSshKeyTools } from "../../tools/ssh-keys.js";
-import { mockJson } from "../test-utils.js";
+import { mockJson, mockReject } from "../test-utils.js";
 import {
   callAndParse,
   callRaw,
@@ -44,13 +44,13 @@ describe("list_ssh_keys", () => {
     expect(h.mockClients.ssh.get).toHaveBeenCalledWith(
       "keys",
       expect.objectContaining({
-        searchParams: expect.objectContaining({ user: "jdoe" }),
+        searchParams: { limit: 25, start: 0, user: "jdoe" },
       }),
     );
   });
 
   test("API error", async () => {
-    h.mockClients.ssh.get.mockRejectedValueOnce(new Error("fail"));
+    mockReject(h.mockClients.ssh.get, new Error("fail"));
     const r = await callRaw(h.client, "list_ssh_keys", {});
     expect(r.isError).toBe(true);
   });
@@ -82,13 +82,25 @@ describe("manage_ssh_keys", () => {
       { action: "delete", keyId: 1 },
     );
     expect(p.deleted).toBe(true);
+    expect(h.mockClients.ssh.delete).toHaveBeenCalledWith("keys/1");
   });
 
-  test("add error", async () => {
-    h.mockClients.ssh.post.mockRejectedValueOnce(new Error("fail"));
+  test.each([
+    {
+      action: "add" as const,
+      mockMethod: "post" as const,
+      extraArgs: { text: "bad" },
+    },
+    {
+      action: "delete" as const,
+      mockMethod: "delete" as const,
+      extraArgs: { keyId: 1 },
+    },
+  ])("$action error", async ({ action, mockMethod, extraArgs }) => {
+    mockReject(h.mockClients.ssh[mockMethod], new Error("fail"));
     const r = await callRaw(h.client, "manage_ssh_keys", {
-      action: "add",
-      text: "bad",
+      action,
+      ...extraArgs,
     });
     expect(r.isError).toBe(true);
   });

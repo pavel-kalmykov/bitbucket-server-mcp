@@ -1,8 +1,9 @@
 import { describe, test, expect } from "vitest";
 import { registerCommentTools } from "../../tools/comments.js";
-import { mockJson, mockVoid } from "../test-utils.js";
+import { mockJson, mockVoid, mockReject } from "../test-utils.js";
 import {
   callAndParse,
+  callRaw,
   expectCalledWithJson,
   expectCalledWithSearchParams,
   setupToolHarness,
@@ -83,15 +84,13 @@ describe("Comment tools", () => {
       });
     });
 
-    test("should create a draft comment with state PENDING", async () => {
-      const mockResponse = {
+    test("create with state PENDING sends state in body", async () => {
+      mockJson(h.mockClients.api.post, {
         id: 2,
         text: "Draft note",
         state: "PENDING",
         version: 0,
-      };
-
-      mockJson(h.mockClients.api.post, mockResponse);
+      });
 
       const parsed = await callAndParse<{ state: string }>(
         h.client,
@@ -112,15 +111,13 @@ describe("Comment tools", () => {
       });
     });
 
-    test("should create an inline comment with filePath, line, and lineType", async () => {
-      const mockResponse = {
+    test("create inline comment with lineType sends it in anchor", async () => {
+      mockJson(h.mockClients.api.post, {
         id: 3,
         text: "Inline note",
         version: 0,
         anchor: { path: "src/main.ts", line: 10, lineType: "ADDED" },
-      };
-
-      mockJson(h.mockClients.api.post, mockResponse);
+      });
 
       const parsed = await callAndParse<{ anchor: { path: string } }>(
         h.client,
@@ -149,8 +146,8 @@ describe("Comment tools", () => {
       });
     });
 
-    test("should create inline comment with custom diffType, fileType, and lineType", async () => {
-      const mockResponse = {
+    test("create inline comment with custom diffType and fileType", async () => {
+      mockJson(h.mockClients.api.post, {
         id: 6,
         text: "Old version issue",
         anchor: {
@@ -160,9 +157,7 @@ describe("Comment tools", () => {
           lineType: "CONTEXT",
         },
         version: 0,
-      };
-
-      mockJson(h.mockClients.api.post, mockResponse);
+      });
 
       const result = await h.client.callTool({
         name: "manage_comment",
@@ -192,15 +187,13 @@ describe("Comment tools", () => {
       });
     });
 
-    test("should default diffType and fileType when not provided", async () => {
-      const mockResponse = {
+    test("create inline without diffType/fileType defaults to EFFECTIVE/TO", async () => {
+      mockJson(h.mockClients.api.post, {
         id: 7,
         text: "Default anchor",
         anchor: {},
         version: 0,
-      };
-
-      mockJson(h.mockClients.api.post, mockResponse);
+      });
 
       await h.client.callTool({
         name: "manage_comment",
@@ -215,17 +208,16 @@ describe("Comment tools", () => {
         },
       });
 
-      expect(h.mockClients.api.post).toHaveBeenCalledWith(
-        expect.any(String),
-        expect.objectContaining({
-          json: expect.objectContaining({
-            anchor: expect.objectContaining({
-              diffType: "EFFECTIVE",
-              fileType: "TO",
-            }),
-          }),
-        }),
-      );
+      expectCalledWithJson(h.mockClients.api.post, commentUrl, {
+        text: "Default anchor",
+        anchor: {
+          path: "src/index.ts",
+          lineType: "ADDED",
+          line: 1,
+          diffType: "EFFECTIVE",
+          fileType: "TO",
+        },
+      });
     });
 
     test("should create a task comment with severity BLOCKER", async () => {
@@ -360,6 +352,20 @@ describe("Comment tools", () => {
       expect(h.mockClients.api.delete).toHaveBeenCalledWith(`${commentUrl}/1`, {
         searchParams: { version: 0 },
       });
+    });
+
+    test("delete error", async () => {
+      mockReject(h.mockClients.api.delete, new Error("Server error"));
+
+      const result = await callRaw(h.client, "manage_comment", {
+        action: "delete",
+        repository: "my-repo",
+        prId: 42,
+        commentId: 1,
+        version: 0,
+      });
+
+      expect(result.isError).toBe(true);
     });
   });
 
@@ -553,6 +559,29 @@ describe("Comment tools", () => {
         state: "RESOLVED",
         threadResolved: true,
         version: 0,
+      });
+    });
+
+    test("edit with threadResolved=false includes it in body", async () => {
+      mockJson(h.mockClients.api.put, { id: 1, version: 1 });
+
+      await h.client.callTool({
+        name: "manage_comment",
+        arguments: {
+          action: "edit",
+          repository: "my-repo",
+          prId: 42,
+          commentId: 1,
+          version: 0,
+          text: "reopen thread",
+          threadResolved: false,
+        },
+      });
+
+      expectCalledWithJson(h.mockClients.api.put, `${commentUrl}/1`, {
+        text: "reopen thread",
+        version: 0,
+        threadResolved: false,
       });
     });
   });

@@ -1,6 +1,6 @@
 import { describe, test, expect } from "vitest";
 import { registerLabelTools } from "../../tools/labels.js";
-import { mockJson } from "../test-utils.js";
+import { mockJson, mockReject } from "../test-utils.js";
 import {
   callAndParse,
   callRaw,
@@ -72,6 +72,10 @@ describe("list_labels", () => {
 
     expect(parsed.total).toBe(100);
     expect(parsed.isLastPage).toBe(false);
+    expect(h.mockClients.api.get).toHaveBeenCalledWith(
+      "projects/TEST/repos/my-repo/labels",
+      expect.objectContaining({ searchParams: { limit: 25, start: 0 } }),
+    );
   });
 
   test("uses default project when not provided", async () => {
@@ -92,7 +96,7 @@ describe("list_labels", () => {
   });
 
   test("returns error when API call fails", async () => {
-    h.mockClients.api.get.mockRejectedValueOnce(new Error("Not found"));
+    mockReject(h.mockClients.api.get, new Error("Not found"));
 
     const result = await callRaw(h.client, "list_labels", {
       project: "TEST",
@@ -153,29 +157,24 @@ describe("manage_labels", () => {
     );
   });
 
-  test("returns error when add fails", async () => {
-    h.mockClients.api.post.mockRejectedValueOnce(new Error("Conflict"));
-
-    const result = await callRaw(h.client, "manage_labels", {
-      action: "add",
-      project: "TEST",
-      repository: "my-repo",
-      name: "urgent",
-    });
-
-    expect(result.isError).toBe(true);
-  });
-
-  test("returns error when remove fails", async () => {
-    h.mockClients.api.delete.mockRejectedValueOnce(new Error("Not found"));
-
-    const result = await callRaw(h.client, "manage_labels", {
-      action: "remove",
-      project: "TEST",
-      repository: "my-repo",
+  test.each([
+    { action: "add" as const, mockMethod: "post" as const, name: "urgent" },
+    {
+      action: "remove" as const,
+      mockMethod: "delete" as const,
       name: "nonexistent",
-    });
-
-    expect(result.isError).toBe(true);
-  });
+    },
+  ])(
+    "returns error when $action fails",
+    async ({ action, mockMethod, name }) => {
+      mockReject(h.mockClients.api[mockMethod], new Error("fail"));
+      const result = await callRaw(h.client, "manage_labels", {
+        action,
+        project: "TEST",
+        repository: "my-repo",
+        name,
+      });
+      expect(result.isError).toBe(true);
+    },
+  );
 });

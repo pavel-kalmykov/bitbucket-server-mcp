@@ -1,6 +1,6 @@
 import { describe, test, expect } from "vitest";
 import { registerBranchTools } from "../../tools/refs.js";
-import { mockJson } from "../test-utils.js";
+import { mockJson, mockReject } from "../test-utils.js";
 import {
   callAndParse,
   callRaw,
@@ -82,7 +82,8 @@ describe("manage_branches", () => {
     });
 
     test("returns error when branchUtils.post rejects", async () => {
-      h.mockClients.branchUtils.post.mockRejectedValueOnce(
+      mockReject(
+        h.mockClients.branchUtils.post,
         new Error("Invalid branch name"),
       );
 
@@ -149,7 +150,8 @@ describe("manage_branches", () => {
         displayId: "main",
         id: "refs/heads/main",
       });
-      h.mockClients.branchUtils.post.mockRejectedValueOnce(
+      mockReject(
+        h.mockClients.branchUtils.post,
         new Error("Internal server error"),
       );
 
@@ -183,7 +185,7 @@ describe("manage_branches", () => {
     });
 
     test("returns error when default-branch fetch fails", async () => {
-      h.mockClients.api.get.mockRejectedValueOnce(new Error("Not found"));
+      mockReject(h.mockClients.api.get, new Error("Not found"));
 
       const result = await callRaw(h.client, "manage_branches", {
         action: "delete",
