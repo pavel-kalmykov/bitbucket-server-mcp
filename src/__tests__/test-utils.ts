@@ -24,7 +24,7 @@ export function createMockClients(): MockApiClients {
   };
 }
 
-export function fakeResponse<T>(overrides: {
+function fakeResponse<T>(overrides: {
   json?: () => Promise<T>;
   text?: () => Promise<string>;
 }): ResponsePromise<T> {
