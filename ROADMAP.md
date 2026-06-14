@@ -48,7 +48,7 @@ message, no crash). E2E tests use ephemeral Bitbucket containers via
 |---------|------|-----|-----|-----|------|
 | PR, repo, branch, commit, tag, search | Y | Y | Y | Y | Y |
 | Build status, code insights | Y | Y | Y | Y | Y |
-| Labels | — | Y | Y | Y | Y |
+| Labels | Y | Y | Y | Y | Y |
 | Draft PRs | — | Y | Y | Y | Y |
 | `threadResolved` on comments | — | — | Y | Y | Y |
 | Secret scanning | — | Y | Y | Y | Y |
