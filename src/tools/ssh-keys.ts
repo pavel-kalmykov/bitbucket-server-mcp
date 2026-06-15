@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { formatResponse } from "../response/format.js";
+import { formatResponse, type ToolSuccessResult } from "../response/format.js";
 import { toolAnnotations } from "../response/annotations.js";
 import { handleToolError } from "../http/errors.js";
 import type { ToolContext } from "./shared.js";
@@ -13,7 +13,7 @@ interface SshKeyActionContext {
 
 const sshKeyActions: Record<
   string,
-  (ctx: SshKeyActionContext) => Promise<ReturnType<typeof formatResponse>>
+  (ctx: SshKeyActionContext) => Promise<ToolSuccessResult>
 > = {
   add: async ({ clients, text }) => {
     const data = await clients.ssh.post("keys", { json: { text } }).json();

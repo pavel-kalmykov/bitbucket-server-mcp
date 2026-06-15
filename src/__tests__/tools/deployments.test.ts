@@ -7,7 +7,7 @@ import {
   expectCalledWithJson,
   expectCalledWithSearchParams,
   setupToolHarness,
-} from "../tool-test-utils.js";
+  } from "../tool-test-utils.js";
 
 const BASE_URL = "projects/TEST/repos/my-repo/commits/abc123/deployments";
 
@@ -282,7 +282,7 @@ describe("manage_deployments", () => {
       });
 
       expect(result.isError).toBe(true);
-      const text = (result.content as Array<{ type: string; text: string }>)[0]
+      const text = (result.content)[0]
         .text;
       expect(text).toContain("deploymentSequenceNumber");
       expect(text).toContain("description");

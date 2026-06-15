@@ -6,7 +6,7 @@ import {
 } from "./bitbucket-container.js";
 import { bootstrap, type Scenario } from "./bootstrap.js";
 import { setupMcpAgainst, type McpAgainstBitbucket } from "./mcp-harness.js";
-import { callAndParse } from "../tool-test-utils.js";
+import { callAndParse, callRaw } from "../tool-test-utils.js";
 
 interface LabelsResponse {
   total: number;
@@ -105,13 +105,10 @@ describe.each(VERSIONS_WITHOUT_LABELS)(
     });
 
     test("list_labels returns an error on unsupported versions", async () => {
-      const result = await mcp.client.callTool({
-        name: "list_labels",
-        arguments: {
+      const result = await callRaw(mcp.client, "list_labels", {
           project: scenario.projectKey,
           repository: scenario.repoSlug,
-        },
-      });
+        });
 
       expect(result.isError).toBe(true);
     });

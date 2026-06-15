@@ -7,7 +7,7 @@ import {
   expectCalledWithJson,
   expectCalledWithSearchParams,
   setupToolHarness,
-} from "../tool-test-utils.js";
+  } from "../tool-test-utils.js";
 
 describe("Comment tools", () => {
   const h = setupToolHarness({
@@ -159,9 +159,7 @@ describe("Comment tools", () => {
         version: 0,
       });
 
-      const result = await h.client.callTool({
-        name: "manage_comment",
-        arguments: {
+      const result = await callRaw(h.client, "manage_comment", {
           action: "create",
           repository: "my-repo",
           prId: 42,
@@ -171,8 +169,7 @@ describe("Comment tools", () => {
           lineType: "CONTEXT",
           diffType: "COMMIT",
           fileType: "FROM",
-        },
-      });
+        });
 
       expect(result.isError).toBeFalsy();
 
@@ -590,22 +587,19 @@ describe("Comment tools", () => {
     test("react returns { react: true, commentId, emoticon }", async () => {
       mockVoid(h.mockClients.commentLikes.put);
 
-      const result = await h.client.callTool({
-        name: "manage_comment",
-        arguments: {
+      const result = await callRaw(h.client, "manage_comment", {
           action: "react",
           repository: "r",
           prId: 1,
           commentId: 5,
           emoticon: "thumbsup",
-        },
-      });
+        });
 
       expect(h.mockClients.commentLikes.put).toHaveBeenCalledWith(
         expect.stringContaining("/comments/5/reactions/thumbsup"),
       );
       const parsed = JSON.parse(
-        (result.content as Array<{ text: string }>)[0].text,
+        result.content[0].text,
       );
       expect(parsed).toEqual({
         react: true,
@@ -617,22 +611,19 @@ describe("Comment tools", () => {
     test("unreact returns { unreact: true, commentId, emoticon }", async () => {
       mockVoid(h.mockClients.commentLikes.delete);
 
-      const result = await h.client.callTool({
-        name: "manage_comment",
-        arguments: {
+      const result = await callRaw(h.client, "manage_comment", {
           action: "unreact",
           repository: "r",
           prId: 1,
           commentId: 5,
           emoticon: "thumbsup",
-        },
-      });
+        });
 
       expect(h.mockClients.commentLikes.delete).toHaveBeenCalledWith(
         expect.stringContaining("/comments/5/reactions/thumbsup"),
       );
       const parsed = JSON.parse(
-        (result.content as Array<{ text: string }>)[0].text,
+        result.content[0].text,
       );
       expect(parsed).toEqual({
         unreact: true,

@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { formatResponse } from "../response/format.js";
+import { formatResponse, type ToolSuccessResult } from "../response/format.js";
 import { toolAnnotations } from "../response/annotations.js";
 import { handleToolError } from "../http/errors.js";
 import type { ToolContext } from "./shared.js";
@@ -52,7 +52,7 @@ interface EditCommentBody {
 
 const commentActions: Record<
   string,
-  (ctx: CommentActionContext) => Promise<ReturnType<typeof formatResponse>>
+  (ctx: CommentActionContext) => Promise<ToolSuccessResult>
 > = {
   create: async ({
     clients,

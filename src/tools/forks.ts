@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { formatResponse } from "../response/format.js";
+import { formatResponse, type ToolSuccessResult } from "../response/format.js";
 import { toolAnnotations } from "../response/annotations.js";
 import { handleToolError } from "../http/errors.js";
 import { curateList, DEFAULT_REPOSITORY_FIELDS } from "../response/curate.js";
@@ -17,7 +17,7 @@ interface ForkActionContext {
 
 const forkActions: Record<
   string,
-  (ctx: ForkActionContext) => Promise<ReturnType<typeof formatResponse>>
+  (ctx: ForkActionContext) => Promise<ToolSuccessResult>
 > = {
   fork: async ({
     clients,

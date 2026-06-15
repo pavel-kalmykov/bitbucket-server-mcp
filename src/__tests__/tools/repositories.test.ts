@@ -11,7 +11,7 @@ import {
   expectCalledWith,
   expectCalledWithSearchParams,
   setupToolHarness,
-} from "../tool-test-utils.js";
+  } from "../tool-test-utils.js";
 
 async function tempDir() {
   const path = await mkdtemp(join(tmpdir(), "bitbucket-mcp-test-"));
@@ -142,12 +142,9 @@ describe("Repository tools", () => {
         },
       });
 
-      const result = await h.client.callTool({
-        name: "browse_repository",
-        arguments: { project: "TEST", repository: "my-repo" },
-      });
+      const result = await callRaw(h.client, "browse_repository", { project: "TEST", repository: "my-repo" });
 
-      const content = result.content as Array<{ type: string; text: string }>;
+      const content = result.content;
       expect(content[0].type).toBe("text");
     });
 
@@ -751,16 +748,13 @@ describe("Repository tools", () => {
         isLastPage: true,
       });
 
-      const result = await h.client.callTool({
-        name: "get_file_content",
-        arguments: {
+      const result = await callRaw(h.client, "get_file_content", {
           project: "TEST",
           repository: "my-repo",
           filePath: "README.md",
-        },
-      });
+        });
 
-      const content = result.content as Array<{ type: string; text: string }>;
+      const content = result.content;
       expect(content[0].type).toBe("text");
     });
 

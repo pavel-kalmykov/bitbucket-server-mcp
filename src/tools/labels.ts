@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { formatResponse } from "../response/format.js";
+import { formatResponse, type ToolSuccessResult } from "../response/format.js";
 import { toolAnnotations } from "../response/annotations.js";
 import { handleToolError } from "../http/errors.js";
 import { getPaginated } from "../http/client.js";
@@ -15,7 +15,7 @@ interface LabelActionContext {
 
 const labelActions: Record<
   string,
-  (ctx: LabelActionContext) => Promise<ReturnType<typeof formatResponse>>
+  (ctx: LabelActionContext) => Promise<ToolSuccessResult>
 > = {
   add: async ({ clients, resolvedProject, repository, name }) => {
     const data = await clients.api

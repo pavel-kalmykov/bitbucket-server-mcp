@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { formatResponse } from "../response/format.js";
+import { formatResponse, type ToolSuccessResult } from "../response/format.js";
 import { toolAnnotations } from "../response/annotations.js";
 import { handleToolError } from "../http/errors.js";
 import type { ToolContext } from "./shared.js";
@@ -36,7 +36,7 @@ interface DeploymentActionContext {
 
 const deploymentActions: Record<
   string,
-  (ctx: DeploymentActionContext) => Promise<ReturnType<typeof formatResponse>>
+  (ctx: DeploymentActionContext) => Promise<ToolSuccessResult>
 > = {
   get: async ({
     clients,

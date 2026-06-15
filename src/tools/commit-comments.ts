@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { formatResponse } from "../response/format.js";
+import { formatResponse, type ToolSuccessResult } from "../response/format.js";
 import { toolAnnotations } from "../response/annotations.js";
 import { handleToolError } from "../http/errors.js";
 import { getPaginated } from "../http/client.js";
@@ -20,7 +20,7 @@ const commitCommentActions: Record<
   string,
   (
     ctx: CommitCommentActionContext,
-  ) => Promise<ReturnType<typeof formatResponse>>
+  ) => Promise<ToolSuccessResult>
 > = {
   create: async ({ clients, resolvedProject, repository, commitId, text }) => {
     const data = await clients.api

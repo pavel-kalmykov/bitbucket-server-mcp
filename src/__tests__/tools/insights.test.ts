@@ -1,7 +1,7 @@
 import { describe, test, expect } from "vitest";
 import { registerInsightTools } from "../../tools/insights.js";
 import { mockError, mockJson } from "../test-utils.js";
-import { callAndParse, setupToolHarness } from "../tool-test-utils.js";
+import { callAndParse, callRaw, setupToolHarness } from "../tool-test-utils.js";
 
 describe("Insight tools", () => {
   const h = setupToolHarness({
@@ -104,10 +104,7 @@ describe("Insight tools", () => {
     test("should handle reports fetch error", async () => {
       mockError(h.mockClients.insights.get, new Error("Server error"));
 
-      const result = await h.client.callTool({
-        name: "get_code_insights",
-        arguments: { project: "TEST", repository: "my-repo", prId: 1 },
-      });
+      const result = await callRaw(h.client, "get_code_insights", { project: "TEST", repository: "my-repo", prId: 1 });
 
       expect(result.isError).toBe(true);
     });
@@ -565,24 +562,18 @@ describe("Insight tools", () => {
     });
 
     test("should return error when neither commitId nor prId provided", async () => {
-      const result = await h.client.callTool({
-        name: "get_build_status",
-        arguments: {},
-      });
+      const result = await callRaw(h.client, "get_build_status", {});
 
       expect(result.isError).toBe(true);
-      const text = (result.content as Array<{ text: string }>)[0].text;
+      const text = result.content[0].text;
       expect(text).toContain("commitId or prId");
     });
 
     test("should return error when prId provided but no repository", async () => {
-      const result = await h.client.callTool({
-        name: "get_build_status",
-        arguments: { prId: 42 },
-      });
+      const result = await callRaw(h.client, "get_build_status", { prId: 42 });
 
       expect(result.isError).toBe(true);
-      const text = (result.content as Array<{ text: string }>)[0].text;
+      const text = result.content[0].text;
       expect(text).toContain("repository is required");
     });
 
