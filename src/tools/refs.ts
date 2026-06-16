@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { formatResponse } from "../response/format.js";
+import { formatResponse, type ToolSuccessResult } from "../response/format.js";
 import { toolAnnotations } from "../response/annotations.js";
 import { handleToolError } from "../http/errors.js";
 import {
@@ -29,7 +29,7 @@ interface BranchActionContext {
 
 const branchActions: Record<
   string,
-  (ctx: BranchActionContext) => Promise<ReturnType<typeof formatResponse>>
+  (ctx: BranchActionContext) => Promise<ToolSuccessResult>
 > = {
   create: async ({
     clients,
@@ -510,7 +510,7 @@ export function registerBranchTools(ctx: ToolContext) {
 
   const tagActions: Record<
     string,
-    (ctx: TagActionContext) => Promise<ReturnType<typeof formatResponse>>
+    (ctx: TagActionContext) => Promise<ToolSuccessResult>
   > = {
     create: async ({
       clients,

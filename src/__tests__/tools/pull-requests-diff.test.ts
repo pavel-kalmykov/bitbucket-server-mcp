@@ -6,7 +6,7 @@ import {
   callRaw,
   expectCalledWithSearchParams,
   setupToolHarness,
-} from "../tool-test-utils.js";
+  } from "../tool-test-utils.js";
 
 describe("Pull request tools", () => {
   const h = setupToolHarness({
@@ -30,12 +30,9 @@ describe("Pull request tools", () => {
 
       mockText(h.mockClients.api.get, rawDiff);
 
-      const result = await h.client.callTool({
-        name: "get_diff",
-        arguments: { project: "PROJ", repository: "my-repo", prId: 1 },
-      });
+      const result = await callRaw(h.client, "get_diff", { project: "PROJ", repository: "my-repo", prId: 1 });
 
-      const content = result.content as Array<{ type: string; text: string }>;
+      const content = result.content;
       expect(content[0].type).toBe("text");
       // With only 5 content lines, the default maxLinesPerFile of 500 won't truncate
       expect(content[0].text).toContain("diff --git");
@@ -75,17 +72,14 @@ describe("Pull request tools", () => {
 
       mockText(h.mockClients.api.get, rawDiff);
 
-      const result = await h.client.callTool({
-        name: "get_diff",
-        arguments: {
+      const result = await callRaw(h.client, "get_diff", {
           project: "PROJ",
           repository: "my-repo",
           prId: 1,
           maxLinesPerFile: 0,
-        },
-      });
+        });
 
-      const content = result.content as Array<{ type: string; text: string }>;
+      const content = result.content;
       expect(content[0].text).not.toContain("TRUNCATED");
       expect(content[0].text).toContain("+line999");
     });
@@ -102,12 +96,9 @@ describe("Pull request tools", () => {
 
       mockText(h.mockClients.api.get, rawDiff);
 
-      const result = await h.client.callTool({
-        name: "get_diff",
-        arguments: { project: "PROJ", repository: "my-repo", prId: 1 },
-      });
+      const result = await callRaw(h.client, "get_diff", { project: "PROJ", repository: "my-repo", prId: 1 });
 
-      const content = result.content as Array<{ type: string; text: string }>;
+      const content = result.content;
       expect(content[0].text).toContain("TRUNCATED");
     });
 
@@ -261,17 +252,14 @@ describe("Pull request tools", () => {
 
       mockText(h.mockClients.api.get, rawDiff);
 
-      const result = await h.client.callTool({
-        name: "get_diff",
-        arguments: {
+      const result = await callRaw(h.client, "get_diff", {
           project: "PROJ",
           repository: "my-repo",
           prId: 3,
           maxLinesPerFile: 0,
-        },
-      });
+        });
 
-      const content = result.content as Array<{ type: string; text: string }>;
+      const content = result.content;
       expect(content[0].text).not.toContain("TRUNCATED");
       expect(content[0].text).toContain("+line499");
     });

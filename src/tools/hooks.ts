@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { formatResponse } from "../response/format.js";
+import { formatResponse, type ToolSuccessResult } from "../response/format.js";
 import { toolAnnotations } from "../response/annotations.js";
 import { handleToolError } from "../http/errors.js";
 import { getPaginated } from "../http/client.js";
@@ -16,7 +16,7 @@ interface HookActionContext {
 
 const hookActions: Record<
   string,
-  (ctx: HookActionContext) => Promise<ReturnType<typeof formatResponse>>
+  (ctx: HookActionContext) => Promise<ToolSuccessResult>
 > = {
   enable: async ({ clients, resolvedProject, repository, hookKey }) => {
     await clients.api.put(

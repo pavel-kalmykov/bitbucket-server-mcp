@@ -7,6 +7,7 @@ import type { KyInstance } from "ky";
 import { ToolContext } from "../tools/shared.js";
 import { ApiCache } from "../http/cache.js";
 import { logger } from "../logging.js";
+import type { ToolSuccessResult } from "../response/format.js";
 import { type MockApiClients, createMockClients } from "./test-utils.js";
 
 interface ToolTestContext {
@@ -123,6 +124,22 @@ export function setupToolHarness(options: {
 }
 
 /**
+ * Narrow view of the MCP SDK's CallToolResult.
+ *
+ * The SDK types `content` as a union of text/image/audio/resource variants.
+ * Our server always returns text-only content, so tests can safely use this
+ * narrower type and access `.content[0].text` without an inline cast.
+ */
+interface TextToolResult {
+  content: ToolSuccessResult["content"];
+  isError?: boolean;
+}
+
+function firstText(result: TextToolResult): string {
+  return result.content[0].text;
+}
+
+/**
  * Call a tool and parse its first text-content block as JSON.
  */
 export async function callAndParse<T = unknown>(
@@ -130,9 +147,11 @@ export async function callAndParse<T = unknown>(
   name: string,
   args: Record<string, unknown>,
 ): Promise<T> {
-  const result = await client.callTool({ name, arguments: args });
-  const content = result.content as Array<{ type: string; text: string }>;
-  return JSON.parse(content[0].text) as T;
+  const result = (await client.callTool({
+    name,
+    arguments: args,
+  })) as TextToolResult;
+  return JSON.parse(firstText(result)) as T;
 }
 
 /**
@@ -144,14 +163,12 @@ export async function callAndParseFull<T = unknown>(
   client: Client,
   name: string,
   args: Record<string, unknown>,
-): Promise<{
-  result: Awaited<ReturnType<Client["callTool"]>>;
-  text: string;
-  parsed: T;
-}> {
-  const result = await client.callTool({ name, arguments: args });
-  const content = result.content as Array<{ type: string; text: string }>;
-  const text = content[0].text;
+): Promise<{ result: TextToolResult; text: string; parsed: T }> {
+  const result = (await client.callTool({
+    name,
+    arguments: args,
+  })) as TextToolResult;
+  const text = firstText(result);
   return { result, text, parsed: JSON.parse(text) as T };
 }
 
@@ -163,8 +180,8 @@ export async function callRaw(
   client: Client,
   name: string,
   args: Record<string, unknown>,
-) {
-  return client.callTool({ name, arguments: args });
+): Promise<TextToolResult> {
+  return (await client.callTool({ name, arguments: args })) as TextToolResult;
 }
 
 /**

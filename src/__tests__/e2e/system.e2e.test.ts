@@ -1,3 +1,4 @@
+import { callRaw } from "../tool-test-utils.js";
 import { describe, test, expect, beforeAll, afterAll } from "vitest";
 import { SELECTED_VERSIONS } from "./versions.js";
 import {
@@ -21,11 +22,8 @@ describe.each(SELECTED_VERSIONS)("system: Bitbucket $name", (version) => {
   });
 
   test("get_server_info returns version", async () => {
-    const result = await mcp.client.callTool({
-      name: "get_server_info",
-      arguments: {},
-    });
-    const content = result.content as Array<{ type: string; text: string }>;
+    const result = await callRaw(mcp.client, "get_server_info", {});
+    const content = result.content;
     const parsed = JSON.parse(content[0].text) as {
       version: string;
       buildNumber: string;

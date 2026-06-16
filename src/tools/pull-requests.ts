@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { formatResponse } from "../response/format.js";
+import { formatResponse, type ToolSuccessResult } from "../response/format.js";
 import { toolAnnotations } from "../response/annotations.js";
 import { handleToolError } from "../http/errors.js";
 import { truncateDiff } from "../diff.js";
@@ -908,7 +908,7 @@ interface PublishReviewBody {
 
 const reviewActions: Record<
   string,
-  (ctx: ReviewActionContext) => Promise<ReturnType<typeof formatResponse>>
+  (ctx: ReviewActionContext) => Promise<ToolSuccessResult>
 > = {
   approve: async ({ clients, prPath }) => {
     const data = await clients.api

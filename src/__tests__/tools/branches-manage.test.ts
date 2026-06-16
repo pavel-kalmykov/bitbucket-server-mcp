@@ -6,7 +6,7 @@ import {
   callRaw,
   expectCalledWith,
   setupToolHarness,
-} from "../tool-test-utils.js";
+  } from "../tool-test-utils.js";
 
 describe("manage_branches", () => {
   const h = setupToolHarness({
@@ -138,7 +138,7 @@ describe("manage_branches", () => {
         branch: "main",
       });
 
-      const content = result.content as Array<{ type: string; text: string }>;
+      const content = result.content;
       expect(content[0].text).toContain("Cannot delete the default branch");
       expect(result.isError).toBe(true);
 
