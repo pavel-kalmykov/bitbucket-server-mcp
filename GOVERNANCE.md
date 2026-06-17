@@ -69,9 +69,12 @@ To keep the project alive if the maintainer becomes unavailable:
   [pavel-kalmykov](https://github.com/pavel-kalmykov). If needed, GitHub
   Support can transfer it to a designated successor.
 - **Publishing rights**: The package `bitbucket-server-mcp` is on npm under
-  `@pavel-kalmykov`. An npm token with publish rights lives in GitHub Actions
-  (`NPM_TOKEN`). A successor would need a new npm token and a GitHub PAT with
-  repo admin scope.
+  `@pavel-kalmykov`. Releases are published from the `release.yml` workflow via
+  npm trusted publishing with OIDC (`id-token: write`); no npm token is stored
+  in the repo or in GitHub Actions. The npm package is configured to trust the
+  GitHub Actions environment `npm`. A successor would need the npm package
+  ownership transferred (or a new trusted-publishing binding) and a GitHub PAT
+  with repo admin scope.
 - **Designated successor**: Once a trusted contributor emerges with sustained
   involvement, they will be added as a GitHub collaborator with admin rights
   and given the release credentials.

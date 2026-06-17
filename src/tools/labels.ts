@@ -39,8 +39,7 @@ export function registerLabelTools(ctx: ToolContext) {
   server.registerTool(
     "list_labels",
     {
-      description:
-        "List labels for a repository. Requires Bitbucket Server 8.5+.",
+      description: "List labels for a repository.",
       inputSchema: {
         project: z
           .string()
@@ -82,7 +81,7 @@ export function registerLabelTools(ctx: ToolContext) {
     "manage_labels",
     {
       description:
-        'Manage repository labels. Actions: "add" (create a new label), "remove" (delete a label). Requires Bitbucket Server 8.5+.',
+        'Manage repository labels. Actions: "add" (create a new label), "remove" (delete a label).',
       inputSchema: {
         action: z.enum(["add", "remove"]).describe("Operation to perform."),
         project: z

@@ -49,7 +49,7 @@ Workflow tips:
 - upload_attachment uploads a local file and returns a markdown reference to embed in PR comments (images: ![name](ref), files: [name](ref)).
 - get_user_profile fetches a user's public profile by username/slug.
 - list_forks and fork_repository manage repository forks. list_fork shows forks of a repo; fork_repository creates a fork.
-- list_labels and manage_labels (Bitbucket 8.5+) manage repository labels.
+- list_labels and manage_labels manage repository labels.
 - list_webhooks and manage_webhooks manage repository webhooks (create/update/delete).
 - list_commit_comments and manage_commit_comments read and manage comments on individual commits.
 - get_pull_request_commits lists commits in a pull request.
