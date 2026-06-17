@@ -4,7 +4,7 @@
 
 [![npm version](https://img.shields.io/npm/v/@pavel-kalmykov/bitbucket-server-mcp)](https://www.npmjs.com/package/@pavel-kalmykov/bitbucket-server-mcp)
 [![npm downloads](https://img.shields.io/npm/dm/@pavel-kalmykov/bitbucket-server-mcp)](https://www.npmjs.com/package/@pavel-kalmykov/bitbucket-server-mcp)
-[![Bitbucket Server](https://img.shields.io/badge/Bitbucket_Server_%2F_DC-8.5%2B-0052CC?logo=bitbucket)](https://www.atlassian.com/software/bitbucket/enterprise)
+[![Bitbucket Server](https://img.shields.io/badge/Bitbucket_Server_%2F_DC-7.21%2B-0052CC?logo=bitbucket)](https://www.atlassian.com/software/bitbucket/enterprise)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.9-3178C6?logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
 [![Node](https://img.shields.io/node/v/@pavel-kalmykov/bitbucket-server-mcp)](https://nodejs.org)
 [![License](https://img.shields.io/npm/l/@pavel-kalmykov/bitbucket-server-mcp)](LICENSE)
@@ -39,7 +39,7 @@ claude mcp add bitbucket \
 
 ## Requirements
 
-- **Bitbucket Server / Data Center 8.5+** (may work on 7.x but untested)
+- **Bitbucket Server / Data Center 7.21+** (the E2E suite covers 7.21, 8.5, 8.9, 8.19, 9.4 and 10.2).
 - One of:
   - [Node.js](https://nodejs.org) >= 22.14 (via `npx`)
   - [Bun](https://bun.sh) (via `bunx`)
@@ -225,7 +225,7 @@ Or build locally: `docker build -t bitbucket-mcp .`
 | `get_user_profile` | Get a user profile by slug |
 | `search_users` | Search users by filter query |
 
-### Labels (Bitbucket 8.5+)
+### Labels
 
 | Tool | Description |
 |------|-------------|
