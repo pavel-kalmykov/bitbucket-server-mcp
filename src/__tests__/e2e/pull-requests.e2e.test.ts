@@ -40,6 +40,22 @@ describe.each(SELECTED_VERSIONS)(
       expect(typeof r.total).toBe("number");
     });
 
+    test("list_pull_requests returns PR properties in the curated output", async () => {
+      const r = await callAndParse<{
+        pullRequests: Array<{
+          id: number;
+          properties?: { commentCount?: unknown };
+        }>;
+      }>(mcp.client, "list_pull_requests", {
+        project: s.projectKey,
+        repository: s.repoSlug,
+      });
+      const pr = r.pullRequests.find((p) => p.id === s.prId);
+      expect(pr).toBeDefined();
+      expect(pr!.properties).toBeDefined();
+      expect(typeof pr!.properties!.commentCount).toBe("number");
+    });
+
     test("create_pull_request with draft:true", async () => {
       const form = new FormData();
       form.append("content", "draft\n");

@@ -500,8 +500,6 @@ export function registerPullRequestTools(ctx: ToolContext) {
         const searchParams: Record<string, string | number | boolean> = {
           limit,
           start,
-          withAttributes: false,
-          withProperties: false,
         };
         if (state) searchParams.state = state;
         if (direction) searchParams.direction = direction;
