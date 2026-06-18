@@ -17,6 +17,6 @@ export interface ToolErrorResult {
 
 export function formatResponse<T>(data: T): ToolSuccessResult {
   return {
-    content: [{ type: "text", text: JSON.stringify(data, null, 2) }],
+    content: [{ type: "text", text: JSON.stringify(data) }],
   };
 }
