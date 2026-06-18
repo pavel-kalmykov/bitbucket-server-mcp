@@ -9,9 +9,9 @@ describe("formatResponse", () => {
     expect(JSON.parse(result.content[0].text)).toEqual({ id: 1, name: "test" });
   });
 
-  test("should pretty-print JSON with 2-space indent", () => {
+  test("should minify JSON (no indentation or newlines)", () => {
     const result = formatResponse({ a: 1 });
-    expect(result.content[0].text).toBe('{\n  "a": 1\n}');
+    expect(result.content[0].text).toBe('{"a":1}');
   });
 
   test.each<[string, unknown]>([

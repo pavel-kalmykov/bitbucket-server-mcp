@@ -128,15 +128,15 @@ describe("Resources", () => {
     );
   });
 
-  test("returns pretty-printed JSON (2-space indent)", async () => {
+  test("returns minified JSON (no indentation or newlines)", async () => {
     mockJson(mockClients.api.get, {
       values: [{ key: "P", name: "n" }],
       size: 1,
     });
     const result = await client.readResource({ uri: "bitbucket://projects" });
     const text = (result.contents[0] as { text: string }).text;
-    expect(text).toContain("\n");
-    expect(text).toMatch(/^\[\n {2}\{/);
+    expect(text).not.toContain("\n");
+    expect(text).toMatch(/^\[\{/);
   });
 
   test("propagates API errors", async () => {

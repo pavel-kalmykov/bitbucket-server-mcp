@@ -34,7 +34,7 @@ export function registerResources(
           {
             uri: "bitbucket://projects",
             mimeType: "application/json" as const,
-            text: JSON.stringify(projects, null, 2),
+            text: JSON.stringify(projects),
           },
         ],
       };
