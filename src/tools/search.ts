@@ -4,6 +4,7 @@ import { toolAnnotations } from "../response/annotations.js";
 import { handleToolError } from "../http/errors.js";
 import { curateList, DEFAULT_SEARCH_FIELDS } from "../response/curate.js";
 import type { ToolContext } from "./shared.js";
+import { fieldsParam } from "./params.js";
 
 export function registerSearchTools(ctx: ToolContext) {
   const { server, clients } = ctx;
@@ -40,12 +41,7 @@ export function registerSearchTools(ctx: ToolContext) {
           .number()
           .optional()
           .describe("Start index for pagination (default: 0)."),
-        fields: z
-          .string()
-          .optional()
-          .describe(
-            "Comma-separated fields to return. Defaults to: file, hitCount, hitContexts, pathMatches, repository (slug, name, project.key). Use '*all' for the full API response.",
-          ),
+        fields: fieldsParam(),
       },
       annotations: toolAnnotations({ openWorldHint: true }),
     },
