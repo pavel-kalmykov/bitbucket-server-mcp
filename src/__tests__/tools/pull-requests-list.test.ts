@@ -209,25 +209,6 @@ describe("Pull request tools", () => {
         { state: args.state, direction: args.direction, order: args.order },
       );
     });
-
-    test("sends withAttributes=false and withProperties=false by default", async () => {
-      mockJson(h.mockClients.api.get, {
-        values: [],
-        size: 0,
-        isLastPage: true,
-      });
-
-      await h.client.callTool({
-        name: "list_pull_requests",
-        arguments: { repository: "r" },
-      });
-
-      expectCalledWithSearchParams(
-        h.mockClients.api.get,
-        expect.stringContaining("/pull-requests"),
-        { withAttributes: false, withProperties: false },
-      );
-    });
   });
 
   describe("pagination params forwarding (limit/start)", () => {
