@@ -12,6 +12,7 @@ import { getPaginated } from "../http/client.js";
 import type { ApiClients } from "../http/client.js";
 import { mergeDefaultReviewers } from "./shared.js";
 import type { ToolContext } from "./shared.js";
+import { fieldsParam } from "./params.js";
 import type {
   PullRequest as BasePullRequest,
   PullRequestActivity,
@@ -190,12 +191,7 @@ export function registerPullRequestTools(ctx: ToolContext) {
           .describe("Project key. Defaults to BITBUCKET_DEFAULT_PROJECT."),
         repository: z.string().describe("Repository slug."),
         prId: z.coerce.number().describe("Pull request ID."),
-        fields: z
-          .string()
-          .optional()
-          .describe(
-            "Comma-separated fields to return. Defaults to: id, title, description, state, dates, author (name, displayName, status), branches (displayId), reviewers (name, displayName, status, approved), properties (commentCount, taskCount). Use '*all' for the full API response with all nested objects.",
-          ),
+        fields: fieldsParam(),
         includeMergeVetoes: z
           .boolean()
           .optional()
@@ -475,12 +471,7 @@ export function registerPullRequestTools(ctx: ToolContext) {
           .number()
           .optional()
           .describe("Start index for pagination (default: 0)."),
-        fields: z
-          .string()
-          .optional()
-          .describe(
-            "Comma-separated fields to return. Defaults to: id, title, description, state, dates, author (name, displayName, status), branches (displayId), reviewers (name, displayName, status, approved), properties (commentCount, taskCount). Use '*all' for the full API response with all nested objects.",
-          ),
+        fields: fieldsParam(),
       },
       annotations: toolAnnotations(),
     },
@@ -570,12 +561,7 @@ export function registerPullRequestTools(ctx: ToolContext) {
           .number()
           .optional()
           .describe("Start index for pagination (default: 0)."),
-        fields: z
-          .string()
-          .optional()
-          .describe(
-            "Comma-separated fields to return. Defaults to: id, title, description, state, dates, author (name, displayName, status), branches (displayId), reviewers (name, displayName, status, approved), properties (commentCount, taskCount). Use '*all' for the full API response with all nested objects.",
-          ),
+        fields: fieldsParam(),
       },
       annotations: toolAnnotations(),
     },

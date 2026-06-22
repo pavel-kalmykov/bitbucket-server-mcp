@@ -5,6 +5,7 @@ import { handleToolError } from "../http/errors.js";
 import { curateList, DEFAULT_REPOSITORY_FIELDS } from "../response/curate.js";
 import { getPaginated } from "../http/client.js";
 import type { ToolContext } from "./shared.js";
+import { fieldsParam } from "./params.js";
 import type { ApiClients } from "../http/client.js";
 
 interface ForkActionContext {
@@ -60,12 +61,7 @@ export function registerForkTools(ctx: ToolContext) {
           .number()
           .optional()
           .describe("Start index for pagination (default: 0)."),
-        fields: z
-          .string()
-          .optional()
-          .describe(
-            "Comma-separated fields to return. Defaults to: slug, id, name, description, state, forkable, project.key, project.name. Use '*all' for the full API response.",
-          ),
+        fields: fieldsParam(),
       },
       annotations: toolAnnotations(),
     },

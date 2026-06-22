@@ -11,6 +11,7 @@ import {
 } from "../response/curate.js";
 import { getPaginated } from "../http/client.js";
 import type { ToolContext } from "./shared.js";
+import { fieldsParam } from "./params.js";
 
 export function registerRepositoryTools(ctx: ToolContext) {
   const { server, clients } = ctx;
@@ -28,12 +29,7 @@ export function registerRepositoryTools(ctx: ToolContext) {
           .number()
           .optional()
           .describe("Start index for pagination (default: 0)"),
-        fields: z
-          .string()
-          .optional()
-          .describe(
-            "Comma-separated fields to return. Defaults to: key, id, name, description, type, public. Use '*all' for the full API response.",
-          ),
+        fields: fieldsParam(),
       },
       annotations: toolAnnotations(),
     },
@@ -74,12 +70,7 @@ export function registerRepositoryTools(ctx: ToolContext) {
           .number()
           .optional()
           .describe("Start index for pagination (default: 0)"),
-        fields: z
-          .string()
-          .optional()
-          .describe(
-            "Comma-separated fields to return. Defaults to: slug, id, name, description, state, forkable, project (key, name). Use '*all' for the full API response with clone URLs and links.",
-          ),
+        fields: fieldsParam(),
       },
       annotations: toolAnnotations(),
     },
