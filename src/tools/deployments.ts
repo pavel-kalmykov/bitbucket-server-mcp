@@ -5,6 +5,7 @@ import { handleToolError } from "../http/errors.js";
 import type { ToolContext } from "./shared.js";
 import type { ApiClients } from "../http/client.js";
 import type { Deployment } from "../generated/types.js";
+import { projectParam, repositoryParam } from "./params.js";
 
 const deploymentPath = (project: string, repo: string, commit: string) =>
   `projects/${project}/repos/${repo}/commits/${commit}/deployments`;
@@ -167,11 +168,8 @@ export function registerDeploymentTools(ctx: ToolContext) {
         action: z
           .enum(["get", "create", "delete"])
           .describe("Operation to perform."),
-        project: z
-          .string()
-          .optional()
-          .describe("Project key. Defaults to BITBUCKET_DEFAULT_PROJECT."),
-        repository: z.string().describe("Repository slug."),
+        project: projectParam(),
+        repository: repositoryParam(),
         commitId: z.string().describe("Full commit hash."),
         key: z
           .string()

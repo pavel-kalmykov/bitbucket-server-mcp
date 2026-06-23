@@ -5,6 +5,12 @@ import { handleToolError } from "../http/errors.js";
 import { getPaginated } from "../http/client.js";
 import type { ToolContext } from "./shared.js";
 import type { ApiClients } from "../http/client.js";
+import {
+  projectParam,
+  repositoryParam,
+  limitParam,
+  startParam,
+} from "./params.js";
 
 interface LabelActionContext {
   clients: ApiClients;
@@ -41,19 +47,10 @@ export function registerLabelTools(ctx: ToolContext) {
     {
       description: "List labels for a repository.",
       inputSchema: {
-        project: z
-          .string()
-          .optional()
-          .describe("Project key. Defaults to BITBUCKET_DEFAULT_PROJECT."),
-        repository: z.string().describe("Repository slug."),
-        limit: z
-          .number()
-          .optional()
-          .describe("Number of labels to return (default: 25)."),
-        start: z
-          .number()
-          .optional()
-          .describe("Start index for pagination (default: 0)."),
+        project: projectParam(),
+        repository: repositoryParam(),
+        limit: limitParam(),
+        start: startParam(),
       },
       annotations: toolAnnotations(),
     },
@@ -84,11 +81,8 @@ export function registerLabelTools(ctx: ToolContext) {
         'Manage repository labels. Actions: "add" (create a new label), "remove" (delete a label).',
       inputSchema: {
         action: z.enum(["add", "remove"]).describe("Operation to perform."),
-        project: z
-          .string()
-          .optional()
-          .describe("Project key. Defaults to BITBUCKET_DEFAULT_PROJECT."),
-        repository: z.string().describe("Repository slug."),
+        project: projectParam(),
+        repository: repositoryParam(),
         name: z.string().describe("Label name."),
       },
       annotations: toolAnnotations({
