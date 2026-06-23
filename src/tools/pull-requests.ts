@@ -12,7 +12,13 @@ import { getPaginated } from "../http/client.js";
 import type { ApiClients } from "../http/client.js";
 import { mergeDefaultReviewers } from "./shared.js";
 import type { ToolContext } from "./shared.js";
-import { fieldsParam } from "./params.js";
+import {
+  projectParam,
+  repositoryParam,
+  limitParam,
+  startParam,
+  fieldsParam,
+} from "./params.js";
 import type {
   PullRequest as BasePullRequest,
   PullRequestActivity,
@@ -68,11 +74,8 @@ export function registerPullRequestTools(ctx: ToolContext) {
       description:
         "Create a new pull request. Supports cross-repo PRs via sourceProject/sourceRepository and automatic default reviewer merging.",
       inputSchema: {
-        project: z
-          .string()
-          .optional()
-          .describe("Project key. Defaults to BITBUCKET_DEFAULT_PROJECT."),
-        repository: z.string().describe("Repository slug."),
+        project: projectParam(),
+        repository: repositoryParam(),
         title: z.string().describe("Pull request title."),
         description: z
           .string()
@@ -185,11 +188,8 @@ export function registerPullRequestTools(ctx: ToolContext) {
       description:
         "Get details of a specific pull request including status, reviewers, and metadata. Supports custom field selection via the `fields` param (`'*all'` for full raw response, `'id,title,state'` for a custom subset).",
       inputSchema: {
-        project: z
-          .string()
-          .optional()
-          .describe("Project key. Defaults to BITBUCKET_DEFAULT_PROJECT."),
-        repository: z.string().describe("Repository slug."),
+        project: projectParam(),
+        repository: repositoryParam(),
         prId: z.coerce.number().describe("Pull request ID."),
         fields: fieldsParam(),
         includeMergeVetoes: z
@@ -254,11 +254,8 @@ export function registerPullRequestTools(ctx: ToolContext) {
       description:
         "Update a pull request (title, description, target branch, or reviewers). Only changed fields are applied; reviewers are preserved if not provided.",
       inputSchema: {
-        project: z
-          .string()
-          .optional()
-          .describe("Project key. Defaults to BITBUCKET_DEFAULT_PROJECT."),
-        repository: z.string().describe("Repository slug."),
+        project: projectParam(),
+        repository: repositoryParam(),
         prId: z.coerce.number().describe("Pull request ID."),
         title: z.string().optional().describe("New title."),
         description: z.string().optional().describe("New description."),
@@ -328,11 +325,8 @@ export function registerPullRequestTools(ctx: ToolContext) {
       description:
         "Merge an approved pull request. Fetches the current version automatically for optimistic locking.",
       inputSchema: {
-        project: z
-          .string()
-          .optional()
-          .describe("Project key. Defaults to BITBUCKET_DEFAULT_PROJECT."),
-        repository: z.string().describe("Repository slug."),
+        project: projectParam(),
+        repository: repositoryParam(),
         prId: z.coerce.number().describe("Pull request ID."),
         message: z.string().optional().describe("Custom merge commit message."),
         strategy: z
@@ -393,11 +387,8 @@ export function registerPullRequestTools(ctx: ToolContext) {
       description:
         "Decline a pull request. Fetches the current version automatically for optimistic locking.",
       inputSchema: {
-        project: z
-          .string()
-          .optional()
-          .describe("Project key. Defaults to BITBUCKET_DEFAULT_PROJECT."),
-        repository: z.string().describe("Repository slug."),
+        project: projectParam(),
+        repository: repositoryParam(),
         prId: z.coerce.number().describe("Pull request ID."),
         message: z.string().optional().describe("Reason for declining."),
       },
@@ -443,11 +434,8 @@ export function registerPullRequestTools(ctx: ToolContext) {
       description:
         "List pull requests in a repository. Supports filtering by state, direction, order, and client-side author filtering. Supports custom field selection via the `fields` param (`'*all'` for full raw response, `'id,title,state'` for a custom subset).",
       inputSchema: {
-        project: z
-          .string()
-          .optional()
-          .describe("Project key. Defaults to BITBUCKET_DEFAULT_PROJECT."),
-        repository: z.string().describe("Repository slug."),
+        project: projectParam(),
+        repository: repositoryParam(),
         state: z
           .enum(["OPEN", "MERGED", "DECLINED", "ALL"])
           .optional()
@@ -463,14 +451,8 @@ export function registerPullRequestTools(ctx: ToolContext) {
           .optional()
           .describe("PR direction filter."),
         order: z.enum(["OLDEST", "NEWEST"]).optional().describe("Sort order."),
-        limit: z
-          .number()
-          .optional()
-          .describe("Number of PRs to return (default: 25)."),
-        start: z
-          .number()
-          .optional()
-          .describe("Start index for pagination (default: 0)."),
+        limit: limitParam(),
+        start: startParam(),
         fields: fieldsParam(),
       },
       annotations: toolAnnotations(),
@@ -553,14 +535,8 @@ export function registerPullRequestTools(ctx: ToolContext) {
           .number()
           .optional()
           .describe("Only return PRs closed after this timestamp (epoch ms)."),
-        limit: z
-          .number()
-          .optional()
-          .describe("Number of PRs to return (default: 25)."),
-        start: z
-          .number()
-          .optional()
-          .describe("Start index for pagination (default: 0)."),
+        limit: limitParam(),
+        start: startParam(),
         fields: fieldsParam(),
       },
       annotations: toolAnnotations(),
@@ -608,11 +584,8 @@ export function registerPullRequestTools(ctx: ToolContext) {
       description:
         "Get activity feed for a pull request. Optionally filter to only reviews or comments.",
       inputSchema: {
-        project: z
-          .string()
-          .optional()
-          .describe("Project key. Defaults to BITBUCKET_DEFAULT_PROJECT."),
-        repository: z.string().describe("Repository slug."),
+        project: projectParam(),
+        repository: repositoryParam(),
         prId: z.coerce.number().describe("Pull request ID."),
         filter: z
           .enum(["all", "reviews", "comments"])
@@ -624,14 +597,8 @@ export function registerPullRequestTools(ctx: ToolContext) {
           .describe(
             "Usernames to exclude from results (e.g. bot accounts like sa_sec_appsec_auto).",
           ),
-        limit: z
-          .number()
-          .optional()
-          .describe("Number of activities to return (default: 25)."),
-        start: z
-          .number()
-          .optional()
-          .describe("Start index for pagination (default: 0)."),
+        limit: limitParam(),
+        start: startParam(),
       },
       annotations: toolAnnotations(),
     },
@@ -687,11 +654,8 @@ export function registerPullRequestTools(ctx: ToolContext) {
       description:
         "Get the diff of a pull request. Use stat=true for a lightweight summary of changed files (and line counts if the server supports it) instead of the full diff.",
       inputSchema: {
-        project: z
-          .string()
-          .optional()
-          .describe("Project key. Defaults to BITBUCKET_DEFAULT_PROJECT."),
-        repository: z.string().describe("Repository slug."),
+        project: projectParam(),
+        repository: repositoryParam(),
         prId: z.coerce.number().describe("Pull request ID."),
         stat: z
           .boolean()
@@ -796,20 +760,11 @@ export function registerPullRequestTools(ctx: ToolContext) {
       description:
         "List commits for a specific pull request. Returns the commits that are part of the pull request with pagination support.",
       inputSchema: {
-        project: z
-          .string()
-          .optional()
-          .describe("Project key. Defaults to BITBUCKET_DEFAULT_PROJECT."),
-        repository: z.string().describe("Repository slug."),
+        project: projectParam(),
+        repository: repositoryParam(),
         prId: z.coerce.number().describe("Pull request ID."),
-        limit: z
-          .number()
-          .optional()
-          .describe("Number of commits to return (default: 25)."),
-        start: z
-          .number()
-          .optional()
-          .describe("Start index for pagination (default: 0)."),
+        limit: limitParam(),
+        start: startParam(),
       },
       annotations: toolAnnotations(),
     },
@@ -839,20 +794,11 @@ export function registerPullRequestTools(ctx: ToolContext) {
       description:
         "List pull requests that contain a specific commit. Returns the PRs that include the given commit.",
       inputSchema: {
-        project: z
-          .string()
-          .optional()
-          .describe("Project key. Defaults to BITBUCKET_DEFAULT_PROJECT."),
-        repository: z.string().describe("Repository slug."),
+        project: projectParam(),
+        repository: repositoryParam(),
         commitId: z.string().describe("Full commit hash."),
-        limit: z
-          .number()
-          .optional()
-          .describe("Number of PRs to return (default: 25)."),
-        start: z
-          .number()
-          .optional()
-          .describe("Start index for pagination (default: 0)."),
+        limit: limitParam(),
+        start: startParam(),
       },
       annotations: toolAnnotations(),
     },
@@ -930,11 +876,8 @@ export function registerReviewTools(ctx: ToolContext) {
         action: z
           .enum(["approve", "unapprove", "publish"])
           .describe("Review action to perform."),
-        project: z
-          .string()
-          .optional()
-          .describe("Project key. Defaults to BITBUCKET_DEFAULT_PROJECT."),
-        repository: z.string().describe("Repository slug."),
+        project: projectParam(),
+        repository: repositoryParam(),
         prId: z.coerce.number().describe("Pull request ID."),
         commentText: z
           .string()

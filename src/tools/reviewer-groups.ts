@@ -4,6 +4,7 @@ import { toolAnnotations } from "../response/annotations.js";
 import { handleToolError } from "../http/errors.js";
 import type { ToolContext } from "./shared.js";
 import type { ApiClients } from "../http/client.js";
+import { projectParam, repositoryParam } from "./params.js";
 
 interface ReviewerGroupActionContext {
   clients: ApiClients;
@@ -16,9 +17,7 @@ interface ReviewerGroupActionContext {
 
 const reviewerGroupActions: Record<
   string,
-  (
-    ctx: ReviewerGroupActionContext,
-  ) => Promise<ToolSuccessResult>
+  (ctx: ReviewerGroupActionContext) => Promise<ToolSuccessResult>
 > = {
   create: async ({
     clients,
@@ -58,11 +57,8 @@ export function registerReviewerGroupTools(ctx: ToolContext) {
     {
       description: "List reviewer groups configured for a repository.",
       inputSchema: {
-        project: z
-          .string()
-          .optional()
-          .describe("Project key. Defaults to BITBUCKET_DEFAULT_PROJECT."),
-        repository: z.string().describe("Repository slug."),
+        project: projectParam(),
+        repository: repositoryParam(),
       },
       annotations: toolAnnotations(),
     },
@@ -89,11 +85,8 @@ export function registerReviewerGroupTools(ctx: ToolContext) {
         'Manage reviewer groups for a repository. Actions: "create" (create a group), "delete" (remove a group).',
       inputSchema: {
         action: z.enum(["create", "delete"]).describe("Operation to perform."),
-        project: z
-          .string()
-          .optional()
-          .describe("Project key. Defaults to BITBUCKET_DEFAULT_PROJECT."),
-        repository: z.string().describe("Repository slug."),
+        project: projectParam(),
+        repository: repositoryParam(),
         name: z.string().describe("Reviewer group name."),
         description: z
           .string()

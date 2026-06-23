@@ -11,7 +11,12 @@ import {
 } from "../response/curate.js";
 import { getPaginated } from "../http/client.js";
 import type { ToolContext } from "./shared.js";
-import { fieldsParam } from "./params.js";
+import {
+  projectParam,
+  repositoryParam,
+  startParam,
+  fieldsParam,
+} from "./params.js";
 
 export function registerRepositoryTools(ctx: ToolContext) {
   const { server, clients } = ctx;
@@ -25,10 +30,7 @@ export function registerRepositoryTools(ctx: ToolContext) {
           .number()
           .optional()
           .describe("Number of projects to return (default: 25, max: 1000)"),
-        start: z
-          .number()
-          .optional()
-          .describe("Start index for pagination (default: 0)"),
+        start: startParam(),
         fields: fieldsParam(),
       },
       annotations: toolAnnotations(),
@@ -56,20 +58,14 @@ export function registerRepositoryTools(ctx: ToolContext) {
       description:
         "List repositories in a project. Use this to find repository slugs for other operations. Supports custom field selection via the `fields` param (`'*all'` for full raw response, `'slug,name'` for a custom subset).",
       inputSchema: {
-        project: z
-          .string()
-          .optional()
-          .describe("Project key. Defaults to BITBUCKET_DEFAULT_PROJECT."),
+        project: projectParam(),
         limit: z
           .number()
           .optional()
           .describe(
             "Number of repositories to return (default: 25, max: 1000)",
           ),
-        start: z
-          .number()
-          .optional()
-          .describe("Start index for pagination (default: 0)"),
+        start: startParam(),
         fields: fieldsParam(),
       },
       annotations: toolAnnotations(),
@@ -103,11 +99,8 @@ export function registerRepositoryTools(ctx: ToolContext) {
       description:
         "Browse files and directories in a repository to understand project structure.",
       inputSchema: {
-        project: z
-          .string()
-          .optional()
-          .describe("Project key. Defaults to BITBUCKET_DEFAULT_PROJECT."),
-        repository: z.string().describe("Repository slug."),
+        project: projectParam(),
+        repository: repositoryParam(),
         path: z
           .string()
           .optional()
@@ -147,11 +140,8 @@ export function registerRepositoryTools(ctx: ToolContext) {
       description:
         "Read file contents from a repository with pagination support for large files.",
       inputSchema: {
-        project: z
-          .string()
-          .optional()
-          .describe("Project key. Defaults to BITBUCKET_DEFAULT_PROJECT."),
-        repository: z.string().describe("Repository slug."),
+        project: projectParam(),
+        repository: repositoryParam(),
         filePath: z.string().describe("Path to the file in the repository."),
         branch: z
           .string()
@@ -201,11 +191,8 @@ export function registerRepositoryTools(ctx: ToolContext) {
       description:
         "Upload a file attachment to a repository. Returns a markdown reference to embed in PR comments or descriptions.",
       inputSchema: {
-        project: z
-          .string()
-          .optional()
-          .describe("Project key. Defaults to BITBUCKET_DEFAULT_PROJECT."),
-        repository: z.string().describe("Repository slug."),
+        project: projectParam(),
+        repository: repositoryParam(),
         filePath: z
           .string()
           .describe("Absolute path to the file on the local filesystem."),
@@ -265,11 +252,8 @@ export function registerRepositoryTools(ctx: ToolContext) {
       description:
         "Edit a file in a repository by committing a new version via the Bitbucket REST API. Returns the commit metadata.",
       inputSchema: {
-        project: z
-          .string()
-          .optional()
-          .describe("Project key. Defaults to BITBUCKET_DEFAULT_PROJECT."),
-        repository: z.string().describe("Repository slug."),
+        project: projectParam(),
+        repository: repositoryParam(),
         filePath: z.string().describe("Path to the file in the repository."),
         branch: z.string().describe("Target branch name."),
         content: z.string().describe("Full new file content as a string."),
@@ -330,11 +314,8 @@ export function registerRepositoryTools(ctx: ToolContext) {
       description:
         "Get blame/history information for a file. Returns line-by-line commit authorship data.",
       inputSchema: {
-        project: z
-          .string()
-          .optional()
-          .describe("Project key. Defaults to BITBUCKET_DEFAULT_PROJECT."),
-        repository: z.string().describe("Repository slug."),
+        project: projectParam(),
+        repository: repositoryParam(),
         filePath: z.string().describe("Path to the file in the repository."),
         branch: z
           .string()
@@ -368,10 +349,7 @@ export function registerRepositoryTools(ctx: ToolContext) {
     {
       description: "Create a new repository in a project.",
       inputSchema: {
-        project: z
-          .string()
-          .optional()
-          .describe("Project key. Defaults to BITBUCKET_DEFAULT_PROJECT."),
+        project: projectParam(),
         name: z.string().describe("Repository name."),
         description: z.string().optional().describe("Repository description."),
         defaultBranch: z
@@ -407,11 +385,8 @@ export function registerRepositoryTools(ctx: ToolContext) {
     {
       description: "Delete a repository. This action is irreversible.",
       inputSchema: {
-        project: z
-          .string()
-          .optional()
-          .describe("Project key. Defaults to BITBUCKET_DEFAULT_PROJECT."),
-        repository: z.string().describe("Repository slug."),
+        project: projectParam(),
+        repository: repositoryParam(),
       },
       annotations: toolAnnotations({
         readOnlyHint: false,

@@ -4,6 +4,7 @@ import { toolAnnotations } from "../response/annotations.js";
 import { handleToolError } from "../http/errors.js";
 import type { ToolContext } from "./shared.js";
 import type { ApiClients } from "../http/client.js";
+import { projectParam, repositoryParam } from "./params.js";
 
 interface CommentActionContext {
   clients: ApiClients;
@@ -155,11 +156,8 @@ export function registerCommentTools(ctx: ToolContext) {
         action: z
           .enum(["create", "edit", "delete", "react", "unreact"])
           .describe("Operation to perform on the comment."),
-        project: z
-          .string()
-          .optional()
-          .describe("Project key. Defaults to BITBUCKET_DEFAULT_PROJECT."),
-        repository: z.string().describe("Repository slug."),
+        project: projectParam(),
+        repository: repositoryParam(),
         prId: z.coerce.number().describe("Pull request ID."),
         text: z
           .string()

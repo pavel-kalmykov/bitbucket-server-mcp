@@ -3,6 +3,7 @@ import { formatResponse } from "../response/format.js";
 import { toolAnnotations } from "../response/annotations.js";
 import { handleToolError } from "../http/errors.js";
 import type { ToolContext } from "./shared.js";
+import { limitParam, startParam } from "./params.js";
 
 export function registerUserTools(ctx: ToolContext) {
   const { server, clients } = ctx;
@@ -39,14 +40,8 @@ export function registerUserTools(ctx: ToolContext) {
           .describe(
             "Filter query substring to match against user names and display names.",
           ),
-        limit: z
-          .number()
-          .optional()
-          .describe("Number of users to return (default: 25)."),
-        start: z
-          .number()
-          .optional()
-          .describe("Start index for pagination (default: 0)."),
+        limit: limitParam(),
+        start: startParam(),
       },
       annotations: toolAnnotations(),
     },

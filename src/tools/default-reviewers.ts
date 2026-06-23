@@ -1,8 +1,8 @@
-import { z } from "zod";
 import { formatResponse } from "../response/format.js";
 import { toolAnnotations } from "../response/annotations.js";
 import { handleToolError } from "../http/errors.js";
 import type { ToolContext } from "./shared.js";
+import { projectParam, repositoryParam } from "./params.js";
 
 export function registerDefaultReviewerTools(ctx: ToolContext) {
   const { server, clients } = ctx;
@@ -13,11 +13,8 @@ export function registerDefaultReviewerTools(ctx: ToolContext) {
       description:
         "List default reviewer conditions for a repository. These conditions determine which users are automatically added as reviewers to pull requests.",
       inputSchema: {
-        project: z
-          .string()
-          .optional()
-          .describe("Project key. Defaults to BITBUCKET_DEFAULT_PROJECT."),
-        repository: z.string().describe("Repository slug."),
+        project: projectParam(),
+        repository: repositoryParam(),
       },
       annotations: toolAnnotations(),
     },

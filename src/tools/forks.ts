@@ -5,7 +5,12 @@ import { handleToolError } from "../http/errors.js";
 import { curateList, DEFAULT_REPOSITORY_FIELDS } from "../response/curate.js";
 import { getPaginated } from "../http/client.js";
 import type { ToolContext } from "./shared.js";
-import { fieldsParam } from "./params.js";
+import {
+  projectParam,
+  repositoryParam,
+  startParam,
+  fieldsParam,
+} from "./params.js";
 import type { ApiClients } from "../http/client.js";
 
 interface ForkActionContext {
@@ -48,19 +53,13 @@ export function registerForkTools(ctx: ToolContext) {
       description:
         "List forks of a repository. Supports custom field selection via the `fields` param (`'*all'` for full raw response, `'slug,name'` for a custom subset).",
       inputSchema: {
-        project: z
-          .string()
-          .optional()
-          .describe("Project key. Defaults to BITBUCKET_DEFAULT_PROJECT."),
-        repository: z.string().describe("Repository slug."),
+        project: projectParam(),
+        repository: repositoryParam(),
         limit: z
           .number()
           .optional()
           .describe("Number of forks to return (default: 25, max: 1000)."),
-        start: z
-          .number()
-          .optional()
-          .describe("Start index for pagination (default: 0)."),
+        start: startParam(),
         fields: fieldsParam(),
       },
       annotations: toolAnnotations(),

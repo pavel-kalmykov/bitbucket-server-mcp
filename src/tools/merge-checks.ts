@@ -3,6 +3,7 @@ import { formatResponse } from "../response/format.js";
 import { toolAnnotations } from "../response/annotations.js";
 import { handleToolError } from "../http/errors.js";
 import type { ToolContext } from "./shared.js";
+import { projectParam, repositoryParam } from "./params.js";
 
 export function registerMergeCheckTools(ctx: ToolContext) {
   const { server, clients } = ctx;
@@ -13,11 +14,8 @@ export function registerMergeCheckTools(ctx: ToolContext) {
       description:
         "List merge check configurations for a repository. Merge checks control conditions that must be met before a pull request can be merged.",
       inputSchema: {
-        project: z
-          .string()
-          .optional()
-          .describe("Project key. Defaults to BITBUCKET_DEFAULT_PROJECT."),
-        repository: z.string().describe("Repository slug."),
+        project: projectParam(),
+        repository: repositoryParam(),
       },
       annotations: toolAnnotations(),
     },
@@ -63,11 +61,8 @@ export function registerMergeCheckTools(ctx: ToolContext) {
     {
       description: "Configure merge check settings for a repository.",
       inputSchema: {
-        project: z
-          .string()
-          .optional()
-          .describe("Project key. Defaults to BITBUCKET_DEFAULT_PROJECT."),
-        repository: z.string().describe("Repository slug."),
+        project: projectParam(),
+        repository: repositoryParam(),
         hookKey: z.string().describe("Merge check hook key."),
         settings: z
           .record(z.string(), z.unknown())

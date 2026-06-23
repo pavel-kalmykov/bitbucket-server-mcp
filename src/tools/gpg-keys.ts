@@ -4,6 +4,7 @@ import { toolAnnotations } from "../response/annotations.js";
 import { handleToolError } from "../http/errors.js";
 import type { ToolContext } from "./shared.js";
 import type { ApiClients } from "../http/client.js";
+import { limitParam, startParam } from "./params.js";
 
 interface GpgKeyActionContext {
   clients: ApiClients;
@@ -37,14 +38,8 @@ export function registerGpgKeyTools(ctx: ToolContext) {
           .string()
           .optional()
           .describe("Filter by user slug (admin only)."),
-        limit: z
-          .number()
-          .optional()
-          .describe("Number of keys to return (default: 25)."),
-        start: z
-          .number()
-          .optional()
-          .describe("Start index for pagination (default: 0)."),
+        limit: limitParam(),
+        start: startParam(),
       },
       annotations: toolAnnotations(),
     },

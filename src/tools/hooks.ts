@@ -5,6 +5,12 @@ import { handleToolError } from "../http/errors.js";
 import { getPaginated } from "../http/client.js";
 import type { ToolContext } from "./shared.js";
 import type { ApiClients } from "../http/client.js";
+import {
+  projectParam,
+  repositoryParam,
+  limitParam,
+  startParam,
+} from "./params.js";
 
 interface HookActionContext {
   clients: ApiClients;
@@ -57,19 +63,10 @@ export function registerHookTools(ctx: ToolContext) {
     {
       description: "List repository hooks and their enabled/disabled state.",
       inputSchema: {
-        project: z
-          .string()
-          .optional()
-          .describe("Project key. Defaults to BITBUCKET_DEFAULT_PROJECT."),
-        repository: z.string().describe("Repository slug."),
-        limit: z
-          .number()
-          .optional()
-          .describe("Number of hooks to return (default: 25)."),
-        start: z
-          .number()
-          .optional()
-          .describe("Start index for pagination (default: 0)."),
+        project: projectParam(),
+        repository: repositoryParam(),
+        limit: limitParam(),
+        start: startParam(),
       },
       annotations: toolAnnotations(),
     },
@@ -102,11 +99,8 @@ export function registerHookTools(ctx: ToolContext) {
         action: z
           .enum(["enable", "disable", "configure"])
           .describe("Operation to perform."),
-        project: z
-          .string()
-          .optional()
-          .describe("Project key. Defaults to BITBUCKET_DEFAULT_PROJECT."),
-        repository: z.string().describe("Repository slug."),
+        project: projectParam(),
+        repository: repositoryParam(),
         hookKey: z
           .string()
           .describe(

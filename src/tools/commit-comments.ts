@@ -5,6 +5,12 @@ import { handleToolError } from "../http/errors.js";
 import { getPaginated } from "../http/client.js";
 import type { ToolContext } from "./shared.js";
 import type { ApiClients } from "../http/client.js";
+import {
+  projectParam,
+  repositoryParam,
+  limitParam,
+  startParam,
+} from "./params.js";
 
 interface CommitCommentActionContext {
   clients: ApiClients;
@@ -18,9 +24,7 @@ interface CommitCommentActionContext {
 
 const commitCommentActions: Record<
   string,
-  (
-    ctx: CommitCommentActionContext,
-  ) => Promise<ToolSuccessResult>
+  (ctx: CommitCommentActionContext) => Promise<ToolSuccessResult>
 > = {
   create: async ({ clients, resolvedProject, repository, commitId, text }) => {
     const data = await clients.api
@@ -73,20 +77,11 @@ export function registerCommitCommentTools(ctx: ToolContext) {
       description:
         "Get comments for a specific commit. Returns all comments on the commit with pagination support.",
       inputSchema: {
-        project: z
-          .string()
-          .optional()
-          .describe("Project key. Defaults to BITBUCKET_DEFAULT_PROJECT."),
-        repository: z.string().describe("Repository slug."),
+        project: projectParam(),
+        repository: repositoryParam(),
         commitId: z.string().describe("Full commit hash."),
-        limit: z
-          .number()
-          .optional()
-          .describe("Number of comments to return (default: 25)."),
-        start: z
-          .number()
-          .optional()
-          .describe("Start index for pagination (default: 0)."),
+        limit: limitParam(),
+        start: startParam(),
       },
       annotations: toolAnnotations(),
     },
@@ -119,11 +114,8 @@ export function registerCommitCommentTools(ctx: ToolContext) {
         action: z
           .enum(["create", "edit", "delete"])
           .describe("Operation to perform."),
-        project: z
-          .string()
-          .optional()
-          .describe("Project key. Defaults to BITBUCKET_DEFAULT_PROJECT."),
-        repository: z.string().describe("Repository slug."),
+        project: projectParam(),
+        repository: repositoryParam(),
         commitId: z.string().describe("Full commit hash."),
         text: z
           .string()

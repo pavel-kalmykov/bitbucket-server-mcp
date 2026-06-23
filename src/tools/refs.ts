@@ -11,6 +11,13 @@ import {
 } from "../response/curate.js";
 import { getPaginated } from "../http/client.js";
 import type { ToolContext } from "./shared.js";
+import {
+  projectParam,
+  repositoryParam,
+  limitParam,
+  startParam,
+  fieldsParam,
+} from "./params.js";
 import type { ApiClients } from "../http/client.js";
 import type { Commit as BaseCommit } from "../generated/types.js";
 
@@ -70,19 +77,10 @@ export function registerBranchTools(ctx: ToolContext) {
       description:
         "List branch restrictions for a repository. These control which users/groups can push to or delete specific branches or branch patterns.",
       inputSchema: {
-        project: z
-          .string()
-          .optional()
-          .describe("Project key. Defaults to BITBUCKET_DEFAULT_PROJECT."),
-        repository: z.string().describe("Repository slug."),
-        limit: z
-          .number()
-          .optional()
-          .describe("Number of restrictions to return (default: 25)."),
-        start: z
-          .number()
-          .optional()
-          .describe("Start index for pagination (default: 0)."),
+        project: projectParam(),
+        repository: repositoryParam(),
+        limit: limitParam(),
+        start: startParam(),
       },
       annotations: toolAnnotations(),
     },
@@ -122,11 +120,8 @@ export function registerBranchTools(ctx: ToolContext) {
       description:
         "List branches in a repository. Also returns the default branch when available. Supports custom field selection via the `fields` param (`'*all'` for full raw response, `'displayId,latestCommit'` for a custom subset).",
       inputSchema: {
-        project: z
-          .string()
-          .optional()
-          .describe("Project key. Defaults to BITBUCKET_DEFAULT_PROJECT."),
-        repository: z.string().describe("Repository slug."),
+        project: projectParam(),
+        repository: repositoryParam(),
         filterText: z
           .string()
           .optional()
@@ -135,16 +130,8 @@ export function registerBranchTools(ctx: ToolContext) {
           .number()
           .optional()
           .describe("Number of branches to return (default: 25, max: 1000)."),
-        start: z
-          .number()
-          .optional()
-          .describe("Start index for pagination (default: 0)."),
-        fields: z
-          .string()
-          .optional()
-          .describe(
-            "Comma-separated fields to return. Defaults to: id, displayId, type, latestCommit, isDefault, metadata. Use '*all' for the full API response.",
-          ),
+        start: startParam(),
+        fields: fieldsParam(),
       },
       annotations: toolAnnotations(),
     },
@@ -197,11 +184,8 @@ export function registerBranchTools(ctx: ToolContext) {
       description:
         "List commits in a repository, optionally filtered by branch and author. Supports custom field selection via the `fields` param (`'*all'` for full raw response, `'id,message,author.name'` for a custom subset).",
       inputSchema: {
-        project: z
-          .string()
-          .optional()
-          .describe("Project key. Defaults to BITBUCKET_DEFAULT_PROJECT."),
-        repository: z.string().describe("Repository slug."),
+        project: projectParam(),
+        repository: repositoryParam(),
         branch: z
           .string()
           .optional()
@@ -216,16 +200,8 @@ export function registerBranchTools(ctx: ToolContext) {
           .number()
           .optional()
           .describe("Number of commits to return (default: 25, max: 1000)."),
-        start: z
-          .number()
-          .optional()
-          .describe("Start index for pagination (default: 0)."),
-        fields: z
-          .string()
-          .optional()
-          .describe(
-            "Comma-separated fields to return. Defaults to: id, displayId, message, author (name, email), authorTimestamp, parents. Use '*all' for the full API response.",
-          ),
+        start: startParam(),
+        fields: fieldsParam(),
       },
       annotations: toolAnnotations(),
     },
@@ -284,11 +260,8 @@ export function registerBranchTools(ctx: ToolContext) {
         'Manage branches in a repository. Actions: "create" (create a new branch), "delete" (delete a branch). Refuses to delete the default branch.',
       inputSchema: {
         action: z.enum(["create", "delete"]).describe("Operation to perform."),
-        project: z
-          .string()
-          .optional()
-          .describe("Project key. Defaults to BITBUCKET_DEFAULT_PROJECT."),
-        repository: z.string().describe("Repository slug."),
+        project: projectParam(),
+        repository: repositoryParam(),
         branch: z.string().describe("Branch name."),
         startPoint: z
           .string()
@@ -327,18 +300,10 @@ export function registerBranchTools(ctx: ToolContext) {
       description:
         "Get details of a specific commit by its ID. Supports custom field selection via the `fields` param (`'*all'` for full raw response, `'id,message,author.name'` for a custom subset).",
       inputSchema: {
-        project: z
-          .string()
-          .optional()
-          .describe("Project key. Defaults to BITBUCKET_DEFAULT_PROJECT."),
-        repository: z.string().describe("Repository slug."),
+        project: projectParam(),
+        repository: repositoryParam(),
         commitId: z.string().describe("Full commit hash."),
-        fields: z
-          .string()
-          .optional()
-          .describe(
-            "Comma-separated fields to return. Defaults to: id, displayId, message, author (name, email), authorTimestamp, committer (name, email), committerTimestamp, parents (id). Use '*all' for the full API response.",
-          ),
+        fields: fieldsParam(),
       },
       annotations: toolAnnotations(),
     },
@@ -366,11 +331,8 @@ export function registerBranchTools(ctx: ToolContext) {
       description:
         "Compare two refs and list commits accessible from `to` but not from `from`. Supports custom field selection via the `fields` param (`'*all'` for full raw response, `'id,message,author.name'` for a custom subset).",
       inputSchema: {
-        project: z
-          .string()
-          .optional()
-          .describe("Project key. Defaults to BITBUCKET_DEFAULT_PROJECT."),
-        repository: z.string().describe("Repository slug."),
+        project: projectParam(),
+        repository: repositoryParam(),
         from: z
           .string()
           .optional()
@@ -383,16 +345,8 @@ export function registerBranchTools(ctx: ToolContext) {
           .number()
           .optional()
           .describe("Number of commits to return (default: 25, max: 1000)."),
-        start: z
-          .number()
-          .optional()
-          .describe("Start index for pagination (default: 0)."),
-        fields: z
-          .string()
-          .optional()
-          .describe(
-            "Comma-separated fields to return. Defaults to: id, displayId, message, author (name, email), authorTimestamp, committer (name, email), committerTimestamp, parents (id). Use '*all' for the full API response.",
-          ),
+        start: startParam(),
+        fields: fieldsParam(),
       },
       annotations: toolAnnotations(),
     },
@@ -440,11 +394,8 @@ export function registerBranchTools(ctx: ToolContext) {
       description:
         "List tags in a repository. Supports custom field selection via the `fields` param (`'*all'` for full raw response, `'id,displayId,hash'` for a custom subset).",
       inputSchema: {
-        project: z
-          .string()
-          .optional()
-          .describe("Project key. Defaults to BITBUCKET_DEFAULT_PROJECT."),
-        repository: z.string().describe("Repository slug."),
+        project: projectParam(),
+        repository: repositoryParam(),
         filterText: z
           .string()
           .optional()
@@ -453,16 +404,8 @@ export function registerBranchTools(ctx: ToolContext) {
           .number()
           .optional()
           .describe("Number of tags to return (default: 25, max: 1000)."),
-        start: z
-          .number()
-          .optional()
-          .describe("Start index for pagination (default: 0)."),
-        fields: z
-          .string()
-          .optional()
-          .describe(
-            "Comma-separated fields to return. Defaults to: id, displayId, type, hash, latestCommit. Use '*all' for the full API response.",
-          ),
+        start: startParam(),
+        fields: fieldsParam(),
       },
       annotations: toolAnnotations(),
     },
@@ -545,18 +488,10 @@ export function registerBranchTools(ctx: ToolContext) {
       description:
         "Get details of a specific tag by its name. Supports custom field selection via the `fields` param (`'*all'` for full raw response, `'id,displayId,hash'` for a custom subset).",
       inputSchema: {
-        project: z
-          .string()
-          .optional()
-          .describe("Project key. Defaults to BITBUCKET_DEFAULT_PROJECT."),
-        repository: z.string().describe("Repository slug."),
+        project: projectParam(),
+        repository: repositoryParam(),
         name: z.string().describe("Tag name (e.g. 'v1.0.0')."),
-        fields: z
-          .string()
-          .optional()
-          .describe(
-            "Comma-separated fields to return. Defaults to: id, displayId, type, hash, latestCommit. Use '*all' for the full API response.",
-          ),
+        fields: fieldsParam(),
       },
       annotations: toolAnnotations(),
     },
@@ -583,11 +518,8 @@ export function registerBranchTools(ctx: ToolContext) {
         'Manage tags in a repository. Actions: "create" (create a new tag pointing to a commit), "delete" (delete a tag by name).',
       inputSchema: {
         action: z.enum(["create", "delete"]).describe("Operation to perform."),
-        project: z
-          .string()
-          .optional()
-          .describe("Project key. Defaults to BITBUCKET_DEFAULT_PROJECT."),
-        repository: z.string().describe("Repository slug."),
+        project: projectParam(),
+        repository: repositoryParam(),
         name: z.string().describe("Tag name (e.g. 'v1.0.0')."),
         startPoint: z
           .string()

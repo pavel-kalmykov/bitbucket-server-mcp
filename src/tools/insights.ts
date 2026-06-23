@@ -4,6 +4,7 @@ import { toolAnnotations } from "../response/annotations.js";
 import { handleToolError } from "../http/errors.js";
 import type { ToolContext } from "./shared.js";
 import type { InsightReport } from "../generated/types.js";
+import { projectParam, repositoryParam } from "./params.js";
 
 export function registerInsightTools(ctx: ToolContext) {
   const { server, clients } = ctx;
@@ -13,11 +14,8 @@ export function registerInsightTools(ctx: ToolContext) {
       description:
         "Get code insight reports and their annotations for a pull request. Shows build results, code quality, and other analysis.",
       inputSchema: {
-        project: z
-          .string()
-          .optional()
-          .describe("Project key. Defaults to BITBUCKET_DEFAULT_PROJECT."),
-        repository: z.string().describe("Repository slug."),
+        project: projectParam(),
+        repository: repositoryParam(),
         prId: z.coerce.number().describe("Pull request ID."),
         includeFileAnnotations: z
           .boolean()

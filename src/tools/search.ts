@@ -4,7 +4,7 @@ import { toolAnnotations } from "../response/annotations.js";
 import { handleToolError } from "../http/errors.js";
 import { curateList, DEFAULT_SEARCH_FIELDS } from "../response/curate.js";
 import type { ToolContext } from "./shared.js";
-import { fieldsParam } from "./params.js";
+import { limitParam, startParam, fieldsParam } from "./params.js";
 
 export function registerSearchTools(ctx: ToolContext) {
   const { server, clients } = ctx;
@@ -33,14 +33,8 @@ export function registerSearchTools(ctx: ToolContext) {
           .describe(
             'Search type: "code" for content search, "file" for filename search.',
           ),
-        limit: z
-          .number()
-          .optional()
-          .describe("Number of results to return (default: 25)."),
-        start: z
-          .number()
-          .optional()
-          .describe("Start index for pagination (default: 0)."),
+        limit: limitParam(),
+        start: startParam(),
         fields: fieldsParam(),
       },
       annotations: toolAnnotations({ openWorldHint: true }),

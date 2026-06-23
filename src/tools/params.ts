@@ -3,6 +3,31 @@ import { z } from "zod";
 // Shared input-schema fragments used across tool definitions.
 // Keep this a cohesive "schema vocabulary", not a general dumping ground.
 
+export function projectParam() {
+  return z
+    .string()
+    .optional()
+    .describe("Project key. Defaults to BITBUCKET_DEFAULT_PROJECT.");
+}
+
+export function repositoryParam() {
+  return z.string().describe("Repository slug.");
+}
+
+export function limitParam() {
+  return z
+    .number()
+    .optional()
+    .describe("Maximum number of results to return (default: 25).");
+}
+
+export function startParam() {
+  return z
+    .number()
+    .optional()
+    .describe("Start index for pagination (default: 0).");
+}
+
 /**
  * Optional `fields` selector for read tools that curate their response.
  *
