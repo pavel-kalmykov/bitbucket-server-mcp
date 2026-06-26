@@ -241,10 +241,7 @@ export function registerBranchTools(ctx: ToolContext) {
 
         return formatResponse({
           total: author ? commits.length : data.size,
-          commits: curateList(
-            commits as Record<string, unknown>[],
-            fields ?? DEFAULT_COMMIT_FIELDS,
-          ),
+          commits: curateList(commits, fields ?? DEFAULT_COMMIT_FIELDS),
           isLastPage: data.isLastPage,
         });
       } catch (error) {
@@ -376,10 +373,7 @@ export function registerBranchTools(ctx: ToolContext) {
 
         return formatResponse({
           total: data.size,
-          commits: curateList(
-            data.values as Record<string, unknown>[],
-            fields ?? DEFAULT_COMMIT_FIELDS,
-          ),
+          commits: curateList(data.values, fields ?? DEFAULT_COMMIT_FIELDS),
           isLastPage: data.isLastPage,
         });
       } catch (error) {
@@ -430,10 +424,7 @@ export function registerBranchTools(ctx: ToolContext) {
 
         return formatResponse({
           total: data.size,
-          tags: curateList(
-            data.values as Record<string, unknown>[],
-            fields ?? DEFAULT_TAG_FIELDS,
-          ),
+          tags: curateList(data.values, fields ?? DEFAULT_TAG_FIELDS),
           isLastPage: data.isLastPage,
         });
       } catch (error) {

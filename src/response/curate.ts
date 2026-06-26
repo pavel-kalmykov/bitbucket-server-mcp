@@ -89,8 +89,8 @@ function pickFieldsFromObject(
  *                 or a custom comma-separated field list
  * @returns The curated object with only the requested fields
  */
-export function curateResponse(
-  data: Record<string, unknown>,
+export function curateResponse<T extends Record<string, unknown>>(
+  data: T,
   fields: string,
 ): Record<string, unknown> {
   if (fields === "*all") {
@@ -108,8 +108,8 @@ export function curateResponse(
 /**
  * Curate an array of response objects.
  */
-export function curateList(
-  items: Record<string, unknown>[],
+export function curateList<T extends Record<string, unknown>>(
+  items: T[],
   fields: string,
 ): Record<string, unknown>[] {
   if (fields === "*all") {

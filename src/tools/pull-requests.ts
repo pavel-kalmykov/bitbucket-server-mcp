@@ -500,10 +500,7 @@ export function registerPullRequestTools(ctx: ToolContext) {
 
         return formatResponse({
           total: author ? pullRequests.length : data.size,
-          pullRequests: curateList(
-            pullRequests as Record<string, unknown>[],
-            fields ?? DEFAULT_PR_FIELDS,
-          ),
+          pullRequests: curateList(pullRequests, fields ?? DEFAULT_PR_FIELDS),
           isLastPage: data.isLastPage,
         });
       } catch (error) {
