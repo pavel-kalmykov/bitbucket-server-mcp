@@ -29,6 +29,11 @@ export const DEFAULT_COMMIT_FIELDS =
 
 export const DEFAULT_TAG_FIELDS = "id,displayId,type,hash,latestCommit";
 
+export const DEFAULT_ACTIVITY_FIELDS =
+  "id,action,createdDate," +
+  "user.name,user.displayName," +
+  "comment.id,comment.text,comment.createdAt,comment.updatedAt";
+
 function pickFieldsFromObject(
   source: Record<string, unknown>,
   fieldPaths: string[],

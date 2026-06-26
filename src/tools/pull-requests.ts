@@ -7,6 +7,7 @@ import {
   curateResponse,
   curateList,
   DEFAULT_PR_FIELDS,
+  DEFAULT_ACTIVITY_FIELDS,
 } from "../response/curate.js";
 import { getPaginated } from "../http/client.js";
 import type { ApiClients } from "../http/client.js";
@@ -596,6 +597,7 @@ export function registerPullRequestTools(ctx: ToolContext) {
           ),
         limit: limitParam(),
         start: startParam(),
+        fields: fieldsParam(),
       },
       annotations: toolAnnotations(),
     },
@@ -607,6 +609,7 @@ export function registerPullRequestTools(ctx: ToolContext) {
       excludeUsers,
       limit = 25,
       start = 0,
+      fields,
     }) => {
       try {
         const resolvedProject = ctx.resolveProject(project);
@@ -635,7 +638,7 @@ export function registerPullRequestTools(ctx: ToolContext) {
         }
 
         return formatResponse({
-          activities,
+          activities: curateList(activities, fields ?? DEFAULT_ACTIVITY_FIELDS),
           size: data.size,
           isLastPage: data.isLastPage,
         });
