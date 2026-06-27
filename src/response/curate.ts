@@ -34,6 +34,9 @@ export const DEFAULT_ACTIVITY_FIELDS =
   "user.name,user.displayName," +
   "comment.id,comment.text,comment.createdAt,comment.updatedAt";
 
+export const DEFAULT_USER_FIELDS =
+  "name,displayName,emailAddress,slug,active,type";
+
 function pickFieldsFromObject(
   source: Record<string, unknown>,
   fieldPaths: string[],
