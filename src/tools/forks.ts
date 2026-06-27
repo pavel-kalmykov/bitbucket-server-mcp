@@ -75,10 +75,7 @@ export function registerForkTools(ctx: ToolContext) {
 
         return formatResponse({
           total: data.size,
-          forks: curateList(
-            data.values as Record<string, unknown>[],
-            fields ?? DEFAULT_REPOSITORY_FIELDS,
-          ),
+          forks: curateList(data.values, fields ?? DEFAULT_REPOSITORY_FIELDS),
           isLastPage: data.isLastPage,
         });
       } catch (error) {
