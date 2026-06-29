@@ -6,6 +6,10 @@ import type { ToolContext } from "./shared.js";
 import type { ApiClients } from "../http/client.js";
 import type { Deployment } from "../generated/types.js";
 import { projectParam, repositoryParam } from "./params.js";
+import {
+  curateResponse,
+  DEFAULT_DEPLOYMENT_FIELDS,
+} from "../response/curate.js";
 
 const deploymentPath = (project: string, repo: string, commit: string) =>
   `projects/${project}/repos/${repo}/commits/${commit}/deployments`;
@@ -60,7 +64,7 @@ const deploymentActions: Record<
         },
       })
       .json<Deployment>();
-    return formatResponse(data);
+    return formatResponse(curateResponse(data, DEFAULT_DEPLOYMENT_FIELDS));
   },
 
   create: async ({
@@ -121,7 +125,7 @@ const deploymentActions: Record<
     const data = await clients.api
       .post(basePath, { json: body })
       .json<Deployment>();
-    return formatResponse(data);
+    return formatResponse(curateResponse(data, DEFAULT_DEPLOYMENT_FIELDS));
   },
 
   delete: async ({

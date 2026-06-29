@@ -44,7 +44,8 @@ export const DEFAULT_REVIEWER_GROUP_FIELDS = "id,name";
 export const DEFAULT_SECRET_SCANNING_FIELDS = "id,name";
 
 export const DEFAULT_DEPLOYMENT_FIELDS =
-  "key,state,displayName,description,url";
+  "key,state,displayName,description,url," +
+  "deploymentSequenceNumber,lastUpdated";
 
 export const DEFAULT_COMMENT_FIELDS =
   "id,text,version,createdDate,updatedDate," +
