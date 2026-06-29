@@ -11,6 +11,7 @@ import {
   limitParam,
   startParam,
 } from "./params.js";
+import { curateResponse, DEFAULT_COMMENT_FIELDS } from "../response/curate.js";
 
 interface CommitCommentActionContext {
   clients: ApiClients;
@@ -32,8 +33,8 @@ const commitCommentActions: Record<
         `projects/${resolvedProject}/repos/${repository}/commits/${commitId}/comments`,
         { json: { text } },
       )
-      .json();
-    return formatResponse(data);
+      .json<Record<string, unknown>>();
+    return formatResponse(curateResponse(data, DEFAULT_COMMENT_FIELDS));
   },
   edit: async ({
     clients,
@@ -49,8 +50,8 @@ const commitCommentActions: Record<
         `projects/${resolvedProject}/repos/${repository}/commits/${commitId}/comments/${commentId}`,
         { json: { text, version } },
       )
-      .json();
-    return formatResponse(data);
+      .json<Record<string, unknown>>();
+    return formatResponse(curateResponse(data, DEFAULT_COMMENT_FIELDS));
   },
   delete: async ({
     clients,
