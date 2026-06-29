@@ -55,6 +55,11 @@ export const DEFAULT_COMMENT_FIELDS =
 export const DEFAULT_INSIGHT_FIELDS =
   "key,result,createdDate,details,link,title,reporter";
 
+export const DEFAULT_REVIEWER_FIELDS =
+  "id,scope.type,reviewers.name," +
+  "sourceMatcher.type,sourceMatcher.displayId," +
+  "targetMatcher.type,targetMatcher.displayId";
+
 function pickFieldsFromObject(
   source: Record<string, unknown>,
   fieldPaths: string[],
