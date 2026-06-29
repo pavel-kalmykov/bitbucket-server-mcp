@@ -13,6 +13,7 @@ function baseConfig(overrides: Partial<BitbucketConfig> = {}): BitbucketConfig {
     readOnly: false,
     customHeaders: {},
     cacheTtlMs: 300_000,
+    requestTimeoutMs: 30_000,
     startupHealthcheck: false,
     ...overrides,
   };
@@ -241,16 +242,26 @@ describe("createApiClients", () => {
   });
 
   describe("timeout configuration", () => {
-    test("requests time out after 30s", async () => {
+    afterEach(() => {
+      vi.useRealTimers();
+    });
+
+    test("requests time out after the configured timeout", async () => {
+      vi.useFakeTimers();
       server.use(
         http.get("https://git.example.com/rest/api/1.0/projects", async () => {
           await new Promise(() => {});
         }),
       );
 
-      const clients = createApiClients(baseConfig({ token: "t" }));
-      await expect(clients.api.get("projects").json()).rejects.toThrow();
-    }, 35_000);
+      const clients = createApiClients(
+        baseConfig({ token: "t", requestTimeoutMs: 30_000 }),
+      );
+      const promise = clients.api.get("projects").json();
+      const assertion = expect(promise).rejects.toThrow();
+      await vi.advanceTimersByTimeAsync(30_000);
+      await assertion;
+    });
   });
 
   describe("URL redaction (value-based, not key-name heuristic)", () => {
