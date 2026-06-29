@@ -4,7 +4,8 @@ import { toolAnnotations } from "../response/annotations.js";
 import { handleToolError } from "../http/errors.js";
 import type { ToolContext } from "./shared.js";
 import type { InsightReport } from "../generated/types.js";
-import { projectParam, repositoryParam } from "./params.js";
+import { projectParam, repositoryParam, fieldsParam } from "./params.js";
+import { curateList, DEFAULT_INSIGHT_FIELDS } from "../response/curate.js";
 
 export function registerInsightTools(ctx: ToolContext) {
   const { server, clients } = ctx;
@@ -42,6 +43,7 @@ export function registerInsightTools(ctx: ToolContext) {
           .describe(
             "Number of files to fetch annotations for per page. Only used when includeFileAnnotations is true (default: 50, max: 100).",
           ),
+        fields: fieldsParam(),
       },
       annotations: toolAnnotations(),
     },
@@ -52,6 +54,7 @@ export function registerInsightTools(ctx: ToolContext) {
       includeFileAnnotations,
       fileStart,
       fileLimit,
+      fields,
     }) => {
       try {
         const resolvedProject = ctx.resolveProject(project);
@@ -95,7 +98,10 @@ export function registerInsightTools(ctx: ToolContext) {
             : null,
         ]);
 
-        const result: Record<string, unknown> = { reports, annotations };
+        const result: Record<string, unknown> = {
+          reports: curateList(reports, fields ?? DEFAULT_INSIGHT_FIELDS),
+          annotations,
+        };
 
         if (fileAnnotationsData) {
           const files = fileAnnotationsData.values.map((c) => ({

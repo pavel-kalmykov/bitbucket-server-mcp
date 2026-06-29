@@ -52,6 +52,9 @@ export const DEFAULT_COMMENT_FIELDS =
   "author.name,author.displayName,severity,state," +
   "anchor.path,anchor.line,anchor.lineType";
 
+export const DEFAULT_INSIGHT_FIELDS =
+  "key,result,createdDate,details,link,title,reporter";
+
 function pickFieldsFromObject(
   source: Record<string, unknown>,
   fieldPaths: string[],
