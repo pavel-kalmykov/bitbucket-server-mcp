@@ -2,7 +2,11 @@ import { z } from "zod";
 import { formatResponse, type ToolSuccessResult } from "../response/format.js";
 import { toolAnnotations } from "../response/annotations.js";
 import { handleToolError } from "../http/errors.js";
-import { curateList, DEFAULT_REPOSITORY_FIELDS } from "../response/curate.js";
+import {
+  curateList,
+  curateResponse,
+  DEFAULT_REPOSITORY_FIELDS,
+} from "../response/curate.js";
 import { getPaginated } from "../http/client.js";
 import type { ToolContext } from "./shared.js";
 import {
@@ -39,8 +43,8 @@ const forkActions: Record<
     }
     const data = await clients.api
       .post(`projects/${resolvedProject}/repos/${repository}`, { json: body })
-      .json();
-    return formatResponse(data);
+      .json<Record<string, unknown>>();
+    return formatResponse(curateResponse(data, DEFAULT_REPOSITORY_FIELDS));
   },
 };
 

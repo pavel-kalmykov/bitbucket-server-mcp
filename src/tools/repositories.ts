@@ -6,6 +6,7 @@ import { toolAnnotations } from "../response/annotations.js";
 import { handleToolError } from "../http/errors.js";
 import {
   curateList,
+  curateResponse,
   DEFAULT_PROJECT_FIELDS,
   DEFAULT_REPOSITORY_FIELDS,
 } from "../response/curate.js";
@@ -371,9 +372,9 @@ export function registerRepositoryTools(ctx: ToolContext) {
 
         const data = await clients.api
           .post(`projects/${resolvedProject}/repos`, { json: body })
-          .json();
+          .json<Record<string, unknown>>();
 
-        return formatResponse(data);
+        return formatResponse(curateResponse(data, DEFAULT_REPOSITORY_FIELDS));
       } catch (error) {
         return handleToolError(error);
       }
