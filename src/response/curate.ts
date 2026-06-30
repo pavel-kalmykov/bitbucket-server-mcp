@@ -34,6 +34,32 @@ export const DEFAULT_ACTIVITY_FIELDS =
   "user.name,user.displayName," +
   "comment.id,comment.text,comment.createdAt,comment.updatedAt";
 
+export const DEFAULT_USER_FIELDS =
+  "name,displayName,emailAddress,slug,active,type";
+
+export const DEFAULT_WEBHOOK_FIELDS = "name,url,events,active";
+
+export const DEFAULT_REVIEWER_GROUP_FIELDS = "id,name";
+
+export const DEFAULT_SECRET_SCANNING_FIELDS = "id,name";
+
+export const DEFAULT_DEPLOYMENT_FIELDS =
+  "key,state,displayName,description,url," +
+  "deploymentSequenceNumber,lastUpdated";
+
+export const DEFAULT_COMMENT_FIELDS =
+  "id,text,version,createdDate,updatedDate," +
+  "author.name,author.displayName,severity,state," +
+  "anchor.path,anchor.line,anchor.lineType";
+
+export const DEFAULT_INSIGHT_FIELDS =
+  "key,result,createdDate,details,link,title,reporter";
+
+export const DEFAULT_REVIEWER_FIELDS =
+  "id,scope.type,reviewers.name," +
+  "sourceMatcher.type,sourceMatcher.displayId," +
+  "targetMatcher.type,targetMatcher.displayId";
+
 function pickFieldsFromObject(
   source: Record<string, unknown>,
   fieldPaths: string[],

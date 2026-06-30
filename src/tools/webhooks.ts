@@ -10,7 +10,9 @@ import {
   repositoryParam,
   limitParam,
   startParam,
+  fieldsParam,
 } from "./params.js";
+import { curateList, DEFAULT_WEBHOOK_FIELDS } from "../response/curate.js";
 
 interface WebhookActionContext {
   clients: ApiClients;
@@ -88,10 +90,11 @@ export function registerWebhookTools(ctx: ToolContext) {
         repository: repositoryParam(),
         limit: limitParam(),
         start: startParam(),
+        fields: fieldsParam(),
       },
       annotations: toolAnnotations(),
     },
-    async ({ project, repository, limit = 25, start = 0 }) => {
+    async ({ project, repository, limit = 25, start = 0, fields }) => {
       try {
         const resolvedProject = ctx.resolveProject(project);
         const data = await getPaginated(
@@ -102,7 +105,7 @@ export function registerWebhookTools(ctx: ToolContext) {
 
         return formatResponse({
           total: data.size,
-          webhooks: data.values,
+          webhooks: curateList(data.values, fields ?? DEFAULT_WEBHOOK_FIELDS),
           isLastPage: data.isLastPage,
         });
       } catch (error) {

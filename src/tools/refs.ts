@@ -49,8 +49,8 @@ const branchActions: Record<
       .post(`projects/${resolvedProject}/repos/${repository}/branches`, {
         json: { name: `refs/heads/${branch}`, startPoint },
       })
-      .json();
-    return formatResponse(data);
+      .json<Record<string, unknown>>();
+    return formatResponse(curateResponse(data, DEFAULT_BRANCH_FIELDS));
   },
   delete: async ({ clients, resolvedProject, repository, branch }) => {
     const defaultBranch = await clients.api
@@ -462,8 +462,8 @@ export function registerBranchTools(ctx: ToolContext) {
             message,
           },
         })
-        .json();
-      return formatResponse(data);
+        .json<Record<string, unknown>>();
+      return formatResponse(curateResponse(data, DEFAULT_TAG_FIELDS));
     },
     delete: async ({ clients, resolvedProject, repository, name }) => {
       await clients.git

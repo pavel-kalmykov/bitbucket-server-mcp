@@ -4,7 +4,11 @@ import { toolAnnotations } from "../response/annotations.js";
 import { handleToolError } from "../http/errors.js";
 import type { ToolContext } from "./shared.js";
 import type { ApiClients } from "../http/client.js";
-import { projectParam, repositoryParam } from "./params.js";
+import { projectParam, repositoryParam, fieldsParam } from "./params.js";
+import {
+  curateList,
+  DEFAULT_REVIEWER_GROUP_FIELDS,
+} from "../response/curate.js";
 
 interface ReviewerGroupActionContext {
   clients: ApiClients;
@@ -59,19 +63,22 @@ export function registerReviewerGroupTools(ctx: ToolContext) {
       inputSchema: {
         project: projectParam(),
         repository: repositoryParam(),
+        fields: fieldsParam(),
       },
       annotations: toolAnnotations(),
     },
-    async ({ project, repository }) => {
+    async ({ project, repository, fields }) => {
       try {
         const resolvedProject = ctx.resolveProject(project);
         const data = await clients.api
           .get(
             `projects/${resolvedProject}/repos/${repository}/settings/reviewer-groups`,
           )
-          .json<{ values: unknown[] }>();
+          .json<{ values: Record<string, unknown>[] }>();
 
-        return formatResponse(data.values);
+        return formatResponse(
+          curateList(data.values, fields ?? DEFAULT_REVIEWER_GROUP_FIELDS),
+        );
       } catch (error) {
         return handleToolError(error);
       }

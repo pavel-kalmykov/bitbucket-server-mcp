@@ -7,6 +7,7 @@ import {
   curateResponse,
   curateList,
   DEFAULT_PR_FIELDS,
+  DEFAULT_COMMIT_FIELDS,
   DEFAULT_ACTIVITY_FIELDS,
 } from "../response/curate.js";
 import { getPaginated } from "../http/client.js";
@@ -174,9 +175,9 @@ export function registerPullRequestTools(ctx: ToolContext) {
             `projects/${resolvedProject}/repos/${repository}/pull-requests`,
             { json: body },
           )
-          .json();
+          .json<Record<string, unknown>>();
 
-        return formatResponse(data);
+        return formatResponse(curateResponse(data, DEFAULT_PR_FIELDS));
       } catch (error) {
         return handleToolError(error);
       }
@@ -311,9 +312,9 @@ export function registerPullRequestTools(ctx: ToolContext) {
             `projects/${resolvedProject}/repos/${repository}/pull-requests/${prId}`,
             { json: updated },
           )
-          .json();
+          .json<Record<string, unknown>>();
 
-        return formatResponse(data);
+        return formatResponse(curateResponse(data, DEFAULT_PR_FIELDS));
       } catch (error) {
         return handleToolError(error);
       }
@@ -373,9 +374,9 @@ export function registerPullRequestTools(ctx: ToolContext) {
             `projects/${resolvedProject}/repos/${repository}/pull-requests/${prId}/merge`,
             { json: body, searchParams },
           )
-          .json();
+          .json<Record<string, unknown>>();
 
-        return formatResponse(data);
+        return formatResponse(curateResponse(data, DEFAULT_PR_FIELDS));
       } catch (error) {
         return handleToolError(error);
       }
@@ -420,9 +421,9 @@ export function registerPullRequestTools(ctx: ToolContext) {
             `projects/${resolvedProject}/repos/${repository}/pull-requests/${prId}/decline`,
             { json: body },
           )
-          .json();
+          .json<Record<string, unknown>>();
 
-        return formatResponse(data);
+        return formatResponse(curateResponse(data, DEFAULT_PR_FIELDS));
       } catch (error) {
         return handleToolError(error);
       }
@@ -765,10 +766,11 @@ export function registerPullRequestTools(ctx: ToolContext) {
         prId: z.coerce.number().describe("Pull request ID."),
         limit: limitParam(),
         start: startParam(),
+        fields: fieldsParam(),
       },
       annotations: toolAnnotations(),
     },
-    async ({ project, repository, prId, limit = 25, start = 0 }) => {
+    async ({ project, repository, prId, limit = 25, start = 0, fields }) => {
       try {
         const resolvedProject = ctx.resolveProject(project);
         const data = await getPaginated(
@@ -779,7 +781,7 @@ export function registerPullRequestTools(ctx: ToolContext) {
 
         return formatResponse({
           total: data.size,
-          commits: data.values,
+          commits: curateList(data.values, fields ?? DEFAULT_COMMIT_FIELDS),
           isLastPage: data.isLastPage,
         });
       } catch (error) {
@@ -799,10 +801,18 @@ export function registerPullRequestTools(ctx: ToolContext) {
         commitId: z.string().describe("Full commit hash."),
         limit: limitParam(),
         start: startParam(),
+        fields: fieldsParam(),
       },
       annotations: toolAnnotations(),
     },
-    async ({ project, repository, commitId, limit = 25, start = 0 }) => {
+    async ({
+      project,
+      repository,
+      commitId,
+      limit = 25,
+      start = 0,
+      fields,
+    }) => {
       try {
         const resolvedProject = ctx.resolveProject(project);
         const data = await getPaginated(
@@ -813,7 +823,7 @@ export function registerPullRequestTools(ctx: ToolContext) {
 
         return formatResponse({
           total: data.size,
-          pullRequests: data.values,
+          pullRequests: curateList(data.values, fields ?? DEFAULT_PR_FIELDS),
           isLastPage: data.isLastPage,
         });
       } catch (error) {

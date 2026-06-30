@@ -36,6 +36,7 @@ export function parseConfig(options?: BitbucketServerOptions): BitbucketConfig {
   const enabledToolsRaw = process.env.BITBUCKET_ENABLED_TOOLS;
   const cacheTtlRaw = process.env.BITBUCKET_CACHE_TTL;
   const healthcheckRaw = process.env.BITBUCKET_STARTUP_HEALTHCHECK;
+  const requestTimeoutRaw = process.env.BITBUCKET_REQUEST_TIMEOUT;
 
   return {
     baseUrl,
@@ -59,6 +60,9 @@ export function parseConfig(options?: BitbucketServerOptions): BitbucketConfig {
     cacheTtlMs:
       options?.cacheTtlMs ??
       (cacheTtlRaw ? parseInt(cacheTtlRaw, 10) * 1000 : 5 * 60 * 1000),
+    requestTimeoutMs:
+      options?.requestTimeoutMs ??
+      (requestTimeoutRaw ? parseInt(requestTimeoutRaw, 10) : 30_000),
     startupHealthcheck:
       options?.startupHealthcheck ?? healthcheckRaw === "true",
   };

@@ -10,7 +10,13 @@ import {
   repositoryParam,
   limitParam,
   startParam,
+  fieldsParam,
 } from "./params.js";
+import {
+  curateResponse,
+  curateList,
+  DEFAULT_COMMENT_FIELDS,
+} from "../response/curate.js";
 
 interface CommitCommentActionContext {
   clients: ApiClients;
@@ -32,8 +38,8 @@ const commitCommentActions: Record<
         `projects/${resolvedProject}/repos/${repository}/commits/${commitId}/comments`,
         { json: { text } },
       )
-      .json();
-    return formatResponse(data);
+      .json<Record<string, unknown>>();
+    return formatResponse(curateResponse(data, DEFAULT_COMMENT_FIELDS));
   },
   edit: async ({
     clients,
@@ -49,8 +55,8 @@ const commitCommentActions: Record<
         `projects/${resolvedProject}/repos/${repository}/commits/${commitId}/comments/${commentId}`,
         { json: { text, version } },
       )
-      .json();
-    return formatResponse(data);
+      .json<Record<string, unknown>>();
+    return formatResponse(curateResponse(data, DEFAULT_COMMENT_FIELDS));
   },
   delete: async ({
     clients,
@@ -82,10 +88,18 @@ export function registerCommitCommentTools(ctx: ToolContext) {
         commitId: z.string().describe("Full commit hash."),
         limit: limitParam(),
         start: startParam(),
+        fields: fieldsParam(),
       },
       annotations: toolAnnotations(),
     },
-    async ({ project, repository, commitId, limit = 25, start = 0 }) => {
+    async ({
+      project,
+      repository,
+      commitId,
+      limit = 25,
+      start = 0,
+      fields,
+    }) => {
       try {
         const resolvedProject = ctx.resolveProject(project);
         const data = await getPaginated(
@@ -96,7 +110,7 @@ export function registerCommitCommentTools(ctx: ToolContext) {
 
         return formatResponse({
           total: data.size,
-          comments: data.values,
+          comments: curateList(data.values, fields ?? DEFAULT_COMMENT_FIELDS),
           isLastPage: data.isLastPage,
         });
       } catch (error) {

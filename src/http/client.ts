@@ -63,7 +63,7 @@ export function createApiClients(config: BitbucketConfig): ApiClients {
   const redact = buildRedactor(config);
 
   const commonOptions: Options = {
-    timeout: 30_000,
+    timeout: config.requestTimeoutMs ?? 30_000,
     retry: {
       limit: 2,
       methods: ["get"],

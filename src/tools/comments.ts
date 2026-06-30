@@ -5,6 +5,7 @@ import { handleToolError } from "../http/errors.js";
 import type { ToolContext } from "./shared.js";
 import type { ApiClients } from "../http/client.js";
 import { projectParam, repositoryParam } from "./params.js";
+import { curateResponse, DEFAULT_COMMENT_FIELDS } from "../response/curate.js";
 
 interface CommentActionContext {
   clients: ApiClients;
@@ -83,8 +84,10 @@ const commentActions: Record<
         },
       }),
     };
-    const data = await clients.api.post(basePath, { json: body }).json();
-    return formatResponse(data);
+    const data = await clients.api
+      .post(basePath, { json: body })
+      .json<Record<string, unknown>>();
+    return formatResponse(curateResponse(data, DEFAULT_COMMENT_FIELDS));
   },
 
   edit: async ({
@@ -106,8 +109,8 @@ const commentActions: Record<
     };
     const data = await clients.api
       .put(`${basePath}/${commentId}`, { json: body })
-      .json();
-    return formatResponse(data);
+      .json<Record<string, unknown>>();
+    return formatResponse(curateResponse(data, DEFAULT_COMMENT_FIELDS));
   },
 
   delete: async ({ clients, basePath, commentId, version }) => {
