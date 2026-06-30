@@ -28,13 +28,16 @@ export function registerMergeCheckTools(ctx: ToolContext) {
             values: Array<{
               key: string;
               enabled: boolean;
-              details?: { name: string };
+              details?: {
+                name?: string;
+                description?: string;
+                type?: string;
+              };
             }>;
           }>();
 
-        const mergeCheckKeys = ["merge", "requiredBuilds"];
-        const mergeCheckHooks = hooks.values.filter((h) =>
-          mergeCheckKeys.some((k) => h.key.toLowerCase().includes(k)),
+        const mergeCheckHooks = hooks.values.filter(
+          (h) => h.details?.type === "PRE_PULL_REQUEST_MERGE",
         );
 
         const checks = await Promise.all(
@@ -45,7 +48,13 @@ export function registerMergeCheckTools(ctx: ToolContext) {
               )
               .json<Record<string, unknown>>()
               .catch(() => ({}));
-            return { key: hook.key, enabled: hook.enabled, settings };
+            return {
+              key: hook.key,
+              name: hook.details?.name,
+              description: hook.details?.description,
+              enabled: hook.enabled,
+              settings,
+            };
           }),
         );
 

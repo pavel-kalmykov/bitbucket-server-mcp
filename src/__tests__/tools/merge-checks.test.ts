@@ -20,22 +20,35 @@ describe("list_merge_checks", () => {
         {
           key: "com.atlassian.bitbucket.server.bitbucket-build.requiredBuildsMergeCheck",
           enabled: false,
+          details: {
+            type: "PRE_PULL_REQUEST_MERGE",
+            name: "Required Builds Merge Check",
+            description: "Requires builds to pass",
+          },
         },
         {
           key: "com.atlassian.bitbucket.server.bitbucket-bundled-hooks:force-push-hook",
           enabled: false,
+          details: { type: "PRE_RECEIVE", name: "Force Push Hook" },
         },
       ],
     });
     mockJson(h.mockClients.api.get, { requiredBuildsCount: 0 });
 
-    const parsed = await callAndParse<Array<{ key: string; enabled: boolean }>>(
-      h.client,
-      "list_merge_checks",
-      { project: "P", repository: "r" },
-    );
+    const parsed = await callAndParse<
+      Array<{
+        key: string;
+        name?: string;
+        description?: string;
+        enabled: boolean;
+      }>
+    >(h.client, "list_merge_checks", { project: "P", repository: "r" });
     expect(parsed.length).toBe(1);
-    expect(parsed[0].key.toLowerCase()).toMatch(/merge|requiredbuilds/);
+    expect(parsed[0].key).toBe(
+      "com.atlassian.bitbucket.server.bitbucket-build.requiredBuildsMergeCheck",
+    );
+    expect(parsed[0].name).toBe("Required Builds Merge Check");
+    expect(parsed[0].description).toBe("Requires builds to pass");
     expect(h.mockClients.api.get).toHaveBeenCalledWith(
       "projects/P/repos/r/settings/hooks",
     );
@@ -63,6 +76,7 @@ describe("list_merge_checks", () => {
         {
           key: "com.atlassian.bitbucket.server.bitbucket-build.requiredBuildsMergeCheck",
           enabled: false,
+          details: { type: "PRE_PULL_REQUEST_MERGE" },
         },
       ],
     });
