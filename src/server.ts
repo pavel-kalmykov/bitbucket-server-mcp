@@ -63,12 +63,7 @@ Read tools return curated (compact) responses by default. Use the 'fields' param
 - fields="*all": returns the complete raw API response (useful when you need fields not in the default set).
 - fields="id,title,state,author.user.name": returns exactly those fields. Use dot notation for nested paths.
 
-Available fields in the Bitbucket API (common across entities):
-- PR: id, version, title, description, state, open, closed, locked, createdDate, updatedDate, closedDate, fromRef.id, fromRef.displayId, fromRef.latestCommit, fromRef.repository.slug, fromRef.repository.project.key, toRef.id, toRef.displayId, toRef.latestCommit, toRef.repository.slug, toRef.repository.project.key, author.user.name, author.user.displayName, author.user.emailAddress, author.status, author.approved, reviewers[].user.name, reviewers[].user.displayName, reviewers[].status, reviewers[].approved, reviewers[].lastReviewedCommit, participants[].user.name, participants[].status, properties.commentCount, properties.openTaskCount, properties.resolvedTaskCount, properties.mergeResult.outcome, links.self[].href
-- Project: key, id, name, description, type, public, links.self[].href
-- Repository: slug, id, name, description, state, forkable, public, archived, project.key, project.name, origin.slug, origin.project.key, links.clone[].href, links.self[].href
-- Branch: id, displayId, type, latestCommit, isDefault, metadata
-- Commit: id, displayId, message, author.name, author.emailAddress, authorTimestamp, committerTimestamp, parents[].id`;
+For the full list of available fields per entity, read the bitbucket://schema/fields resource.`;
 
 export function createServer(options?: BitbucketServerOptions) {
   const config = parseConfig(options);
