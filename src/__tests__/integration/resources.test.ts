@@ -146,4 +146,23 @@ describe("Resources", () => {
       client.readResource({ uri: "bitbucket://projects" }),
     ).rejects.toThrow("Server unavailable");
   });
+
+  test("schema/fields returns the entity index", async () => {
+    const result = await client.readResource({
+      uri: "bitbucket://schema/fields",
+    });
+    const text = (result.contents[0] as { text: string }).text;
+    expect(text).toContain("pr");
+    expect(text).toContain("commit");
+    expect(text).toContain("bitbucket://schema/<entity>");
+  });
+
+  test("schema/pr returns PR fields only", async () => {
+    const result = await client.readResource({
+      uri: "bitbucket://schema/pr",
+    });
+    const text = (result.contents[0] as { text: string }).text;
+    expect(text).toContain("id, version, title");
+    expect(text).not.toContain("Branch:");
+  });
 });
