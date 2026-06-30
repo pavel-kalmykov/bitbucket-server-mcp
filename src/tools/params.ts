@@ -17,8 +17,10 @@ export function repositoryParam() {
 export function limitParam() {
   return z
     .number()
+    .min(1)
+    .max(100)
     .optional()
-    .describe("Maximum number of results to return (default: 25).");
+    .describe("Maximum number of results to return (default: 25, max: 100).");
 }
 
 export function startParam() {

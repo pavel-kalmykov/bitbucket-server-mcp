@@ -213,10 +213,10 @@ describe("Pull request tools", () => {
 
   describe("pagination params forwarding (limit/start)", () => {
     test.each([
-      { limit: 0, start: 0 },
+      { limit: 1, start: 0 },
       { limit: 1, start: 0 },
       { limit: 100, start: 1000 },
-      { limit: 1000, start: 99999 },
+      { limit: 100, start: 99999 },
     ])("list_pull_requests passes limit=$limit start=$start", async (args) => {
       mockJson(h.mockClients.api.get, {
         values: [],

@@ -233,7 +233,7 @@ describe("Search tools", () => {
     });
 
     test.each([
-      { limit: 0, start: 0 },
+      { limit: 1, start: 0 },
       { limit: 1, start: 0 },
       { limit: 100, start: 1000 },
     ])(
