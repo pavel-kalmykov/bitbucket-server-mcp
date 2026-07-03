@@ -34,6 +34,45 @@ describe("get_user_profile", () => {
     expect(parsed.displayName).toBe("John Doe");
   });
 
+  test("curated output drops avatarUrl and links", async () => {
+    mockJson(h.mockClients.api.get, {
+      name: "jdoe",
+      displayName: "John Doe",
+      emailAddress: "jdoe@example.com",
+      active: true,
+      slug: "jdoe",
+      type: "NORMAL",
+      avatarUrl: "https://example.com/avatar.png",
+      links: { self: [{ href: "https://example.com/users/jdoe" }] },
+    });
+
+    const parsed = await callAndParse<Record<string, unknown>>(
+      h.client,
+      "get_user_profile",
+      { userSlug: "jdoe" },
+    );
+
+    expect(parsed.name).toBe("jdoe");
+    expect(parsed.avatarUrl).toBeUndefined();
+    expect(parsed.links).toBeUndefined();
+  });
+
+  test("fields=*all returns the raw response including avatarUrl", async () => {
+    mockJson(h.mockClients.api.get, {
+      name: "jdoe",
+      displayName: "John Doe",
+      avatarUrl: "https://example.com/avatar.png",
+    });
+
+    const parsed = await callAndParse<Record<string, unknown>>(
+      h.client,
+      "get_user_profile",
+      { userSlug: "jdoe", fields: "*all" },
+    );
+
+    expect(parsed.avatarUrl).toBe("https://example.com/avatar.png");
+  });
+
   test("calls the correct API endpoint", async () => {
     mockJson(h.mockClients.api.get, { name: "jdoe" });
 
