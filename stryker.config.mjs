@@ -6,6 +6,7 @@ const config = {
   mutate: ["src/**/*.ts", "!src/__tests__/**", "!src/generated/**"],
   reporters: ["html", "json", "clear-text", "progress", "dashboard"],
   coverageAnalysis: "perTest",
+  thresholds: { break: 90 },
   incremental: true,
   incrementalFile: "reports/stryker-incremental.json",
   dashboard: {

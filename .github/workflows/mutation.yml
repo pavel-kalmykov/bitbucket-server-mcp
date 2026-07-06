@@ -7,6 +7,12 @@ on:
       - "src/**"
       - "stryker.config.mjs"
       - "package-lock.json"
+  pull_request:
+    branches: [main]
+    paths:
+      - "src/**"
+      - "stryker.config.mjs"
+      - "package-lock.json"
   workflow_dispatch:
   schedule:
     - cron: "41 2 * * 1" # Monday 02:41 UTC
