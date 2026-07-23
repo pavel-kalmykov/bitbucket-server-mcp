@@ -1,0 +1,49 @@
+name: Harness score
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+permissions: {}
+
+concurrency:
+  group: harness-score-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  harness:
+    name: Score harness maturity
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+    steps:
+      - uses: step-security/harden-runner@a5ad31d6a139d249332a2605b85202e8c0b78450 # v2.19.1
+        with:
+          egress-policy: audit
+
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - uses: paladini/harness-score/action@4a7e11d1f4857224a3677cd890312fc8bef55a53 # v1.3.1
+        with:
+          min-level: "0"
+          badge: "harness-badge.svg"
+          comment: ${{ github.event_name == 'pull_request' && 'true' || 'false' }}
+
+      - name: Isolate badge for publish
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        run: |
+          mkdir -p /tmp/harness-badge-publish
+          cp harness-badge.svg /tmp/harness-badge-publish/
+
+      - name: Publish badge to badges branch
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        uses: peaceiris/actions-gh-pages@1ef5a1b1df4c63fe21a2242edbee6cac921ece01 # v4.1.0
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: /tmp/harness-badge-publish
+          publish_branch: badges
+          keep_files: false
+          commit_message: "chore: update harness score badge"

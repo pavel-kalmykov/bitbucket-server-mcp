@@ -1,13 +1,7 @@
 # Code style
 
-No decorative section comments (no `// ──`, `// ==`, etc.). Test names
+No decorative section comments (no `// --`, `// ==`, etc.). Test names
 are the section dividers.
-
-# Boundaries
-
-- Never hand-edit `src/generated/bitbucket-api.d.ts`. Regenerate:
-  `npm run generate:types`.
-- Never touch `build/`, `coverage/`, `reports/`, `.stryker-tmp/`. Outputs.
 
 # Commit rules
 
@@ -27,14 +21,14 @@ Every tool must have:
    `DEFAULT_*_FIELDS`) and mutating tools annotated with
    `toolAnnotations()`.
 
-Use `.claude/skills/add-tool` for the end-to-end checklist when adding a
-new endpoint.
+See `.claude/skills/add-tool` for the end-to-end checklist, and
+`CONTRIBUTING.md` for the full walkthrough.
 
 # Doc map
 
-- Architecture / quickstart → `README.md`
-- Tools → `src/tools/`
-- Response shaping → `src/response/`
-- HTTP client → `src/http/`
-- E2E wiring → `src/__tests__/e2e/mcp-harness.ts`
-- Roadmap → `ROADMAP.md`
+- Architecture, quickstart, how to add a tool -> `CONTRIBUTING.md`
+- Tools -> `src/tools/`
+- Response shaping -> `src/response/`
+- HTTP client -> `src/http/`
+- E2E wiring -> `src/__tests__/e2e/mcp-harness.ts`
+- Roadmap -> `ROADMAP.md`
