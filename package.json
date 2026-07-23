@@ -26,6 +26,7 @@
     "test:mutation": "stryker run",
     "check:deadcode": "fallow dead-code --fail-on-issues",
     "check:deadcode:types": "knip --include types,nsTypes",
+    "check:tools": "npx tsx scripts/check-tool-coverage.ts",
     "lint": "eslint src",
     "format": "prettier --write 'src/**/*.ts'",
     "generate:types": "openapi-typescript https://dac-static.atlassian.com/server/bitbucket/8.5.swagger.v3.json -o src/generated/bitbucket-api.d.ts && sed -i '' '1s/^/\\/\\/ @ts-nocheck\\n/' src/generated/bitbucket-api.d.ts",

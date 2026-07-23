@@ -1,15 +1,34 @@
 # Code style
 
-Do not write decorative section comments with dividers. Examples of prohibited patterns:
+No decorative section comments (no `// --`, `// ==`, etc.). Test names
+are the section dividers.
 
-```
-// ── Section name ──
-// -- Section name --
-// == Section name ==
-```
+# Commit rules
 
-Test names already describe what is being tested. No visual dividers needed.
+Conventional Commits (Angular), enforced by commitlint. Types: `feat`,
+`fix`, `perf`, `refactor`, `revert`, `chore`, `docs`, `test`, `ci`.
+One idea per commit. Subject lowercase, no trailing period.
 
-# E2E tests
+# Per-tool definition of done
 
-Every tool gets an E2E test file in `src/__tests__/e2e/<feature>.e2e.test.ts`. This is not optional; it is part of the definition of done for any new tool. The test runs against ephemeral Bitbucket containers via `startBitbucket` + `setupMcpAgainst`, exercising the full MCP round-trip (not just the REST API). New tools must also be registered in `mcp-harness.ts`.
+Every tool must have:
+
+1. An E2E test in `src/__tests__/e2e/<feature>.e2e.test.ts` that
+   exercises the full MCP round-trip against ephemeral Bitbucket
+   containers.
+2. Registration in `src/__tests__/e2e/mcp-harness.ts`.
+3. Curated read responses (via `curateList` / `curateResponse` +
+   `DEFAULT_*_FIELDS`) and mutating tools annotated with
+   `toolAnnotations()`.
+
+See `.claude/skills/add-tool` for the end-to-end checklist, and
+`CONTRIBUTING.md` for the full walkthrough.
+
+# Doc map
+
+- Architecture, quickstart, how to add a tool -> `CONTRIBUTING.md`
+- Tools -> `src/tools/`
+- Response shaping -> `src/response/`
+- HTTP client -> `src/http/`
+- E2E wiring -> `src/__tests__/e2e/mcp-harness.ts`
+- Roadmap -> `ROADMAP.md`
