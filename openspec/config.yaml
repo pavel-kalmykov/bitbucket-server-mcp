@@ -1,0 +1,26 @@
+schema: spec-driven
+
+context: |
+  Tech stack: TypeScript (ES2022, bundler module), Node >=22.14,
+  vitest for tests, testcontainers for E2E, ky for HTTP,
+  @modelcontextprotocol/sdk for the MCP layer, zod for validation.
+
+  The project is an MCP server that wraps the Bitbucket Server/DC
+  REST API. Architecture: entry.ts -> server.ts -> tools/*.ts ->
+  http/client.ts + response/* + http/errors.ts. Each tool module
+  exports a register*Tools(ctx: ToolContext) function. Shared input
+  schemas live in tools/params.ts. Response curation lives in
+  response/curate.ts (curateList/curateResponse + DEFAULT_*_FIELDS).
+  Errors map through http/errors.ts (handleToolError).
+
+  Conventions: Conventional Commits (Angular), one idea per commit,
+  subject lowercase. Every tool has an E2E test and is registered
+  in mcp-harness.ts. Read tools curate; mutating tools annotate.
+  AGENTS.md and CONTRIBUTING.md have the full rules.
+
+rules:
+  proposal:
+    - Keep proposals under 500 words
+    - Always include a "Non-goals" section
+  tasks:
+    - Break tasks into chunks of max 2 hours
