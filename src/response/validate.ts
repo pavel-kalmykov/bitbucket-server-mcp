@@ -10,7 +10,14 @@ const paginatedSchema = z.object({
   nextPageStart: z.number().optional(),
 });
 
-export type Paginated = z.infer<typeof paginatedSchema>;
+export type Paginated<T = Record<string, unknown>> = {
+  values: T[];
+  isLastPage: boolean;
+  size?: number;
+  limit?: number;
+  start?: number;
+  nextPageStart?: number;
+};
 
 export function validatePaginated(data: unknown, context: string): Paginated {
   const result = paginatedSchema.safeParse(data);
