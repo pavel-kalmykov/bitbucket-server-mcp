@@ -1,7 +1,6 @@
 import { z } from "zod";
 import { formatResponse } from "../response/format.js";
 import { toolAnnotations } from "../response/annotations.js";
-import { handleToolError } from "../http/errors.js";
 import type { ToolContext } from "./shared.js";
 import { projectParam, repositoryParam } from "./params.js";
 
@@ -20,48 +19,44 @@ export function registerMergeCheckTools(ctx: ToolContext) {
       annotations: toolAnnotations(),
     },
     async ({ project, repository }) => {
-      try {
-        const resolvedProject = ctx.resolveProject(project);
-        const hooks = await clients.api
-          .get(`projects/${resolvedProject}/repos/${repository}/settings/hooks`)
-          .json<{
-            values: Array<{
-              key: string;
-              enabled: boolean;
-              details?: {
-                name?: string;
-                description?: string;
-                type?: string;
-              };
-            }>;
-          }>();
-
-        const mergeCheckHooks = hooks.values.filter(
-          (h) => h.details?.type === "PRE_PULL_REQUEST_MERGE",
-        );
-
-        const checks = await Promise.all(
-          mergeCheckHooks.map(async (hook) => {
-            const settings = await clients.api
-              .get(
-                `projects/${resolvedProject}/repos/${repository}/settings/hooks/${hook.key}/settings`,
-              )
-              .json<Record<string, unknown>>()
-              .catch(() => ({}));
-            return {
-              key: hook.key,
-              name: hook.details?.name,
-              description: hook.details?.description,
-              enabled: hook.enabled,
-              settings,
+      const resolvedProject = ctx.resolveProject(project);
+      const hooks = await clients.api
+        .get(`projects/${resolvedProject}/repos/${repository}/settings/hooks`)
+        .json<{
+          values: Array<{
+            key: string;
+            enabled: boolean;
+            details?: {
+              name?: string;
+              description?: string;
+              type?: string;
             };
-          }),
-        );
+          }>;
+        }>();
 
-        return formatResponse(checks);
-      } catch (error) {
-        return handleToolError(error);
-      }
+      const mergeCheckHooks = hooks.values.filter(
+        (h) => h.details?.type === "PRE_PULL_REQUEST_MERGE",
+      );
+
+      const checks = await Promise.all(
+        mergeCheckHooks.map(async (hook) => {
+          const settings = await clients.api
+            .get(
+              `projects/${resolvedProject}/repos/${repository}/settings/hooks/${hook.key}/settings`,
+            )
+            .json<Record<string, unknown>>()
+            .catch(() => ({}));
+          return {
+            key: hook.key,
+            name: hook.details?.name,
+            description: hook.details?.description,
+            enabled: hook.enabled,
+            settings,
+          };
+        }),
+      );
+
+      return formatResponse(checks);
     },
   );
 
@@ -83,19 +78,15 @@ export function registerMergeCheckTools(ctx: ToolContext) {
       }),
     },
     async ({ project, repository, hookKey, settings }) => {
-      try {
-        const resolvedProject = ctx.resolveProject(project);
-        const data = await clients.api
-          .put(
-            `projects/${resolvedProject}/repos/${repository}/settings/hooks/${hookKey}/settings`,
-            { json: settings },
-          )
-          .json();
+      const resolvedProject = ctx.resolveProject(project);
+      const data = await clients.api
+        .put(
+          `projects/${resolvedProject}/repos/${repository}/settings/hooks/${hookKey}/settings`,
+          { json: settings },
+        )
+        .json();
 
-        return formatResponse(data);
-      } catch (error) {
-        return handleToolError(error);
-      }
+      return formatResponse(data);
     },
   );
 }

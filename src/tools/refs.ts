@@ -1,7 +1,6 @@
 import { z } from "zod";
 import { formatResponse, type ToolSuccessResult } from "../response/format.js";
 import { toolAnnotations } from "../response/annotations.js";
-import { handleToolError } from "../http/errors.js";
 import {
   curateList,
   curateResponse,
@@ -85,32 +84,28 @@ export function registerBranchTools(ctx: ToolContext) {
       annotations: toolAnnotations(),
     },
     async ({ project, repository, limit = 25, start = 0 }) => {
-      try {
-        const resolvedProject = ctx.resolveProject(project);
-        const data = await getPaginated(
-          clients.branchUtils,
-          `projects/${resolvedProject}/repos/${repository}/restrictions`,
-          { searchParams: { limit, start } },
-        ).catch((e) => {
-          if (
-            e &&
-            typeof e === "object" &&
-            "response" in e &&
-            (e as { response?: { status?: number } }).response?.status === 404
-          ) {
-            return { values: [], size: 0, isLastPage: true } as const;
-          }
-          throw e;
-        });
+      const resolvedProject = ctx.resolveProject(project);
+      const data = await getPaginated(
+        clients.branchUtils,
+        `projects/${resolvedProject}/repos/${repository}/restrictions`,
+        { searchParams: { limit, start } },
+      ).catch((e) => {
+        if (
+          e &&
+          typeof e === "object" &&
+          "response" in e &&
+          (e as { response?: { status?: number } }).response?.status === 404
+        ) {
+          return { values: [], size: 0, isLastPage: true } as const;
+        }
+        throw e;
+      });
 
-        return formatResponse({
-          total: data.size,
-          restrictions: data.values,
-          isLastPage: data.isLastPage,
-        });
-      } catch (error) {
-        return handleToolError(error);
-      }
+      return formatResponse({
+        total: data.size,
+        restrictions: data.values,
+        isLastPage: data.isLastPage,
+      });
     },
   );
 
@@ -143,38 +138,32 @@ export function registerBranchTools(ctx: ToolContext) {
       start = 0,
       fields,
     }) => {
-      try {
-        const resolvedProject = ctx.resolveProject(project);
-        const searchParams: Record<string, string | number> = { limit, start };
-        if (filterText) searchParams.filterText = filterText;
+      const resolvedProject = ctx.resolveProject(project);
+      const searchParams: Record<string, string | number> = { limit, start };
+      if (filterText) searchParams.filterText = filterText;
 
-        const [branchData, defaultBranch] = await Promise.all([
-          getPaginated(
-            clients.api,
-            `projects/${resolvedProject}/repos/${repository}/branches`,
-            { searchParams },
-          ),
-          clients.api
-            .get(
-              `projects/${resolvedProject}/repos/${repository}/default-branch`,
-            )
-            .json<Record<string, unknown>>()
-            .catch(() => null),
-        ]);
+      const [branchData, defaultBranch] = await Promise.all([
+        getPaginated(
+          clients.api,
+          `projects/${resolvedProject}/repos/${repository}/branches`,
+          { searchParams },
+        ),
+        clients.api
+          .get(`projects/${resolvedProject}/repos/${repository}/default-branch`)
+          .json<Record<string, unknown>>()
+          .catch(() => null),
+      ]);
 
-        const activeFields = fields ?? DEFAULT_BRANCH_FIELDS;
+      const activeFields = fields ?? DEFAULT_BRANCH_FIELDS;
 
-        return formatResponse({
-          total: branchData.size,
-          branches: curateList(branchData.values, activeFields),
-          isLastPage: branchData.isLastPage,
-          defaultBranch: defaultBranch
-            ? curateResponse(defaultBranch, activeFields)
-            : null,
-        });
-      } catch (error) {
-        return handleToolError(error);
-      }
+      return formatResponse({
+        total: branchData.size,
+        branches: curateList(branchData.values, activeFields),
+        isLastPage: branchData.isLastPage,
+        defaultBranch: defaultBranch
+          ? curateResponse(defaultBranch, activeFields)
+          : null,
+      });
     },
   );
 
@@ -214,39 +203,35 @@ export function registerBranchTools(ctx: ToolContext) {
       start = 0,
       fields,
     }) => {
-      try {
-        const resolvedProject = ctx.resolveProject(project);
-        const searchParams: Record<string, string | number> = { limit, start };
-        if (branch) searchParams.until = branch;
+      const resolvedProject = ctx.resolveProject(project);
+      const searchParams: Record<string, string | number> = { limit, start };
+      if (branch) searchParams.until = branch;
 
-        const data = await getPaginated(
-          clients.api,
-          `projects/${resolvedProject}/repos/${repository}/commits`,
-          { searchParams },
-        );
+      const data = await getPaginated(
+        clients.api,
+        `projects/${resolvedProject}/repos/${repository}/commits`,
+        { searchParams },
+      );
 
-        let commits = data.values as Commit[];
+      let commits = data.values as Commit[];
 
-        if (author) {
-          const authorLower = author.toLowerCase();
-          commits = commits.filter((commit) => {
-            const a = commit.author;
-            return (
-              a?.name?.toLowerCase().includes(authorLower) ||
-              a?.slug?.toLowerCase().includes(authorLower) ||
-              a?.displayName?.toLowerCase().includes(authorLower)
-            );
-          });
-        }
-
-        return formatResponse({
-          total: author ? commits.length : data.size,
-          commits: curateList(commits, fields ?? DEFAULT_COMMIT_FIELDS),
-          isLastPage: data.isLastPage,
+      if (author) {
+        const authorLower = author.toLowerCase();
+        commits = commits.filter((commit) => {
+          const a = commit.author;
+          return (
+            a?.name?.toLowerCase().includes(authorLower) ||
+            a?.slug?.toLowerCase().includes(authorLower) ||
+            a?.displayName?.toLowerCase().includes(authorLower)
+          );
         });
-      } catch (error) {
-        return handleToolError(error);
       }
+
+      return formatResponse({
+        total: author ? commits.length : data.size,
+        commits: curateList(commits, fields ?? DEFAULT_COMMIT_FIELDS),
+        isLastPage: data.isLastPage,
+      });
     },
   );
 
@@ -272,22 +257,18 @@ export function registerBranchTools(ctx: ToolContext) {
       }),
     },
     async ({ action, project, repository, branch, startPoint }) => {
-      try {
-        const resolvedProject = ctx.resolveProject(project);
-        const handler = branchActions[action];
-        if (!handler) {
-          throw new Error(`Unknown action: ${action}`);
-        }
-        return await handler({
-          clients,
-          resolvedProject,
-          repository,
-          branch,
-          startPoint,
-        });
-      } catch (error) {
-        return handleToolError(error);
+      const resolvedProject = ctx.resolveProject(project);
+      const handler = branchActions[action];
+      if (!handler) {
+        throw new Error(`Unknown action: ${action}`);
       }
+      return await handler({
+        clients,
+        resolvedProject,
+        repository,
+        branch,
+        startPoint,
+      });
     },
   );
 
@@ -305,20 +286,16 @@ export function registerBranchTools(ctx: ToolContext) {
       annotations: toolAnnotations(),
     },
     async ({ project, repository, commitId, fields }) => {
-      try {
-        const resolvedProject = ctx.resolveProject(project);
-        const data = await clients.api
-          .get(
-            `projects/${resolvedProject}/repos/${repository}/commits/${commitId}`,
-          )
-          .json<Record<string, unknown>>();
+      const resolvedProject = ctx.resolveProject(project);
+      const data = await clients.api
+        .get(
+          `projects/${resolvedProject}/repos/${repository}/commits/${commitId}`,
+        )
+        .json<Record<string, unknown>>();
 
-        return formatResponse(
-          curateResponse(data, fields ?? DEFAULT_COMMIT_FIELDS),
-        );
-      } catch (error) {
-        return handleToolError(error);
-      }
+      return formatResponse(
+        curateResponse(data, fields ?? DEFAULT_COMMIT_FIELDS),
+      );
     },
   );
 
@@ -356,29 +333,25 @@ export function registerBranchTools(ctx: ToolContext) {
       start = 0,
       fields,
     }) => {
-      try {
-        const resolvedProject = ctx.resolveProject(project);
-        const searchParams: Record<string, string | number> = {
-          limit,
-          start,
-        };
-        if (from) searchParams.from = from;
-        if (to) searchParams.to = to;
+      const resolvedProject = ctx.resolveProject(project);
+      const searchParams: Record<string, string | number> = {
+        limit,
+        start,
+      };
+      if (from) searchParams.from = from;
+      if (to) searchParams.to = to;
 
-        const data = await getPaginated(
-          clients.api,
-          `projects/${resolvedProject}/repos/${repository}/compare/commits`,
-          { searchParams },
-        );
+      const data = await getPaginated(
+        clients.api,
+        `projects/${resolvedProject}/repos/${repository}/compare/commits`,
+        { searchParams },
+      );
 
-        return formatResponse({
-          total: data.size,
-          commits: curateList(data.values, fields ?? DEFAULT_COMMIT_FIELDS),
-          isLastPage: data.isLastPage,
-        });
-      } catch (error) {
-        return handleToolError(error);
-      }
+      return formatResponse({
+        total: data.size,
+        commits: curateList(data.values, fields ?? DEFAULT_COMMIT_FIELDS),
+        isLastPage: data.isLastPage,
+      });
     },
   );
 
@@ -411,25 +384,21 @@ export function registerBranchTools(ctx: ToolContext) {
       start = 0,
       fields,
     }) => {
-      try {
-        const resolvedProject = ctx.resolveProject(project);
-        const searchParams: Record<string, string | number> = { limit, start };
-        if (filterText) searchParams.filterText = filterText;
+      const resolvedProject = ctx.resolveProject(project);
+      const searchParams: Record<string, string | number> = { limit, start };
+      if (filterText) searchParams.filterText = filterText;
 
-        const data = await getPaginated(
-          clients.api,
-          `projects/${resolvedProject}/repos/${repository}/tags`,
-          { searchParams },
-        );
+      const data = await getPaginated(
+        clients.api,
+        `projects/${resolvedProject}/repos/${repository}/tags`,
+        { searchParams },
+      );
 
-        return formatResponse({
-          total: data.size,
-          tags: curateList(data.values, fields ?? DEFAULT_TAG_FIELDS),
-          isLastPage: data.isLastPage,
-        });
-      } catch (error) {
-        return handleToolError(error);
-      }
+      return formatResponse({
+        total: data.size,
+        tags: curateList(data.values, fields ?? DEFAULT_TAG_FIELDS),
+        isLastPage: data.isLastPage,
+      });
     },
   );
 
@@ -487,18 +456,12 @@ export function registerBranchTools(ctx: ToolContext) {
       annotations: toolAnnotations(),
     },
     async ({ project, repository, name, fields }) => {
-      try {
-        const resolvedProject = ctx.resolveProject(project);
-        const data = await clients.api
-          .get(`projects/${resolvedProject}/repos/${repository}/tags/${name}`)
-          .json<Record<string, unknown>>();
+      const resolvedProject = ctx.resolveProject(project);
+      const data = await clients.api
+        .get(`projects/${resolvedProject}/repos/${repository}/tags/${name}`)
+        .json<Record<string, unknown>>();
 
-        return formatResponse(
-          curateResponse(data, fields ?? DEFAULT_TAG_FIELDS),
-        );
-      } catch (error) {
-        return handleToolError(error);
-      }
+      return formatResponse(curateResponse(data, fields ?? DEFAULT_TAG_FIELDS));
     },
   );
 
@@ -528,23 +491,19 @@ export function registerBranchTools(ctx: ToolContext) {
       }),
     },
     async ({ action, project, repository, name, startPoint, message }) => {
-      try {
-        const resolvedProject = ctx.resolveProject(project);
-        const handler = tagActions[action];
-        if (!handler) {
-          throw new Error(`Unknown action: ${action}`);
-        }
-        return await handler({
-          clients,
-          resolvedProject,
-          repository,
-          name,
-          startPoint,
-          message,
-        });
-      } catch (error) {
-        return handleToolError(error);
+      const resolvedProject = ctx.resolveProject(project);
+      const handler = tagActions[action];
+      if (!handler) {
+        throw new Error(`Unknown action: ${action}`);
       }
+      return await handler({
+        clients,
+        resolvedProject,
+        repository,
+        name,
+        startPoint,
+        message,
+      });
     },
   );
 }

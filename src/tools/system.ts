@@ -1,6 +1,5 @@
 import { formatResponse } from "../response/format.js";
 import { toolAnnotations } from "../response/annotations.js";
-import { handleToolError } from "../http/errors.js";
 import type { ToolContext } from "./shared.js";
 
 export function registerSystemTools(ctx: ToolContext) {
@@ -15,12 +14,8 @@ export function registerSystemTools(ctx: ToolContext) {
       annotations: toolAnnotations(),
     },
     async () => {
-      try {
-        const data = await clients.api.get("application-properties").json();
-        return formatResponse(data);
-      } catch (error) {
-        return handleToolError(error);
-      }
+      const data = await clients.api.get("application-properties").json();
+      return formatResponse(data);
     },
   );
 }

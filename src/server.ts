@@ -1,5 +1,6 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { parseConfig } from "./config.js";
+import { handleToolError } from "./http/errors.js";
 import { createApiClients } from "./http/client.js";
 import { ApiCache } from "./http/cache.js";
 import { runStartupHealthcheck } from "./http/healthcheck.js";
@@ -94,6 +95,16 @@ export function createServer(options?: BitbucketServerOptions) {
             ?.annotations as { readOnlyHint?: boolean } | undefined;
           if (config.readOnly && annotations?.readOnlyHint === false) {
             return;
+          }
+          if (args.length > 2 && typeof args[2] === "function") {
+            const original = args[2] as (...a: unknown[]) => Promise<unknown>;
+            args[2] = async (...handlerArgs: unknown[]) => {
+              try {
+                return await original(...handlerArgs);
+              } catch (error) {
+                return handleToolError(error);
+              }
+            };
           }
           const method = Reflect.get(target, prop, receiver) as (
             ...a: unknown[]

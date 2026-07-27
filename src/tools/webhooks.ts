@@ -1,7 +1,6 @@
 import { z } from "zod";
 import { formatResponse, type ToolSuccessResult } from "../response/format.js";
 import { toolAnnotations } from "../response/annotations.js";
-import { handleToolError } from "../http/errors.js";
 import { getPaginated } from "../http/client.js";
 import type { ToolContext } from "./shared.js";
 import type { ApiClients } from "../http/client.js";
@@ -95,22 +94,18 @@ export function registerWebhookTools(ctx: ToolContext) {
       annotations: toolAnnotations(),
     },
     async ({ project, repository, limit = 25, start = 0, fields }) => {
-      try {
-        const resolvedProject = ctx.resolveProject(project);
-        const data = await getPaginated(
-          clients.api,
-          `projects/${resolvedProject}/repos/${repository}/webhooks`,
-          { searchParams: { limit, start } },
-        );
+      const resolvedProject = ctx.resolveProject(project);
+      const data = await getPaginated(
+        clients.api,
+        `projects/${resolvedProject}/repos/${repository}/webhooks`,
+        { searchParams: { limit, start } },
+      );
 
-        return formatResponse({
-          total: data.size,
-          webhooks: curateList(data.values, fields ?? DEFAULT_WEBHOOK_FIELDS),
-          isLastPage: data.isLastPage,
-        });
-      } catch (error) {
-        return handleToolError(error);
-      }
+      return formatResponse({
+        total: data.size,
+        webhooks: curateList(data.values, fields ?? DEFAULT_WEBHOOK_FIELDS),
+        isLastPage: data.isLastPage,
+      });
     },
   );
 
@@ -163,22 +158,18 @@ export function registerWebhookTools(ctx: ToolContext) {
       events,
       active,
     }) => {
-      try {
-        const resolvedProject = ctx.resolveProject(project);
-        const handler = webhookActions[action];
-        return await handler({
-          clients,
-          resolvedProject,
-          repository,
-          webhookId,
-          name,
-          url,
-          events,
-          active,
-        });
-      } catch (error) {
-        return handleToolError(error);
-      }
+      const resolvedProject = ctx.resolveProject(project);
+      const handler = webhookActions[action];
+      return await handler({
+        clients,
+        resolvedProject,
+        repository,
+        webhookId,
+        name,
+        url,
+        events,
+        active,
+      });
     },
   );
 }

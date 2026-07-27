@@ -1,7 +1,6 @@
 import { z } from "zod";
 import { formatResponse, type ToolSuccessResult } from "../response/format.js";
 import { toolAnnotations } from "../response/annotations.js";
-import { handleToolError } from "../http/errors.js";
 import type { ToolContext } from "./shared.js";
 import type { ApiClients } from "../http/client.js";
 import type { Deployment } from "../generated/types.js";
@@ -235,14 +234,10 @@ export function registerDeploymentTools(ctx: ToolContext) {
       }),
     },
     async ({ action, project, repository, commitId, ...rest }) => {
-      try {
-        const resolvedProject = ctx.resolveProject(project);
-        const basePath = deploymentPath(resolvedProject, repository, commitId);
-        const handler = deploymentActions[action];
-        return handler({ clients, basePath, ...rest });
-      } catch (error) {
-        return handleToolError(error);
-      }
+      const resolvedProject = ctx.resolveProject(project);
+      const basePath = deploymentPath(resolvedProject, repository, commitId);
+      const handler = deploymentActions[action];
+      return handler({ clients, basePath, ...rest });
     },
   );
 }
