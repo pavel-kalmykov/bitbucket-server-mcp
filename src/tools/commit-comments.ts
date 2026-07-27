@@ -1,7 +1,6 @@
 import { z } from "zod";
 import { formatResponse, type ToolSuccessResult } from "../response/format.js";
 import { toolAnnotations } from "../response/annotations.js";
-import { handleToolError } from "../http/errors.js";
 import { getPaginated } from "../http/client.js";
 import type { ToolContext } from "./shared.js";
 import type { ApiClients } from "../http/client.js";
@@ -100,22 +99,18 @@ export function registerCommitCommentTools(ctx: ToolContext) {
       start = 0,
       fields,
     }) => {
-      try {
-        const resolvedProject = ctx.resolveProject(project);
-        const data = await getPaginated(
-          clients.api,
-          `projects/${resolvedProject}/repos/${repository}/commits/${commitId}/comments`,
-          { searchParams: { limit, start } },
-        );
+      const resolvedProject = ctx.resolveProject(project);
+      const data = await getPaginated(
+        clients.api,
+        `projects/${resolvedProject}/repos/${repository}/commits/${commitId}/comments`,
+        { searchParams: { limit, start } },
+      );
 
-        return formatResponse({
-          total: data.size,
-          comments: curateList(data.values, fields ?? DEFAULT_COMMENT_FIELDS),
-          isLastPage: data.isLastPage,
-        });
-      } catch (error) {
-        return handleToolError(error);
-      }
+      return formatResponse({
+        total: data.size,
+        comments: curateList(data.values, fields ?? DEFAULT_COMMENT_FIELDS),
+        isLastPage: data.isLastPage,
+      });
     },
   );
 
@@ -160,21 +155,17 @@ export function registerCommitCommentTools(ctx: ToolContext) {
       commentId,
       version,
     }) => {
-      try {
-        const resolvedProject = ctx.resolveProject(project);
-        const handler = commitCommentActions[action];
-        return await handler({
-          clients,
-          resolvedProject,
-          repository,
-          commitId,
-          text,
-          commentId,
-          version,
-        });
-      } catch (error) {
-        return handleToolError(error);
-      }
+      const resolvedProject = ctx.resolveProject(project);
+      const handler = commitCommentActions[action];
+      return await handler({
+        clients,
+        resolvedProject,
+        repository,
+        commitId,
+        text,
+        commentId,
+        version,
+      });
     },
   );
 }

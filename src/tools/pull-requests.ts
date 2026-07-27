@@ -1,7 +1,6 @@
 import { z } from "zod";
 import { formatResponse, type ToolSuccessResult } from "../response/format.js";
 import { toolAnnotations } from "../response/annotations.js";
-import { handleToolError } from "../http/errors.js";
 import { truncateDiff } from "../diff.js";
 import {
   curateResponse,
@@ -126,61 +125,56 @@ export function registerPullRequestTools(ctx: ToolContext) {
       includeDefaultReviewers,
       draft,
     }) => {
-      try {
-        const resolvedProject = ctx.resolveProject(project);
-        const srcProject = sourceProject || resolvedProject;
-        const srcRepo = sourceRepository || repository;
+      const resolvedProject = ctx.resolveProject(project);
+      const srcProject = sourceProject || resolvedProject;
+      const srcRepo = sourceRepository || repository;
 
-        const explicitReviewers = (reviewers ?? []).map((name) => ({
-          user: { name },
-        }));
+      const explicitReviewers = (reviewers ?? []).map((name) => ({
+        user: { name },
+      }));
 
-        const allReviewers =
-          includeDefaultReviewers !== false
-            ? await mergeDefaultReviewers({
-                clients,
-                resolvedProject,
-                repository,
-                srcProject,
-                srcRepo,
-                sourceBranch,
-                targetBranch,
-                existingReviewers: explicitReviewers,
-              })
-            : explicitReviewers;
+      const allReviewers =
+        includeDefaultReviewers !== false
+          ? await mergeDefaultReviewers({
+              clients,
+              resolvedProject,
+              repository,
+              srcProject,
+              srcRepo,
+              sourceBranch,
+              targetBranch,
+              existingReviewers: explicitReviewers,
+            })
+          : explicitReviewers;
 
-        const body: CreatePrBody = {
-          title,
-          description,
-          draft,
-          fromRef: {
-            id: `refs/heads/${sourceBranch}`,
-            repository: {
-              slug: srcRepo,
-              project: { key: srcProject },
-            },
+      const body: CreatePrBody = {
+        title,
+        description,
+        draft,
+        fromRef: {
+          id: `refs/heads/${sourceBranch}`,
+          repository: {
+            slug: srcRepo,
+            project: { key: srcProject },
           },
-          toRef: {
-            id: `refs/heads/${targetBranch}`,
-            repository: {
-              slug: repository,
-              project: { key: resolvedProject },
-            },
+        },
+        toRef: {
+          id: `refs/heads/${targetBranch}`,
+          repository: {
+            slug: repository,
+            project: { key: resolvedProject },
           },
-          reviewers: allReviewers,
-        };
+        },
+        reviewers: allReviewers,
+      };
 
-        const data = await clients.api
-          .post(
-            `projects/${resolvedProject}/repos/${repository}/pull-requests`,
-            { json: body },
-          )
-          .json<Record<string, unknown>>();
+      const data = await clients.api
+        .post(`projects/${resolvedProject}/repos/${repository}/pull-requests`, {
+          json: body,
+        })
+        .json<Record<string, unknown>>();
 
-        return formatResponse(curateResponse(data, DEFAULT_PR_FIELDS));
-      } catch (error) {
-        return handleToolError(error);
-      }
+      return formatResponse(curateResponse(data, DEFAULT_PR_FIELDS));
     },
   );
 
@@ -217,36 +211,32 @@ export function registerPullRequestTools(ctx: ToolContext) {
       includeMergeVetoes,
       includeBuildSummaries,
     }) => {
-      try {
-        const resolvedProject = ctx.resolveProject(project);
-        const basePath = `projects/${resolvedProject}/repos/${repository}/pull-requests/${prId}`;
+      const resolvedProject = ctx.resolveProject(project);
+      const basePath = `projects/${resolvedProject}/repos/${repository}/pull-requests/${prId}`;
 
-        const [prData, mergeCheck, buildSummaries] = await Promise.all([
-          clients.api.get(basePath).json<PullRequest>(),
-          includeMergeVetoes
-            ? clients.api
-                .get(`${basePath}/merge`)
-                .json<Record<string, unknown>>()
-                .catch(() => null)
-            : null,
-          includeBuildSummaries
-            ? clients.ui
-                .get(`${basePath}/build-summaries`)
-                .json<Record<string, unknown>>()
-                .catch(() => null)
-            : null,
-        ]);
+      const [prData, mergeCheck, buildSummaries] = await Promise.all([
+        clients.api.get(basePath).json<PullRequest>(),
+        includeMergeVetoes
+          ? clients.api
+              .get(`${basePath}/merge`)
+              .json<Record<string, unknown>>()
+              .catch(() => null)
+          : null,
+        includeBuildSummaries
+          ? clients.ui
+              .get(`${basePath}/build-summaries`)
+              .json<Record<string, unknown>>()
+              .catch(() => null)
+          : null,
+      ]);
 
-        const curated = curateResponse(prData, fields ?? DEFAULT_PR_FIELDS);
-        const result: Record<string, unknown> = { ...curated };
+      const curated = curateResponse(prData, fields ?? DEFAULT_PR_FIELDS);
+      const result: Record<string, unknown> = { ...curated };
 
-        if (mergeCheck) result.mergeCheck = mergeCheck;
-        if (buildSummaries) result.buildSummaries = buildSummaries;
+      if (mergeCheck) result.mergeCheck = mergeCheck;
+      if (buildSummaries) result.buildSummaries = buildSummaries;
 
-        return formatResponse(result);
-      } catch (error) {
-        return handleToolError(error);
-      }
+      return formatResponse(result);
     },
   );
 
@@ -278,46 +268,42 @@ export function registerPullRequestTools(ctx: ToolContext) {
       targetBranch,
       reviewers,
     }) => {
-      try {
-        const resolvedProject = ctx.resolveProject(project);
+      const resolvedProject = ctx.resolveProject(project);
 
-        // Fetch current PR state
-        const current = await clients.api
-          .get(
-            `projects/${resolvedProject}/repos/${repository}/pull-requests/${prId}`,
-          )
-          .json<PullRequest>();
+      // Fetch current PR state
+      const current = await clients.api
+        .get(
+          `projects/${resolvedProject}/repos/${repository}/pull-requests/${prId}`,
+        )
+        .json<PullRequest>();
 
-        // Only send the fields the PUT endpoint accepts. Spreading the full
-        // PR object causes a 400 because the API rejects fields like `author`.
-        const updated: Record<string, unknown> = {
-          id: current.id,
-          version: current.version,
-          title: title ?? current.title,
-          description: description ?? current.description,
-          toRef: targetBranch
-            ? {
-                id: `refs/heads/${targetBranch}`,
-                displayId: current.toRef.displayId,
-                repository: current.toRef.repository,
-              }
-            : current.toRef,
-          reviewers: reviewers
-            ? reviewers.map((name) => ({ user: { name } }))
-            : current.reviewers,
-        };
+      // Only send the fields the PUT endpoint accepts. Spreading the full
+      // PR object causes a 400 because the API rejects fields like `author`.
+      const updated: Record<string, unknown> = {
+        id: current.id,
+        version: current.version,
+        title: title ?? current.title,
+        description: description ?? current.description,
+        toRef: targetBranch
+          ? {
+              id: `refs/heads/${targetBranch}`,
+              displayId: current.toRef.displayId,
+              repository: current.toRef.repository,
+            }
+          : current.toRef,
+        reviewers: reviewers
+          ? reviewers.map((name) => ({ user: { name } }))
+          : current.reviewers,
+      };
 
-        const data = await clients.api
-          .put(
-            `projects/${resolvedProject}/repos/${repository}/pull-requests/${prId}`,
-            { json: updated },
-          )
-          .json<Record<string, unknown>>();
+      const data = await clients.api
+        .put(
+          `projects/${resolvedProject}/repos/${repository}/pull-requests/${prId}`,
+          { json: updated },
+        )
+        .json<Record<string, unknown>>();
 
-        return formatResponse(curateResponse(data, DEFAULT_PR_FIELDS));
-      } catch (error) {
-        return handleToolError(error);
-      }
+      return formatResponse(curateResponse(data, DEFAULT_PR_FIELDS));
     },
   );
 
@@ -353,33 +339,29 @@ export function registerPullRequestTools(ctx: ToolContext) {
       }),
     },
     async ({ project, repository, prId, message, strategy }) => {
-      try {
-        const resolvedProject = ctx.resolveProject(project);
+      const resolvedProject = ctx.resolveProject(project);
 
-        // Fetch current version for optimistic locking
-        const pr = await clients.api
-          .get(
-            `projects/${resolvedProject}/repos/${repository}/pull-requests/${prId}`,
-          )
-          .json<PullRequest>();
+      // Fetch current version for optimistic locking
+      const pr = await clients.api
+        .get(
+          `projects/${resolvedProject}/repos/${repository}/pull-requests/${prId}`,
+        )
+        .json<PullRequest>();
 
-        const body: PullRequestMergeRequest = { version: pr.version };
-        if (message) body.message = message;
+      const body: PullRequestMergeRequest = { version: pr.version };
+      if (message) body.message = message;
 
-        const searchParams: Record<string, string> = {};
-        if (strategy) searchParams.strategyId = strategy;
+      const searchParams: Record<string, string> = {};
+      if (strategy) searchParams.strategyId = strategy;
 
-        const data = await clients.api
-          .post(
-            `projects/${resolvedProject}/repos/${repository}/pull-requests/${prId}/merge`,
-            { json: body, searchParams },
-          )
-          .json<Record<string, unknown>>();
+      const data = await clients.api
+        .post(
+          `projects/${resolvedProject}/repos/${repository}/pull-requests/${prId}/merge`,
+          { json: body, searchParams },
+        )
+        .json<Record<string, unknown>>();
 
-        return formatResponse(curateResponse(data, DEFAULT_PR_FIELDS));
-      } catch (error) {
-        return handleToolError(error);
-      }
+      return formatResponse(curateResponse(data, DEFAULT_PR_FIELDS));
     },
   );
 
@@ -401,32 +383,28 @@ export function registerPullRequestTools(ctx: ToolContext) {
       }),
     },
     async ({ project, repository, prId, message }) => {
-      try {
-        const resolvedProject = ctx.resolveProject(project);
+      const resolvedProject = ctx.resolveProject(project);
 
-        // Fetch current version for optimistic locking
-        const pr = await clients.api
-          .get(
-            `projects/${resolvedProject}/repos/${repository}/pull-requests/${prId}`,
-          )
-          .json<PullRequest>();
+      // Fetch current version for optimistic locking
+      const pr = await clients.api
+        .get(
+          `projects/${resolvedProject}/repos/${repository}/pull-requests/${prId}`,
+        )
+        .json<PullRequest>();
 
-        const body: PullRequestDeclineRequest = {
-          version: pr.version,
-          ...(message && { comment: message }),
-        };
+      const body: PullRequestDeclineRequest = {
+        version: pr.version,
+        ...(message && { comment: message }),
+      };
 
-        const data = await clients.api
-          .post(
-            `projects/${resolvedProject}/repos/${repository}/pull-requests/${prId}/decline`,
-            { json: body },
-          )
-          .json<Record<string, unknown>>();
+      const data = await clients.api
+        .post(
+          `projects/${resolvedProject}/repos/${repository}/pull-requests/${prId}/decline`,
+          { json: body },
+        )
+        .json<Record<string, unknown>>();
 
-        return formatResponse(curateResponse(data, DEFAULT_PR_FIELDS));
-      } catch (error) {
-        return handleToolError(error);
-      }
+      return formatResponse(curateResponse(data, DEFAULT_PR_FIELDS));
     },
   );
 
@@ -470,44 +448,40 @@ export function registerPullRequestTools(ctx: ToolContext) {
       start = 0,
       fields,
     }) => {
-      try {
-        const resolvedProject = ctx.resolveProject(project);
-        const searchParams: Record<string, string | number | boolean> = {
-          limit,
-          start,
-        };
-        if (state) searchParams.state = state;
-        if (direction) searchParams.direction = direction;
-        if (order) searchParams.order = order;
+      const resolvedProject = ctx.resolveProject(project);
+      const searchParams: Record<string, string | number | boolean> = {
+        limit,
+        start,
+      };
+      if (state) searchParams.state = state;
+      if (direction) searchParams.direction = direction;
+      if (order) searchParams.order = order;
 
-        const data = await getPaginated(
-          clients.api,
-          `projects/${resolvedProject}/repos/${repository}/pull-requests`,
-          { searchParams },
-        );
+      const data = await getPaginated(
+        clients.api,
+        `projects/${resolvedProject}/repos/${repository}/pull-requests`,
+        { searchParams },
+      );
 
-        let pullRequests = data.values as PullRequest[];
+      let pullRequests = data.values as PullRequest[];
 
-        if (author) {
-          const authorLower = author.toLowerCase();
-          pullRequests = pullRequests.filter((pr) => {
-            const u = pr.author?.user;
-            return (
-              u?.name?.toLowerCase() === authorLower ||
-              u?.slug?.toLowerCase() === authorLower ||
-              u?.displayName?.toLowerCase().includes(authorLower)
-            );
-          });
-        }
-
-        return formatResponse({
-          total: author ? pullRequests.length : data.size,
-          pullRequests: curateList(pullRequests, fields ?? DEFAULT_PR_FIELDS),
-          isLastPage: data.isLastPage,
+      if (author) {
+        const authorLower = author.toLowerCase();
+        pullRequests = pullRequests.filter((pr) => {
+          const u = pr.author?.user;
+          return (
+            u?.name?.toLowerCase() === authorLower ||
+            u?.slug?.toLowerCase() === authorLower ||
+            u?.displayName?.toLowerCase().includes(authorLower)
+          );
         });
-      } catch (error) {
-        return handleToolError(error);
       }
+
+      return formatResponse({
+        total: author ? pullRequests.length : data.size,
+        pullRequests: curateList(pullRequests, fields ?? DEFAULT_PR_FIELDS),
+        isLastPage: data.isLastPage,
+      });
     },
   );
 
@@ -550,30 +524,21 @@ export function registerPullRequestTools(ctx: ToolContext) {
       start = 0,
       fields,
     }) => {
-      try {
-        const searchParams: Record<string, string | number> = { limit, start };
-        if (state) searchParams.state = state;
-        if (role) searchParams.role = role;
-        if (participantStatus)
-          searchParams.participantStatus = participantStatus;
-        if (order) searchParams.order = order;
-        if (closedSince) searchParams.closedSince = closedSince;
+      const searchParams: Record<string, string | number> = { limit, start };
+      if (state) searchParams.state = state;
+      if (role) searchParams.role = role;
+      if (participantStatus) searchParams.participantStatus = participantStatus;
+      if (order) searchParams.order = order;
+      if (closedSince) searchParams.closedSince = closedSince;
 
-        const data = await getPaginated(
-          clients.api,
-          "dashboard/pull-requests",
-          {
-            searchParams,
-          },
-        );
+      const data = await getPaginated(clients.api, "dashboard/pull-requests", {
+        searchParams,
+      });
 
-        return formatResponse({
-          ...data,
-          values: curateList(data.values, fields ?? DEFAULT_PR_FIELDS),
-        });
-      } catch (error) {
-        return handleToolError(error);
-      }
+      return formatResponse({
+        ...data,
+        values: curateList(data.values, fields ?? DEFAULT_PR_FIELDS),
+      });
     },
   );
 
@@ -612,40 +577,36 @@ export function registerPullRequestTools(ctx: ToolContext) {
       start = 0,
       fields,
     }) => {
-      try {
-        const resolvedProject = ctx.resolveProject(project);
-        const data = await getPaginated(
-          clients.api,
-          `projects/${resolvedProject}/repos/${repository}/pull-requests/${prId}/activities`,
-          { searchParams: { limit, start } },
-        );
+      const resolvedProject = ctx.resolveProject(project);
+      const data = await getPaginated(
+        clients.api,
+        `projects/${resolvedProject}/repos/${repository}/pull-requests/${prId}/activities`,
+        { searchParams: { limit, start } },
+      );
 
-        let activities = data.values as Activity[];
+      let activities = data.values as Activity[];
 
-        if (excludeUsers?.length) {
-          const excluded = new Set(excludeUsers.map((u) => u.toLowerCase()));
-          activities = activities.filter((a) => {
-            const user = a.user?.name ?? a.comment?.author?.name ?? "";
-            return !excluded.has(user.toLowerCase());
-          });
-        }
-
-        if (filter === "reviews") {
-          activities = activities.filter(
-            (a) => a.action === "APPROVED" || a.action === "REVIEWED",
-          );
-        } else if (filter === "comments") {
-          activities = activities.filter((a) => a.action === "COMMENTED");
-        }
-
-        return formatResponse({
-          activities: curateList(activities, fields ?? DEFAULT_ACTIVITY_FIELDS),
-          size: data.size,
-          isLastPage: data.isLastPage,
+      if (excludeUsers?.length) {
+        const excluded = new Set(excludeUsers.map((u) => u.toLowerCase()));
+        activities = activities.filter((a) => {
+          const user = a.user?.name ?? a.comment?.author?.name ?? "";
+          return !excluded.has(user.toLowerCase());
         });
-      } catch (error) {
-        return handleToolError(error);
       }
+
+      if (filter === "reviews") {
+        activities = activities.filter(
+          (a) => a.action === "APPROVED" || a.action === "REVIEWED",
+        );
+      } else if (filter === "comments") {
+        activities = activities.filter((a) => a.action === "COMMENTED");
+      }
+
+      return formatResponse({
+        activities: curateList(activities, fields ?? DEFAULT_ACTIVITY_FIELDS),
+        size: data.size,
+        isLastPage: data.isLastPage,
+      });
     },
   );
 
@@ -694,65 +655,61 @@ export function registerPullRequestTools(ctx: ToolContext) {
       contextLines = 10,
       maxLinesPerFile,
     }) => {
-      try {
-        const resolvedProject = ctx.resolveProject(project);
-        const basePath = `projects/${resolvedProject}/repos/${repository}/pull-requests/${prId}`;
+      const resolvedProject = ctx.resolveProject(project);
+      const basePath = `projects/${resolvedProject}/repos/${repository}/pull-requests/${prId}`;
 
-        if (stat) {
-          const changesData = await clients.api
-            .get(`${basePath}/changes`, {
-              searchParams: { limit: 1000 },
-            })
-            .json<{
-              values: Array<{
-                path: { toString: string };
-                type: string;
-                nodeType: string;
-              }>;
-            }>();
+      if (stat) {
+        const changesData = await clients.api
+          .get(`${basePath}/changes`, {
+            searchParams: { limit: 1000 },
+          })
+          .json<{
+            values: Array<{
+              path: { toString: string };
+              type: string;
+              nodeType: string;
+            }>;
+          }>();
 
-          const files = changesData.values.map((c) => ({
-            path: c.path.toString,
-            type: c.type,
-          }));
+        const files = changesData.values.map((c) => ({
+          path: c.path.toString,
+          type: c.type,
+        }));
 
-          let summary: Record<string, number> | undefined;
-          try {
-            summary = await clients.api
-              .get(`${basePath}/diff-stats-summary`)
-              .json<Record<string, number>>();
-          } catch {
-            // diff-stats-summary only available on Bitbucket DC 9.1+
-          }
-
-          return formatResponse({
-            files,
-            totalFiles: files.length,
-            ...(summary && { summary }),
-          });
+        let summary: Record<string, number> | undefined;
+        try {
+          summary = await clients.api
+            .get(`${basePath}/diff-stats-summary`)
+            .json<Record<string, number>>();
+        } catch {
+          // diff-stats-summary only available on Bitbucket DC 9.1+
         }
 
-        const diffUrl = filePath
-          ? `${basePath}/diff/${filePath}`
-          : `${basePath}/diff`;
-        const rawDiff = await clients.api
-          .get(diffUrl, {
-            searchParams: { contextLines, withComments: false },
-            headers: { Accept: "text/plain" },
-          })
-          .text();
-
-        const effectiveMaxLines =
-          maxLinesPerFile !== undefined ? maxLinesPerFile : ctx.maxLinesPerFile;
-
-        const diffContent = effectiveMaxLines
-          ? truncateDiff(rawDiff, effectiveMaxLines)
-          : rawDiff;
-
-        return formatResponse(diffContent);
-      } catch (error) {
-        return handleToolError(error);
+        return formatResponse({
+          files,
+          totalFiles: files.length,
+          ...(summary && { summary }),
+        });
       }
+
+      const diffUrl = filePath
+        ? `${basePath}/diff/${filePath}`
+        : `${basePath}/diff`;
+      const rawDiff = await clients.api
+        .get(diffUrl, {
+          searchParams: { contextLines, withComments: false },
+          headers: { Accept: "text/plain" },
+        })
+        .text();
+
+      const effectiveMaxLines =
+        maxLinesPerFile !== undefined ? maxLinesPerFile : ctx.maxLinesPerFile;
+
+      const diffContent = effectiveMaxLines
+        ? truncateDiff(rawDiff, effectiveMaxLines)
+        : rawDiff;
+
+      return formatResponse(diffContent);
     },
   );
   server.registerTool(
@@ -771,22 +728,18 @@ export function registerPullRequestTools(ctx: ToolContext) {
       annotations: toolAnnotations(),
     },
     async ({ project, repository, prId, limit = 25, start = 0, fields }) => {
-      try {
-        const resolvedProject = ctx.resolveProject(project);
-        const data = await getPaginated(
-          clients.api,
-          `projects/${resolvedProject}/repos/${repository}/pull-requests/${prId}/commits`,
-          { searchParams: { limit, start } },
-        );
+      const resolvedProject = ctx.resolveProject(project);
+      const data = await getPaginated(
+        clients.api,
+        `projects/${resolvedProject}/repos/${repository}/pull-requests/${prId}/commits`,
+        { searchParams: { limit, start } },
+      );
 
-        return formatResponse({
-          total: data.size,
-          commits: curateList(data.values, fields ?? DEFAULT_COMMIT_FIELDS),
-          isLastPage: data.isLastPage,
-        });
-      } catch (error) {
-        return handleToolError(error);
-      }
+      return formatResponse({
+        total: data.size,
+        commits: curateList(data.values, fields ?? DEFAULT_COMMIT_FIELDS),
+        isLastPage: data.isLastPage,
+      });
     },
   );
 
@@ -813,22 +766,18 @@ export function registerPullRequestTools(ctx: ToolContext) {
       start = 0,
       fields,
     }) => {
-      try {
-        const resolvedProject = ctx.resolveProject(project);
-        const data = await getPaginated(
-          clients.api,
-          `projects/${resolvedProject}/repos/${repository}/commits/${commitId}/pull-requests`,
-          { searchParams: { limit, start } },
-        );
+      const resolvedProject = ctx.resolveProject(project);
+      const data = await getPaginated(
+        clients.api,
+        `projects/${resolvedProject}/repos/${repository}/commits/${commitId}/pull-requests`,
+        { searchParams: { limit, start } },
+      );
 
-        return formatResponse({
-          total: data.size,
-          pullRequests: curateList(data.values, fields ?? DEFAULT_PR_FIELDS),
-          isLastPage: data.isLastPage,
-        });
-      } catch (error) {
-        return handleToolError(error);
-      }
+      return formatResponse({
+        total: data.size,
+        pullRequests: curateList(data.values, fields ?? DEFAULT_PR_FIELDS),
+        isLastPage: data.isLastPage,
+      });
     },
   );
 }
@@ -911,20 +860,16 @@ export function registerReviewTools(ctx: ToolContext) {
       commentText,
       participantStatus,
     }) => {
-      try {
-        const resolvedProject = ctx.resolveProject(project);
-        const prPath = `projects/${resolvedProject}/repos/${repository}/pull-requests/${prId}`;
-        const handler = reviewActions[action];
-        return await handler({
-          clients,
-          prPath,
-          prId,
-          commentText,
-          participantStatus,
-        });
-      } catch (error) {
-        return handleToolError(error);
-      }
+      const resolvedProject = ctx.resolveProject(project);
+      const prPath = `projects/${resolvedProject}/repos/${repository}/pull-requests/${prId}`;
+      const handler = reviewActions[action];
+      return await handler({
+        clients,
+        prPath,
+        prId,
+        commentText,
+        participantStatus,
+      });
     },
   );
 }

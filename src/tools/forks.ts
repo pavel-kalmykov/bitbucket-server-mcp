@@ -1,7 +1,6 @@
 import { z } from "zod";
 import { formatResponse, type ToolSuccessResult } from "../response/format.js";
 import { toolAnnotations } from "../response/annotations.js";
-import { handleToolError } from "../http/errors.js";
 import {
   curateList,
   curateResponse,
@@ -69,22 +68,18 @@ export function registerForkTools(ctx: ToolContext) {
       annotations: toolAnnotations(),
     },
     async ({ project, repository, limit = 25, start = 0, fields }) => {
-      try {
-        const resolvedProject = ctx.resolveProject(project);
-        const data = await getPaginated(
-          clients.api,
-          `projects/${resolvedProject}/repos/${repository}/forks`,
-          { searchParams: { limit, start } },
-        );
+      const resolvedProject = ctx.resolveProject(project);
+      const data = await getPaginated(
+        clients.api,
+        `projects/${resolvedProject}/repos/${repository}/forks`,
+        { searchParams: { limit, start } },
+      );
 
-        return formatResponse({
-          total: data.size,
-          forks: curateList(data.values, fields ?? DEFAULT_REPOSITORY_FIELDS),
-          isLastPage: data.isLastPage,
-        });
-      } catch (error) {
-        return handleToolError(error);
-      }
+      return formatResponse({
+        total: data.size,
+        forks: curateList(data.values, fields ?? DEFAULT_REPOSITORY_FIELDS),
+        isLastPage: data.isLastPage,
+      });
     },
   );
 
@@ -120,19 +115,15 @@ export function registerForkTools(ctx: ToolContext) {
       }),
     },
     async ({ project, repository, name, target_project }) => {
-      try {
-        const resolvedProject = ctx.resolveProject(project);
-        const handler = forkActions.fork;
-        return await handler({
-          clients,
-          resolvedProject,
-          repository,
-          name,
-          target_project,
-        });
-      } catch (error) {
-        return handleToolError(error);
-      }
+      const resolvedProject = ctx.resolveProject(project);
+      const handler = forkActions.fork;
+      return await handler({
+        clients,
+        resolvedProject,
+        repository,
+        name,
+        target_project,
+      });
     },
   );
 }

@@ -1,7 +1,6 @@
 import { z } from "zod";
 import { formatResponse, type ToolSuccessResult } from "../response/format.js";
 import { toolAnnotations } from "../response/annotations.js";
-import { handleToolError } from "../http/errors.js";
 import type { ToolContext } from "./shared.js";
 import type { ApiClients } from "../http/client.js";
 import { projectParam, repositoryParam, fieldsParam } from "./params.js";
@@ -68,20 +67,16 @@ export function registerReviewerGroupTools(ctx: ToolContext) {
       annotations: toolAnnotations(),
     },
     async ({ project, repository, fields }) => {
-      try {
-        const resolvedProject = ctx.resolveProject(project);
-        const data = await clients.api
-          .get(
-            `projects/${resolvedProject}/repos/${repository}/settings/reviewer-groups`,
-          )
-          .json<{ values: Record<string, unknown>[] }>();
+      const resolvedProject = ctx.resolveProject(project);
+      const data = await clients.api
+        .get(
+          `projects/${resolvedProject}/repos/${repository}/settings/reviewer-groups`,
+        )
+        .json<{ values: Record<string, unknown>[] }>();
 
-        return formatResponse(
-          curateList(data.values, fields ?? DEFAULT_REVIEWER_GROUP_FIELDS),
-        );
-      } catch (error) {
-        return handleToolError(error);
-      }
+      return formatResponse(
+        curateList(data.values, fields ?? DEFAULT_REVIEWER_GROUP_FIELDS),
+      );
     },
   );
 
@@ -110,20 +105,16 @@ export function registerReviewerGroupTools(ctx: ToolContext) {
       }),
     },
     async ({ action, project, repository, name, description, reviewers }) => {
-      try {
-        const resolvedProject = ctx.resolveProject(project);
-        const handler = reviewerGroupActions[action];
-        return await handler({
-          clients,
-          resolvedProject,
-          repository,
-          name,
-          description,
-          reviewers,
-        });
-      } catch (error) {
-        return handleToolError(error);
-      }
+      const resolvedProject = ctx.resolveProject(project);
+      const handler = reviewerGroupActions[action];
+      return await handler({
+        clients,
+        resolvedProject,
+        repository,
+        name,
+        description,
+        reviewers,
+      });
     },
   );
 }

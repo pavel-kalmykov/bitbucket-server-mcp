@@ -1,7 +1,6 @@
 import { z } from "zod";
 import { formatResponse, type ToolSuccessResult } from "../response/format.js";
 import { toolAnnotations } from "../response/annotations.js";
-import { handleToolError } from "../http/errors.js";
 import type { ToolContext } from "./shared.js";
 import type { ApiClients } from "../http/client.js";
 import { projectParam, repositoryParam } from "./params.js";
@@ -237,19 +236,15 @@ export function registerCommentTools(ctx: ToolContext) {
       }),
     },
     async (params) => {
-      try {
-        const resolvedProject = ctx.resolveProject(params.project);
-        const basePath = `projects/${resolvedProject}/repos/${params.repository}/pull-requests/${params.prId}/comments`;
-        const handler = commentActions[params.action];
-        return await handler({
-          clients,
-          basePath,
-          resolvedProject,
-          ...params,
-        });
-      } catch (error) {
-        return handleToolError(error);
-      }
+      const resolvedProject = ctx.resolveProject(params.project);
+      const basePath = `projects/${resolvedProject}/repos/${params.repository}/pull-requests/${params.prId}/comments`;
+      const handler = commentActions[params.action];
+      return await handler({
+        clients,
+        basePath,
+        resolvedProject,
+        ...params,
+      });
     },
   );
 
@@ -264,14 +259,10 @@ export function registerCommentTools(ctx: ToolContext) {
       annotations: toolAnnotations(),
     },
     async ({ query }) => {
-      try {
-        const data = await clients.emoticons
-          .get("search", { searchParams: { query } })
-          .json<{ values: Array<{ shortcut: string }> }>();
-        return formatResponse(data.values.map((e) => e.shortcut));
-      } catch (error) {
-        return handleToolError(error);
-      }
+      const data = await clients.emoticons
+        .get("search", { searchParams: { query } })
+        .json<{ values: Array<{ shortcut: string }> }>();
+      return formatResponse(data.values.map((e) => e.shortcut));
     },
   );
 }

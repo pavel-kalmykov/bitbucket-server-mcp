@@ -1,7 +1,6 @@
 import { z } from "zod";
 import { formatResponse, type ToolSuccessResult } from "../response/format.js";
 import { toolAnnotations } from "../response/annotations.js";
-import { handleToolError } from "../http/errors.js";
 import type { ToolContext } from "./shared.js";
 import type { ApiClients } from "../http/client.js";
 import { limitParam, startParam } from "./params.js";
@@ -44,22 +43,18 @@ export function registerSshKeyTools(ctx: ToolContext) {
       annotations: toolAnnotations(),
     },
     async ({ userSlug, limit = 25, start = 0 }) => {
-      try {
-        const searchParams: Record<string, string | number> = { limit, start };
-        if (userSlug) searchParams.user = userSlug;
+      const searchParams: Record<string, string | number> = { limit, start };
+      if (userSlug) searchParams.user = userSlug;
 
-        const data = await clients.ssh
-          .get("keys", { searchParams })
-          .json<{ values: unknown[]; size: number; isLastPage: boolean }>();
+      const data = await clients.ssh
+        .get("keys", { searchParams })
+        .json<{ values: unknown[]; size: number; isLastPage: boolean }>();
 
-        return formatResponse({
-          total: data.size,
-          keys: data.values,
-          isLastPage: data.isLastPage,
-        });
-      } catch (error) {
-        return handleToolError(error);
-      }
+      return formatResponse({
+        total: data.size,
+        keys: data.values,
+        isLastPage: data.isLastPage,
+      });
     },
   );
 
@@ -82,12 +77,8 @@ export function registerSshKeyTools(ctx: ToolContext) {
       }),
     },
     async ({ action, text, keyId }) => {
-      try {
-        const handler = sshKeyActions[action];
-        return await handler({ clients, text: text!, keyId });
-      } catch (error) {
-        return handleToolError(error);
-      }
+      const handler = sshKeyActions[action];
+      return await handler({ clients, text: text!, keyId });
     },
   );
 }

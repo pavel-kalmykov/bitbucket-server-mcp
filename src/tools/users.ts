@@ -1,7 +1,6 @@
 import { z } from "zod";
 import { formatResponse } from "../response/format.js";
 import { toolAnnotations } from "../response/annotations.js";
-import { handleToolError } from "../http/errors.js";
 import type { ToolContext } from "./shared.js";
 import { limitParam, startParam, fieldsParam } from "./params.js";
 import {
@@ -25,17 +24,13 @@ export function registerUserTools(ctx: ToolContext) {
       annotations: toolAnnotations(),
     },
     async ({ userSlug, fields }) => {
-      try {
-        const data = await clients.api
-          .get(`users/${userSlug}`)
-          .json<Record<string, unknown>>();
+      const data = await clients.api
+        .get(`users/${userSlug}`)
+        .json<Record<string, unknown>>();
 
-        return formatResponse(
-          curateResponse(data, fields ?? DEFAULT_USER_FIELDS),
-        );
-      } catch (error) {
-        return handleToolError(error);
-      }
+      return formatResponse(
+        curateResponse(data, fields ?? DEFAULT_USER_FIELDS),
+      );
     },
   );
 
@@ -57,25 +52,21 @@ export function registerUserTools(ctx: ToolContext) {
       annotations: toolAnnotations(),
     },
     async ({ filter, limit = 25, start = 0, fields }) => {
-      try {
-        const data = await clients.api
-          .get("users", {
-            searchParams: { filter, limit, start },
-          })
-          .json<{
-            values: Record<string, unknown>[];
-            size: number;
-            isLastPage: boolean;
-          }>();
+      const data = await clients.api
+        .get("users", {
+          searchParams: { filter, limit, start },
+        })
+        .json<{
+          values: Record<string, unknown>[];
+          size: number;
+          isLastPage: boolean;
+        }>();
 
-        return formatResponse({
-          total: data.size,
-          users: curateList(data.values, fields ?? DEFAULT_USER_FIELDS),
-          isLastPage: data.isLastPage,
-        });
-      } catch (error) {
-        return handleToolError(error);
-      }
+      return formatResponse({
+        total: data.size,
+        users: curateList(data.values, fields ?? DEFAULT_USER_FIELDS),
+        isLastPage: data.isLastPage,
+      });
     },
   );
 }

@@ -1,7 +1,6 @@
 import { z } from "zod";
 import { formatResponse, type ToolSuccessResult } from "../response/format.js";
 import { toolAnnotations } from "../response/annotations.js";
-import { handleToolError } from "../http/errors.js";
 import { getPaginated } from "../http/client.js";
 import type { ToolContext } from "./shared.js";
 import type { ApiClients } from "../http/client.js";
@@ -55,22 +54,18 @@ export function registerLabelTools(ctx: ToolContext) {
       annotations: toolAnnotations(),
     },
     async ({ project, repository, limit = 25, start = 0 }) => {
-      try {
-        const resolvedProject = ctx.resolveProject(project);
-        const data = await getPaginated(
-          clients.api,
-          `projects/${resolvedProject}/repos/${repository}/labels`,
-          { searchParams: { limit, start } },
-        );
+      const resolvedProject = ctx.resolveProject(project);
+      const data = await getPaginated(
+        clients.api,
+        `projects/${resolvedProject}/repos/${repository}/labels`,
+        { searchParams: { limit, start } },
+      );
 
-        return formatResponse({
-          total: data.size,
-          labels: data.values,
-          isLastPage: data.isLastPage,
-        });
-      } catch (error) {
-        return handleToolError(error);
-      }
+      return formatResponse({
+        total: data.size,
+        labels: data.values,
+        isLastPage: data.isLastPage,
+      });
     },
   );
 
@@ -91,18 +86,14 @@ export function registerLabelTools(ctx: ToolContext) {
       }),
     },
     async ({ action, project, repository, name }) => {
-      try {
-        const resolvedProject = ctx.resolveProject(project);
-        const handler = labelActions[action];
-        return await handler({
-          clients,
-          resolvedProject,
-          repository,
-          name,
-        });
-      } catch (error) {
-        return handleToolError(error);
-      }
+      const resolvedProject = ctx.resolveProject(project);
+      const handler = labelActions[action];
+      return await handler({
+        clients,
+        resolvedProject,
+        repository,
+        name,
+      });
     },
   );
 }

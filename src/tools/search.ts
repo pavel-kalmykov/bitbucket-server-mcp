@@ -1,7 +1,6 @@
 import { z } from "zod";
 import { formatResponse } from "../response/format.js";
 import { toolAnnotations } from "../response/annotations.js";
-import { handleToolError } from "../http/errors.js";
 import { curateList, DEFAULT_SEARCH_FIELDS } from "../response/curate.js";
 import type { ToolContext } from "./shared.js";
 import { limitParam, startParam, fieldsParam } from "./params.js";
@@ -48,47 +47,43 @@ export function registerSearchTools(ctx: ToolContext) {
       start = 0,
       fields,
     }) => {
-      try {
-        let effectiveQuery = query;
+      let effectiveQuery = query;
 
-        if (repository) {
-          const resolvedProject = ctx.resolveProject(project);
-          effectiveQuery = `repo:${resolvedProject}/${repository} ${effectiveQuery}`;
-        } else if (project) {
-          effectiveQuery = `project:${project} ${effectiveQuery}`;
-        }
-
-        if (type === "file") {
-          effectiveQuery = `"${effectiveQuery}"`;
-        }
-
-        const data = await clients.search
-          .post("search", {
-            json: {
-              query: effectiveQuery,
-              entities: {
-                code: { start, limit },
-              },
-            },
-          })
-          .json<{
-            code: {
-              values: Record<string, unknown>[];
-              isLastPage: boolean;
-              count?: number;
-              nextStart?: number;
-            };
-          }>();
-
-        return formatResponse({
-          values: curateList(data.code.values, fields ?? DEFAULT_SEARCH_FIELDS),
-          isLastPage: data.code.isLastPage,
-          count: data.code.count,
-          nextStart: data.code.nextStart,
-        });
-      } catch (error) {
-        return handleToolError(error);
+      if (repository) {
+        const resolvedProject = ctx.resolveProject(project);
+        effectiveQuery = `repo:${resolvedProject}/${repository} ${effectiveQuery}`;
+      } else if (project) {
+        effectiveQuery = `project:${project} ${effectiveQuery}`;
       }
+
+      if (type === "file") {
+        effectiveQuery = `"${effectiveQuery}"`;
+      }
+
+      const data = await clients.search
+        .post("search", {
+          json: {
+            query: effectiveQuery,
+            entities: {
+              code: { start, limit },
+            },
+          },
+        })
+        .json<{
+          code: {
+            values: Record<string, unknown>[];
+            isLastPage: boolean;
+            count?: number;
+            nextStart?: number;
+          };
+        }>();
+
+      return formatResponse({
+        values: curateList(data.code.values, fields ?? DEFAULT_SEARCH_FIELDS),
+        isLastPage: data.code.isLastPage,
+        count: data.code.count,
+        nextStart: data.code.nextStart,
+      });
     },
   );
 }
