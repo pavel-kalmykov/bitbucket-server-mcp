@@ -6,7 +6,8 @@ import { ApiCache } from "./http/cache.js";
 import { runStartupHealthcheck } from "./http/healthcheck.js";
 import { registerRepositoryTools } from "./tools/repositories.js";
 import { registerForkTools } from "./tools/forks.js";
-import { registerBranchTools } from "./tools/refs.js";
+import { registerBranchTools } from "./tools/branches.js";
+import { registerTagTools } from "./tools/tags.js";
 import { registerPullRequestTools } from "./tools/pull-requests.js";
 import { registerCommentTools } from "./tools/comments.js";
 import { registerReviewTools } from "./tools/pull-requests.js";
@@ -128,6 +129,7 @@ export function createServer(options?: BitbucketServerOptions) {
   registerRepositoryTools(ctx);
   registerForkTools(ctx);
   registerBranchTools(ctx);
+  registerTagTools(ctx);
   registerPullRequestTools(ctx);
   registerCommentTools(ctx);
   registerReviewTools(ctx);

@@ -7,7 +7,8 @@ import { ToolContext } from "../../tools/shared.js";
 import { registerCommentTools } from "../../tools/comments.js";
 import { registerLabelTools } from "../../tools/labels.js";
 import { registerForkTools } from "../../tools/forks.js";
-import { registerBranchTools } from "../../tools/refs.js";
+import { registerBranchTools } from "../../tools/branches.js";
+import { registerTagTools } from "../../tools/tags.js";
 import { registerPullRequestTools } from "../../tools/pull-requests.js";
 import { registerUserTools } from "../../tools/users.js";
 import { registerDefaultReviewerTools } from "../../tools/default-reviewers.js";
@@ -57,6 +58,7 @@ export async function setupMcpAgainst(
   registerLabelTools(ctx);
   registerForkTools(ctx);
   registerBranchTools(ctx);
+  registerTagTools(ctx);
   registerPullRequestTools(ctx);
   registerUserTools(ctx);
   registerDefaultReviewerTools(ctx);

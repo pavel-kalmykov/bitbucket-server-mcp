@@ -1,11 +1,11 @@
 import { describe, test, expect } from "vitest";
-import { registerBranchTools } from "../../tools/refs.js";
+import { registerTagTools } from "../../tools/tags.js";
 import { mockJson, mockVoid, mockReject } from "../test-utils.js";
 import { callAndParse, callRaw, setupToolHarness } from "../tool-test-utils.js";
 
 describe("manage_tags", () => {
   const h = setupToolHarness({
-    register: registerBranchTools,
+    register: registerTagTools,
     defaultProject: "DEFAULT",
   });
 

@@ -3,7 +3,8 @@ import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { InMemoryTransport } from "@modelcontextprotocol/sdk/inMemory.js";
 import { registerRepositoryTools } from "../../tools/repositories.js";
-import { registerBranchTools } from "../../tools/refs.js";
+import { registerBranchTools } from "../../tools/branches.js";
+import { registerTagTools } from "../../tools/tags.js";
 import { registerPullRequestTools } from "../../tools/pull-requests.js";
 import { registerCommentTools } from "../../tools/comments.js";
 import { registerReviewTools } from "../../tools/pull-requests.js";
@@ -35,6 +36,7 @@ describe("Tool annotations", () => {
     });
     registerRepositoryTools(ctx);
     registerBranchTools(ctx);
+    registerTagTools(ctx);
     registerPullRequestTools(ctx);
     registerCommentTools(ctx);
     registerReviewTools(ctx);
