@@ -124,13 +124,13 @@ export function createApiClients(config: BitbucketConfig): ApiClients {
   };
 }
 
-export function getPaginated(
+export function getPaginated<T = Record<string, unknown>>(
   client: KyInstance,
   url: string,
   options?: Options,
-): Promise<Paginated> {
+): Promise<Paginated<T>> {
   return client
     .get(url, options)
     .json()
-    .then((r) => validatePaginated(r, url));
+    .then((r) => validatePaginated(r, url) as Paginated<T>);
 }

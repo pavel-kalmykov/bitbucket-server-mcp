@@ -457,13 +457,13 @@ export function registerPullRequestTools(ctx: ToolContext) {
       if (direction) searchParams.direction = direction;
       if (order) searchParams.order = order;
 
-      const data = await getPaginated(
+      const data = await getPaginated<PullRequest>(
         clients.api,
         `projects/${resolvedProject}/repos/${repository}/pull-requests`,
         { searchParams },
       );
 
-      let pullRequests = data.values as PullRequest[];
+      let pullRequests = data.values;
 
       if (author) {
         const authorLower = author.toLowerCase();
@@ -578,13 +578,13 @@ export function registerPullRequestTools(ctx: ToolContext) {
       fields,
     }) => {
       const resolvedProject = ctx.resolveProject(project);
-      const data = await getPaginated(
+      const data = await getPaginated<Activity>(
         clients.api,
         `projects/${resolvedProject}/repos/${repository}/pull-requests/${prId}/activities`,
         { searchParams: { limit, start } },
       );
 
-      let activities = data.values as Activity[];
+      let activities = data.values;
 
       if (excludeUsers?.length) {
         const excluded = new Set(excludeUsers.map((u) => u.toLowerCase()));

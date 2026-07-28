@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { HTTPError } from "ky";
 import { formatResponse, type ToolSuccessResult } from "../response/format.js";
 import { toolAnnotations } from "../response/annotations.js";
 import {
@@ -89,12 +90,7 @@ export function registerBranchTools(ctx: ToolContext) {
         `projects/${resolvedProject}/repos/${repository}/restrictions`,
         { searchParams: { limit, start } },
       ).catch((e) => {
-        if (
-          e &&
-          typeof e === "object" &&
-          "response" in e &&
-          (e as { response?: { status?: number } }).response?.status === 404
-        ) {
+        if (e instanceof HTTPError && e.response.status === 404) {
           return { values: [], size: 0, isLastPage: true } as const;
         }
         throw e;
@@ -206,13 +202,13 @@ export function registerBranchTools(ctx: ToolContext) {
       const searchParams: Record<string, string | number> = { limit, start };
       if (branch) searchParams.until = branch;
 
-      const data = await getPaginated(
+      const data = await getPaginated<Commit>(
         clients.api,
         `projects/${resolvedProject}/repos/${repository}/commits`,
         { searchParams },
       );
 
-      let commits = data.values as Commit[];
+      let commits = data.values;
 
       if (author) {
         const authorLower = author.toLowerCase();
@@ -257,11 +253,7 @@ export function registerBranchTools(ctx: ToolContext) {
     },
     async ({ action, project, repository, branch, startPoint }) => {
       const resolvedProject = ctx.resolveProject(project);
-      const handler = branchActions[action];
-      if (!handler) {
-        throw new Error(`Unknown action: ${action}`);
-      }
-      return await handler({
+      return await branchActions[action]({
         clients,
         resolvedProject,
         repository,

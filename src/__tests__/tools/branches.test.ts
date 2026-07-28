@@ -1,4 +1,5 @@
 import { describe, test, expect } from "vitest";
+import { HTTPError } from "ky";
 import { registerBranchTools } from "../../tools/branches.js";
 import { mockError, mockJson } from "../test-utils.js";
 import {
@@ -405,8 +406,9 @@ describe("Branch tools", () => {
     });
 
     test("returns empty list when API returns 404", async () => {
-      const error404 = Object.assign(new Error("Not Found"), {
+      const error404 = Object.assign(Object.create(HTTPError.prototype), {
         response: { status: 404 },
+        message: "Not Found",
       });
       mockError(h.mockClients.branchUtils.get, error404);
 
