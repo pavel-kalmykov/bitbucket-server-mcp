@@ -1,6 +1,10 @@
 import { z } from "zod";
 import { HTTPError } from "ky";
-import { formatResponse, type ToolSuccessResult } from "../response/format.js";
+import {
+  formatResponse,
+  buildPaginated,
+  type ToolSuccessResult,
+} from "../response/format.js";
 import { toolAnnotations } from "../response/annotations.js";
 import {
   curateList,
@@ -96,11 +100,11 @@ export function registerBranchTools(ctx: ToolContext) {
         throw e;
       });
 
-      return formatResponse({
-        total: data.size,
-        restrictions: data.values,
-        isLastPage: data.isLastPage,
-      });
+      return formatResponse(
+        buildPaginated(data, {
+          restrictions: data.values,
+        }),
+      );
     },
   );
 
@@ -151,14 +155,14 @@ export function registerBranchTools(ctx: ToolContext) {
 
       const activeFields = fields ?? DEFAULT_BRANCH_FIELDS;
 
-      return formatResponse({
-        total: branchData.size,
-        branches: curateList(branchData.values, activeFields),
-        isLastPage: branchData.isLastPage,
-        defaultBranch: defaultBranch
-          ? curateResponse(defaultBranch, activeFields)
-          : null,
-      });
+      return formatResponse(
+        buildPaginated(branchData, {
+          branches: curateList(branchData.values, activeFields),
+          defaultBranch: defaultBranch
+            ? curateResponse(defaultBranch, activeFields)
+            : null,
+        }),
+      );
     },
   );
 
@@ -222,11 +226,12 @@ export function registerBranchTools(ctx: ToolContext) {
         });
       }
 
-      return formatResponse({
-        total: author ? commits.length : data.size,
-        commits: curateList(commits, fields ?? DEFAULT_COMMIT_FIELDS),
-        isLastPage: data.isLastPage,
-      });
+      return formatResponse(
+        buildPaginated(data, {
+          total: author ? commits.length : data.size,
+          commits: curateList(commits, fields ?? DEFAULT_COMMIT_FIELDS),
+        }),
+      );
     },
   );
 
@@ -338,11 +343,11 @@ export function registerBranchTools(ctx: ToolContext) {
         { searchParams },
       );
 
-      return formatResponse({
-        total: data.size,
-        commits: curateList(data.values, fields ?? DEFAULT_COMMIT_FIELDS),
-        isLastPage: data.isLastPage,
-      });
+      return formatResponse(
+        buildPaginated(data, {
+          commits: curateList(data.values, fields ?? DEFAULT_COMMIT_FIELDS),
+        }),
+      );
     },
   );
 }

@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { formatResponse } from "../response/format.js";
+import { formatResponse, buildPaginated } from "../response/format.js";
 import { toolAnnotations } from "../response/annotations.js";
 import type { ToolContext } from "./shared.js";
 import { limitParam, startParam, fieldsParam } from "./params.js";
@@ -62,11 +62,11 @@ export function registerUserTools(ctx: ToolContext) {
           isLastPage: boolean;
         }>();
 
-      return formatResponse({
-        total: data.size,
-        users: curateList(data.values, fields ?? DEFAULT_USER_FIELDS),
-        isLastPage: data.isLastPage,
-      });
+      return formatResponse(
+        buildPaginated(data, {
+          users: curateList(data.values, fields ?? DEFAULT_USER_FIELDS),
+        }),
+      );
     },
   );
 }

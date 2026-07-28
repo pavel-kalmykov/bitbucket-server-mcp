@@ -1,5 +1,9 @@
 import { z } from "zod";
-import { formatResponse, type ToolSuccessResult } from "../response/format.js";
+import {
+  formatResponse,
+  buildPaginated,
+  type ToolSuccessResult,
+} from "../response/format.js";
 import { toolAnnotations } from "../response/annotations.js";
 import { truncateDiff } from "../diff.js";
 import {
@@ -477,11 +481,12 @@ export function registerPullRequestTools(ctx: ToolContext) {
         });
       }
 
-      return formatResponse({
-        total: author ? pullRequests.length : data.size,
-        pullRequests: curateList(pullRequests, fields ?? DEFAULT_PR_FIELDS),
-        isLastPage: data.isLastPage,
-      });
+      return formatResponse(
+        buildPaginated(data, {
+          total: author ? pullRequests.length : data.size,
+          pullRequests: curateList(pullRequests, fields ?? DEFAULT_PR_FIELDS),
+        }),
+      );
     },
   );
 
@@ -602,11 +607,12 @@ export function registerPullRequestTools(ctx: ToolContext) {
         activities = activities.filter((a) => a.action === "COMMENTED");
       }
 
-      return formatResponse({
-        activities: curateList(activities, fields ?? DEFAULT_ACTIVITY_FIELDS),
-        size: data.size,
-        isLastPage: data.isLastPage,
-      });
+      return formatResponse(
+        buildPaginated(data, {
+          activities: curateList(activities, fields ?? DEFAULT_ACTIVITY_FIELDS),
+          size: data.size,
+        }),
+      );
     },
   );
 
@@ -735,11 +741,11 @@ export function registerPullRequestTools(ctx: ToolContext) {
         { searchParams: { limit, start } },
       );
 
-      return formatResponse({
-        total: data.size,
-        commits: curateList(data.values, fields ?? DEFAULT_COMMIT_FIELDS),
-        isLastPage: data.isLastPage,
-      });
+      return formatResponse(
+        buildPaginated(data, {
+          commits: curateList(data.values, fields ?? DEFAULT_COMMIT_FIELDS),
+        }),
+      );
     },
   );
 
@@ -773,11 +779,11 @@ export function registerPullRequestTools(ctx: ToolContext) {
         { searchParams: { limit, start } },
       );
 
-      return formatResponse({
-        total: data.size,
-        pullRequests: curateList(data.values, fields ?? DEFAULT_PR_FIELDS),
-        isLastPage: data.isLastPage,
-      });
+      return formatResponse(
+        buildPaginated(data, {
+          pullRequests: curateList(data.values, fields ?? DEFAULT_PR_FIELDS),
+        }),
+      );
     },
   );
 }

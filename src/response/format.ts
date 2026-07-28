@@ -20,3 +20,14 @@ export function formatResponse<T>(data: T): ToolSuccessResult {
     content: [{ type: "text", text: JSON.stringify(data) }],
   };
 }
+
+export function buildPaginated(
+  data: { size?: number; isLastPage: boolean },
+  extra: Record<string, unknown>,
+): Record<string, unknown> {
+  return {
+    total: data.size,
+    ...extra,
+    isLastPage: data.isLastPage,
+  };
+}

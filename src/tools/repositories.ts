@@ -1,7 +1,7 @@
 import { readFile } from "node:fs/promises";
 import { basename } from "node:path";
 import { z } from "zod";
-import { formatResponse } from "../response/format.js";
+import { formatResponse, buildPaginated } from "../response/format.js";
 import { toolAnnotations } from "../response/annotations.js";
 import {
   curateList,
@@ -40,11 +40,11 @@ export function registerRepositoryTools(ctx: ToolContext) {
         searchParams: { limit, start },
       });
 
-      return formatResponse({
-        total: data.size,
-        projects: curateList(data.values, fields ?? DEFAULT_PROJECT_FIELDS),
-        isLastPage: data.isLastPage,
-      });
+      return formatResponse(
+        buildPaginated(data, {
+          projects: curateList(data.values, fields ?? DEFAULT_PROJECT_FIELDS),
+        }),
+      );
     },
   );
 
@@ -74,14 +74,14 @@ export function registerRepositoryTools(ctx: ToolContext) {
         { searchParams: { limit, start } },
       );
 
-      return formatResponse({
-        total: data.size,
-        repositories: curateList(
-          data.values,
-          fields ?? DEFAULT_REPOSITORY_FIELDS,
-        ),
-        isLastPage: data.isLastPage,
-      });
+      return formatResponse(
+        buildPaginated(data, {
+          repositories: curateList(
+            data.values,
+            fields ?? DEFAULT_REPOSITORY_FIELDS,
+          ),
+        }),
+      );
     },
   );
 

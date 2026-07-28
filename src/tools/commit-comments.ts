@@ -1,5 +1,9 @@
 import { z } from "zod";
-import { formatResponse, type ToolSuccessResult } from "../response/format.js";
+import {
+  formatResponse,
+  buildPaginated,
+  type ToolSuccessResult,
+} from "../response/format.js";
 import { toolAnnotations } from "../response/annotations.js";
 import { getPaginated } from "../http/client.js";
 import type { ToolContext } from "./shared.js";
@@ -106,11 +110,11 @@ export function registerCommitCommentTools(ctx: ToolContext) {
         { searchParams: { limit, start } },
       );
 
-      return formatResponse({
-        total: data.size,
-        comments: curateList(data.values, fields ?? DEFAULT_COMMENT_FIELDS),
-        isLastPage: data.isLastPage,
-      });
+      return formatResponse(
+        buildPaginated(data, {
+          comments: curateList(data.values, fields ?? DEFAULT_COMMENT_FIELDS),
+        }),
+      );
     },
   );
 
