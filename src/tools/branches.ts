@@ -253,11 +253,7 @@ export function registerBranchTools(ctx: ToolContext) {
     },
     async ({ action, project, repository, branch, startPoint }) => {
       const resolvedProject = ctx.resolveProject(project);
-      const handler = branchActions[action];
-      if (!handler) {
-        throw new Error(`Unknown action: ${action}`);
-      }
-      return await handler({
+      return await branchActions[action]({
         clients,
         resolvedProject,
         repository,
