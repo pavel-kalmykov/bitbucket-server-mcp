@@ -1,12 +1,12 @@
 import { describe, test, expect } from "vitest";
-import { registerBranchTools } from "../../tools/refs.js";
+import { registerBranchTools } from "../../tools/branches.js";
 import { mockJson, mockReject } from "../test-utils.js";
 import {
   callAndParse,
   callRaw,
   expectCalledWith,
   setupToolHarness,
-  } from "../tool-test-utils.js";
+} from "../tool-test-utils.js";
 
 describe("manage_branches", () => {
   const h = setupToolHarness({
