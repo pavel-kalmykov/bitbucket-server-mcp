@@ -156,11 +156,7 @@ export function registerTagTools(ctx: ToolContext) {
     },
     async ({ action, project, repository, name, startPoint, message }) => {
       const resolvedProject = ctx.resolveProject(project);
-      const handler = tagActions[action];
-      if (!handler) {
-        throw new Error(`Unknown action: ${action}`);
-      }
-      return await handler({
+      return await tagActions[action]({
         clients,
         resolvedProject,
         repository,
