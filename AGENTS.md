@@ -16,7 +16,7 @@ Every tool must have:
 1. An E2E test in `src/__tests__/e2e/<feature>.e2e.test.ts` that
    exercises the full MCP round-trip against ephemeral Bitbucket
    containers.
-2. Registration in `src/__tests__/e2e/mcp-harness.ts`.
+2. Registration in `src/tools/index.ts` (`TOOL_REGISTRARS` array).
 3. Curated read responses (via `curateList` / `curateResponse` +
    `DEFAULT_*_FIELDS`) and mutating tools annotated with
    `toolAnnotations()`.
@@ -27,7 +27,7 @@ See `.claude/skills/add-tool` for the end-to-end checklist, and
 # Doc map
 
 - Architecture, quickstart, how to add a tool -> `CONTRIBUTING.md`
-- Tools -> `src/tools/`
+- Tools -> `src/tools/` (registry in `src/tools/index.ts`)
 - Response shaping -> `src/response/`
 - HTTP client -> `src/http/`
 - E2E wiring -> `src/__tests__/e2e/mcp-harness.ts`
