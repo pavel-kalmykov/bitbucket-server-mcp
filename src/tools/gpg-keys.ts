@@ -1,5 +1,9 @@
 import { z } from "zod";
-import { formatResponse, type ToolSuccessResult } from "../response/format.js";
+import {
+  formatResponse,
+  buildPaginated,
+  type ToolSuccessResult,
+} from "../response/format.js";
 import { toolAnnotations } from "../response/annotations.js";
 import type { ToolContext } from "./shared.js";
 import type { ApiClients } from "../http/client.js";
@@ -50,11 +54,11 @@ export function registerGpgKeyTools(ctx: ToolContext) {
         .get("keys", { searchParams })
         .json<{ values: unknown[]; size: number; isLastPage: boolean }>();
 
-      return formatResponse({
-        total: data.size,
-        keys: data.values,
-        isLastPage: data.isLastPage,
-      });
+      return formatResponse(
+        buildPaginated(data, {
+          keys: data.values,
+        }),
+      );
     },
   );
 

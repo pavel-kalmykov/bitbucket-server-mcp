@@ -1,5 +1,9 @@
 import { z } from "zod";
-import { formatResponse, type ToolSuccessResult } from "../response/format.js";
+import {
+  formatResponse,
+  buildPaginated,
+  type ToolSuccessResult,
+} from "../response/format.js";
 import { toolAnnotations } from "../response/annotations.js";
 import { getPaginated } from "../http/client.js";
 import type { ToolContext } from "./shared.js";
@@ -101,11 +105,11 @@ export function registerWebhookTools(ctx: ToolContext) {
         { searchParams: { limit, start } },
       );
 
-      return formatResponse({
-        total: data.size,
-        webhooks: curateList(data.values, fields ?? DEFAULT_WEBHOOK_FIELDS),
-        isLastPage: data.isLastPage,
-      });
+      return formatResponse(
+        buildPaginated(data, {
+          webhooks: curateList(data.values, fields ?? DEFAULT_WEBHOOK_FIELDS),
+        }),
+      );
     },
   );
 

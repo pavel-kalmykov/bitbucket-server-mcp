@@ -1,5 +1,9 @@
 import { z } from "zod";
-import { formatResponse, type ToolSuccessResult } from "../response/format.js";
+import {
+  formatResponse,
+  buildPaginated,
+  type ToolSuccessResult,
+} from "../response/format.js";
 import { toolAnnotations } from "../response/annotations.js";
 import {
   curateList,
@@ -98,11 +102,11 @@ export function registerTagTools(ctx: ToolContext) {
         { searchParams },
       );
 
-      return formatResponse({
-        total: data.size,
-        tags: curateList(data.values, fields ?? DEFAULT_TAG_FIELDS),
-        isLastPage: data.isLastPage,
-      });
+      return formatResponse(
+        buildPaginated(data, {
+          tags: curateList(data.values, fields ?? DEFAULT_TAG_FIELDS),
+        }),
+      );
     },
   );
 
