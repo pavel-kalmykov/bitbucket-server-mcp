@@ -1,6 +1,6 @@
 import { HTTPError } from "ky";
 import type { ApiClients } from "./client.js";
-import { logger } from "../logging.js";
+import { logger } from "../../logging.js";
 import { extractBitbucketMessage } from "./errors.js";
 
 /**

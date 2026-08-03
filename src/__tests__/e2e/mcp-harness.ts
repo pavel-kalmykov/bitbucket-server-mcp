@@ -1,8 +1,8 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { InMemoryTransport } from "@modelcontextprotocol/sdk/inMemory.js";
-import { createApiClients } from "../../http/client.js";
-import { ApiCache } from "../../http/cache.js";
+import { createApiClients } from "../../core/http/client.js";
+import { ApiCache } from "../../core/http/cache.js";
 import { ToolContext } from "../../tools/shared.js";
 import { TOOL_REGISTRARS } from "../../tools/index.js";
 import { logger } from "../../logging.js";

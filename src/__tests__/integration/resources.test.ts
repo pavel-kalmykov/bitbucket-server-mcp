@@ -9,7 +9,7 @@ import {
   mockJson,
   mockError,
 } from "../test-utils.js";
-import { ApiCache } from "../../http/cache.js";
+import { ApiCache } from "../../core/http/cache.js";
 
 describe("Resources", () => {
   let server: McpServer;

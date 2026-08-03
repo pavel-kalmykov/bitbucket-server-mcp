@@ -1,5 +1,5 @@
 import { describe, test, expect, beforeEach, afterEach, vi } from "vitest";
-import { ApiCache } from "../../http/cache.js";
+import { ApiCache } from "../../core/http/cache.js";
 
 describe("ApiCache", () => {
   let cache: ApiCache;

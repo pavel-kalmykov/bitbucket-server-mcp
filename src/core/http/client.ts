@@ -1,7 +1,7 @@
 import ky, { type KyInstance, type Options } from "ky";
-import type { BitbucketConfig } from "../types.js";
-import { logger } from "../logging.js";
-import { validatePaginated, type Paginated } from "../response/validate.js";
+import type { BitbucketConfig } from "../../types.js";
+import { logger } from "../../logging.js";
+import { validatePaginated, type Paginated } from "../../response/validate.js";
 
 export interface ApiClients {
   api: KyInstance;

@@ -12,7 +12,7 @@ import {
   DEFAULT_BRANCH_FIELDS,
   DEFAULT_COMMIT_FIELDS,
 } from "../response/curate.js";
-import { getPaginated } from "../http/client.js";
+import { getPaginated } from "../core/http/client.js";
 import type { ToolContext } from "./shared.js";
 import {
   projectParam,
@@ -21,7 +21,7 @@ import {
   startParam,
   fieldsParam,
 } from "./params.js";
-import type { ApiClients } from "../http/client.js";
+import type { ApiClients } from "../core/http/client.js";
 import type { Commit as BaseCommit } from "../generated/types.js";
 
 // Extend: the API returns slug/displayName on author but the spec doesn't document them

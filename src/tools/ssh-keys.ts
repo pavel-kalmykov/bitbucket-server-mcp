@@ -6,7 +6,7 @@ import {
 } from "../response/format.js";
 import { toolAnnotations } from "../response/annotations.js";
 import type { ToolContext } from "./shared.js";
-import type { ApiClients } from "../http/client.js";
+import type { ApiClients } from "../core/http/client.js";
 import { limitParam, startParam } from "./params.js";
 
 interface SshKeyActionContext {

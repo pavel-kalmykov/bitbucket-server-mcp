@@ -1,6 +1,6 @@
 import { HTTPError } from "ky";
-import { logger } from "../logging.js";
-import type { ToolErrorResult } from "../response/format.js";
+import { logger } from "../../logging.js";
+import type { ToolErrorResult } from "../../response/format.js";
 
 const ERROR_GUIDANCE = {
   401: "Authentication failed. Verify BITBUCKET_TOKEN or BITBUCKET_USERNAME/BITBUCKET_PASSWORD environment variables.",

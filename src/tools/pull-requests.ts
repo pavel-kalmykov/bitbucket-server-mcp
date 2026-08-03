@@ -13,8 +13,8 @@ import {
   DEFAULT_COMMIT_FIELDS,
   DEFAULT_ACTIVITY_FIELDS,
 } from "../response/curate.js";
-import { getPaginated } from "../http/client.js";
-import type { ApiClients } from "../http/client.js";
+import { getPaginated } from "../core/http/client.js";
+import type { ApiClients } from "../core/http/client.js";
 import { mergeDefaultReviewers } from "./shared.js";
 import type { ToolContext } from "./shared.js";
 import {

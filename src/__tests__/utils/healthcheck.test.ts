@@ -1,8 +1,8 @@
 import { describe, test, expect, vi, beforeEach, afterEach } from "vitest";
 import { http, HttpResponse } from "msw";
-import { createApiClients } from "../../http/client.js";
+import { createApiClients } from "../../core/http/client.js";
 import type { BitbucketConfig } from "../../types.js";
-import { runStartupHealthcheck } from "../../http/healthcheck.js";
+import { runStartupHealthcheck } from "../../core/http/healthcheck.js";
 import { createServer } from "../../server.js";
 import { logger } from "../../logging.js";
 import { setupHttpCapture } from "../http-test-utils.js";

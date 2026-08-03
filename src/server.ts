@@ -1,9 +1,9 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { parseConfig } from "./config.js";
-import { handleToolError } from "./http/errors.js";
-import { createApiClients } from "./http/client.js";
-import { ApiCache } from "./http/cache.js";
-import { runStartupHealthcheck } from "./http/healthcheck.js";
+import { handleToolError } from "./core/http/errors.js";
+import { createApiClients } from "./core/http/client.js";
+import { ApiCache } from "./core/http/cache.js";
+import { runStartupHealthcheck } from "./core/http/healthcheck.js";
 import { TOOL_REGISTRARS } from "./tools/index.js";
 import { registerResources } from "./resources/index.js";
 import { registerPrompts } from "./prompts/index.js";
