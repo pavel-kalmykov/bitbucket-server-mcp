@@ -1,6 +1,7 @@
 import { describe, test, expect } from "vitest";
 import { registerSshKeyTools } from "../../tools/ssh-keys.js";
 import { mockJson, mockReject } from "../test-utils.js";
+import { aPaginated } from "../test-builders.js";
 import {
   callAndParse,
   callRaw,
@@ -15,11 +16,10 @@ describe("list_ssh_keys", () => {
   });
 
   test("returns keys", async () => {
-    mockJson(h.mockClients.ssh.get, {
-      values: [{ id: 1, label: "k1" }],
-      size: 1,
-      isLastPage: true,
-    });
+    mockJson(
+      h.mockClients.ssh.get,
+      aPaginated([{ id: 1, label: "k1" }]),
+    );
     const p = await callAndParse<{ total: number }>(
       h.client,
       "list_ssh_keys",
@@ -29,7 +29,7 @@ describe("list_ssh_keys", () => {
   });
 
   test("returns empty list", async () => {
-    mockJson(h.mockClients.ssh.get, { values: [], size: 0, isLastPage: true });
+    mockJson(h.mockClients.ssh.get, aPaginated([]));
     const p = await callAndParse<{ total: number }>(
       h.client,
       "list_ssh_keys",
@@ -39,7 +39,7 @@ describe("list_ssh_keys", () => {
   });
 
   test("passes user filter", async () => {
-    mockJson(h.mockClients.ssh.get, { values: [], size: 0, isLastPage: true });
+    mockJson(h.mockClients.ssh.get, aPaginated([]));
     await callAndParse(h.client, "list_ssh_keys", { userSlug: "jdoe" });
     expect(h.mockClients.ssh.get).toHaveBeenCalledWith(
       "keys",

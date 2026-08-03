@@ -2,6 +2,7 @@ import { describe, test, expect } from "vitest";
 import { registerTagTools } from "../../tools/tags.js";
 import { mockJson, mockReject } from "../test-utils.js";
 import { callAndParse, callRaw, setupToolHarness } from "../tool-test-utils.js";
+import { aTag } from "../test-builders.js";
 
 describe("get_tag", () => {
   const h = setupToolHarness({
@@ -10,11 +11,7 @@ describe("get_tag", () => {
   });
 
   test("retrieves a tag by name", async () => {
-    mockJson(h.mockClients.api.get, {
-      id: "refs/tags/v1.0.0",
-      displayId: "v1.0.0",
-      hash: "abc123",
-    });
+    mockJson(h.mockClients.api.get, aTag({ hash: "abc123" }));
 
     const parsed = await callAndParse<{
       id: string;
@@ -35,7 +32,7 @@ describe("get_tag", () => {
   });
 
   test("uses default project when not provided", async () => {
-    mockJson(h.mockClients.api.get, { id: "refs/tags/v1.0.0" });
+    mockJson(h.mockClients.api.get, aTag({ displayId: "v1.0.0" }));
 
     await callAndParse(h.client, "get_tag", {
       repository: "my-repo",
@@ -48,7 +45,7 @@ describe("get_tag", () => {
   });
 
   test('returns raw response when fields is "*all"', async () => {
-    const raw = { id: "refs/tags/v1.0.0", hash: "abc123", extra: 42 };
+    const raw = { ...aTag(), extra: 42 };
     mockJson(h.mockClients.api.get, raw);
 
     const parsed = await callAndParse<Record<string, unknown>>(
@@ -66,12 +63,7 @@ describe("get_tag", () => {
   });
 
   test("returns only requested custom fields", async () => {
-    mockJson(h.mockClients.api.get, {
-      id: "refs/tags/v1.0.0",
-      displayId: "v1.0.0",
-      hash: "abc123",
-      latestCommit: "def456",
-    });
+    mockJson(h.mockClients.api.get, aTag());
 
     const parsed = await callAndParse<{ id: string; hash?: string }>(
       h.client,

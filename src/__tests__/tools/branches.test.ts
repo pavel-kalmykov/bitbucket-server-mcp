@@ -2,6 +2,7 @@ import { describe, test, expect } from "vitest";
 import { HTTPError } from "ky";
 import { registerBranchTools } from "../../tools/branches.js";
 import { mockError, mockJson } from "../test-utils.js";
+import { aBranch } from "../test-builders.js";
 import {
   callAndParse,
   callRaw,
@@ -19,15 +20,14 @@ describe("Branch tools", () => {
     test("should list branches and include default branch", async () => {
       mockJson(h.mockClients.api.get, {
         values: [
-          { displayId: "main", id: "refs/heads/main", isDefault: true },
-          { displayId: "develop", id: "refs/heads/develop", isDefault: false },
+          aBranch({ displayId: "main" }),
+          aBranch({ displayId: "develop", isDefault: false }),
         ],
         size: 2,
         isLastPage: true,
       });
       mockJson(h.mockClients.api.get, {
-        displayId: "main",
-        id: "refs/heads/main",
+        ...aBranch(),
       });
 
       const parsed = await callAndParse<{
@@ -78,8 +78,7 @@ describe("Branch tools", () => {
         isLastPage: true,
       });
       mockJson(h.mockClients.api.get, {
-        displayId: "main",
-        id: "refs/heads/main",
+        ...aBranch(),
         extraField: "also kept",
       });
 
@@ -98,7 +97,7 @@ describe("Branch tools", () => {
 
     test("should handle default branch fetch failure gracefully", async () => {
       mockJson(h.mockClients.api.get, {
-        values: [{ displayId: "main", id: "refs/heads/main" }],
+        values: [aBranch()],
         size: 1,
         isLastPage: true,
       });

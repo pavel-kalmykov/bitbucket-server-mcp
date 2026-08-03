@@ -2,6 +2,7 @@ import { describe, test, expect } from "vitest";
 import { registerTagTools } from "../../tools/tags.js";
 import { mockJson, mockVoid, mockReject } from "../test-utils.js";
 import { callAndParse, callRaw, setupToolHarness } from "../tool-test-utils.js";
+import { aTag } from "../test-builders.js";
 
 describe("manage_tags", () => {
   const h = setupToolHarness({
@@ -11,11 +12,7 @@ describe("manage_tags", () => {
 
   describe("create", () => {
     test("creates a tag with required params", async () => {
-      mockJson(h.mockClients.api.post, {
-        id: "refs/tags/v1.0.0",
-        displayId: "v1.0.0",
-        hash: "abc123",
-      });
+      mockJson(h.mockClients.api.post, aTag());
 
       const parsed = await callAndParse<{
         id: string;
@@ -44,7 +41,7 @@ describe("manage_tags", () => {
     });
 
     test("includes message in body when provided", async () => {
-      mockJson(h.mockClients.api.post, { id: "refs/tags/v1.0.0" });
+      mockJson(h.mockClients.api.post, aTag());
 
       await callAndParse(h.client, "manage_tags", {
         action: "create",
@@ -68,7 +65,7 @@ describe("manage_tags", () => {
     });
 
     test("uses default project when not provided", async () => {
-      mockJson(h.mockClients.api.post, { id: "refs/tags/v1.0.0" });
+      mockJson(h.mockClients.api.post, aTag());
 
       await callAndParse(h.client, "manage_tags", {
         action: "create",

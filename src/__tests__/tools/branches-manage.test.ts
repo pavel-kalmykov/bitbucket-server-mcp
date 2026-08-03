@@ -1,6 +1,7 @@
 import { describe, test, expect } from "vitest";
 import { registerBranchTools } from "../../tools/branches.js";
 import { mockJson, mockReject } from "../test-utils.js";
+import { aBranch } from "../test-builders.js";
 import {
   callAndParse,
   callRaw,
@@ -16,10 +17,10 @@ describe("manage_branches", () => {
 
   describe("create", () => {
     test("creates a branch with startPoint", async () => {
-      mockJson(h.mockClients.branchUtils.post, {
-        id: "refs/heads/feature/new",
-        displayId: "feature/new",
-      });
+      mockJson(
+        h.mockClients.branchUtils.post,
+        aBranch({ id: "refs/heads/feature/new", displayId: "feature/new" }),
+      );
 
       const parsed = await callAndParse<{
         id: string;
@@ -100,10 +101,7 @@ describe("manage_branches", () => {
 
   describe("delete", () => {
     test("deletes a non-default branch", async () => {
-      mockJson(h.mockClients.api.get, {
-        displayId: "main",
-        id: "refs/heads/main",
-      });
+      mockJson(h.mockClients.api.get, aBranch());
       mockJson(h.mockClients.branchUtils.post, {});
 
       const parsed = await callAndParse<{
@@ -126,10 +124,7 @@ describe("manage_branches", () => {
     });
 
     test("refuses to delete the default branch", async () => {
-      mockJson(h.mockClients.api.get, {
-        displayId: "main",
-        id: "refs/heads/main",
-      });
+      mockJson(h.mockClients.api.get, aBranch());
 
       const result = await callRaw(h.client, "manage_branches", {
         action: "delete",
@@ -146,10 +141,7 @@ describe("manage_branches", () => {
     });
 
     test("returns error when branchUtils.post fails after default-branch check", async () => {
-      mockJson(h.mockClients.api.get, {
-        displayId: "main",
-        id: "refs/heads/main",
-      });
+      mockJson(h.mockClients.api.get, aBranch());
       mockReject(
         h.mockClients.branchUtils.post,
         new Error("Internal server error"),
@@ -166,10 +158,7 @@ describe("manage_branches", () => {
     });
 
     test("uses default project when not provided", async () => {
-      mockJson(h.mockClients.api.get, {
-        displayId: "main",
-        id: "refs/heads/main",
-      });
+      mockJson(h.mockClients.api.get, aBranch());
       mockJson(h.mockClients.branchUtils.post, {});
 
       await callRaw(h.client, "manage_branches", {

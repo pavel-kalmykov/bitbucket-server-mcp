@@ -1,6 +1,7 @@
 import { describe, test, expect } from "vitest";
 import { registerUserTools } from "../../tools/users.js";
 import { mockJson, mockReject } from "../test-utils.js";
+import { aPaginated } from "../test-builders.js";
 import {
   callAndParse,
   callRaw,
@@ -99,11 +100,10 @@ describe("search_users", () => {
   });
 
   test("returns users matching filter", async () => {
-    mockJson(h.mockClients.api.get, {
-      values: [{ name: "admin", displayName: "Administrator" }],
-      size: 1,
-      isLastPage: true,
-    });
+    mockJson(
+      h.mockClients.api.get,
+      aPaginated([{ name: "admin", displayName: "Administrator" }]),
+    );
 
     const parsed = await callAndParse<{
       total: number;
@@ -115,7 +115,7 @@ describe("search_users", () => {
   });
 
   test("passes filter and pagination as search params", async () => {
-    mockJson(h.mockClients.api.get, { values: [], size: 0, isLastPage: true });
+    mockJson(h.mockClients.api.get, aPaginated([]));
 
     await callAndParse(h.client, "search_users", {
       filter: "jdoe",

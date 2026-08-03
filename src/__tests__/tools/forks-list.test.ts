@@ -7,6 +7,7 @@ import {
   expectCalledWithSearchParams,
   setupToolHarness,
 } from "../tool-test-utils.js";
+import { aRepository, aPaginated } from "../test-builders.js";
 
 describe("list_forks", () => {
   const h = setupToolHarness({
@@ -15,24 +16,13 @@ describe("list_forks", () => {
   });
 
   test("returns forks from the API", async () => {
-    mockJson(h.mockClients.api.get, {
-      values: [
-        {
-          slug: "fork-1",
-          id: 1,
-          name: "Fork 1",
-          project: { key: "PROJ", name: "Project" },
-        },
-        {
-          slug: "fork-2",
-          id: 2,
-          name: "Fork 2",
-          project: { key: "PROJ", name: "Project" },
-        },
-      ],
-      size: 2,
-      isLastPage: true,
-    });
+    mockJson(
+      h.mockClients.api.get,
+      aPaginated([
+        aRepository({ slug: "fork-1", name: "Fork 1", project: { key: "PROJ", name: "Project" } }),
+        aRepository({ slug: "fork-2", name: "Fork 2", project: { key: "PROJ", name: "Project" } }),
+      ]),
+    );
 
     const parsed = await callAndParse<{
       total: number;
@@ -49,11 +39,7 @@ describe("list_forks", () => {
   });
 
   test("passes limit and start as search params", async () => {
-    mockJson(h.mockClients.api.get, {
-      values: [],
-      size: 0,
-      isLastPage: true,
-    });
+    mockJson(h.mockClients.api.get, aPaginated([]));
 
     await callAndParse(h.client, "list_forks", {
       project: "TEST",
@@ -70,11 +56,7 @@ describe("list_forks", () => {
   });
 
   test("uses default project when not provided", async () => {
-    mockJson(h.mockClients.api.get, {
-      values: [],
-      size: 0,
-      isLastPage: true,
-    });
+    mockJson(h.mockClients.api.get, aPaginated([]));
 
     await callAndParse(h.client, "list_forks", { repository: "my-repo" });
 
@@ -85,11 +67,10 @@ describe("list_forks", () => {
   });
 
   test("returns raw output when fields is '*all'", async () => {
-    mockJson(h.mockClients.api.get, {
-      values: [{ slug: "fork-1", extra: "kept" }],
-      size: 1,
-      isLastPage: true,
-    });
+    mockJson(
+      h.mockClients.api.get,
+      aPaginated([{ ...aRepository({ slug: "fork-1" }), extra: "kept" }]),
+    );
 
     const parsed = await callAndParse<{
       forks: Array<{ extra: string }>;
@@ -103,11 +84,10 @@ describe("list_forks", () => {
   });
 
   test("returns custom fields subset when fields is provided", async () => {
-    mockJson(h.mockClients.api.get, {
-      values: [{ slug: "fork-1", name: "Fork 1", description: "Desc" }],
-      size: 1,
-      isLastPage: true,
-    });
+    mockJson(
+      h.mockClients.api.get,
+      aPaginated([aRepository({ slug: "fork-1", name: "Fork 1" })]),
+    );
 
     const parsed = await callAndParse<{
       forks: Array<{ slug: string; name: string }>;
@@ -123,11 +103,7 @@ describe("list_forks", () => {
   });
 
   test("returns empty list when no forks exist", async () => {
-    mockJson(h.mockClients.api.get, {
-      values: [],
-      size: 0,
-      isLastPage: true,
-    });
+    mockJson(h.mockClients.api.get, aPaginated([]));
 
     const parsed = await callAndParse<{ total: number; forks: unknown[] }>(
       h.client,
@@ -143,11 +119,13 @@ describe("list_forks", () => {
   });
 
   test("returns isLastPage false for multi-page responses", async () => {
-    mockJson(h.mockClients.api.get, {
-      values: [{ slug: "fork-1", id: 1, name: "Fork 1" }],
-      size: 100,
-      isLastPage: false,
-    });
+    mockJson(
+      h.mockClients.api.get,
+      aPaginated([aRepository({ slug: "fork-1", name: "Fork 1" })], {
+        size: 100,
+        isLastPage: false,
+      }),
+    );
 
     const parsed = await callAndParse<{
       total: number;

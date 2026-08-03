@@ -1,6 +1,7 @@
 import { describe, test, expect } from "vitest";
 import { registerPullRequestTools } from "../../tools/pull-requests.js";
 import { mockJson, mockReject } from "../test-utils.js";
+import { aPaginated } from "../test-builders.js";
 import {
   callAndParse,
   callRaw,
@@ -15,11 +16,10 @@ describe("get_commit_pull_requests", () => {
   });
 
   test("returns PRs containing the commit", async () => {
-    mockJson(h.mockClients.api.get, {
-      values: [{ id: 1, title: "Fix bug" }],
-      size: 1,
-      isLastPage: true,
-    });
+    mockJson(
+      h.mockClients.api.get,
+      aPaginated([{ id: 1, title: "Fix bug" }]),
+    );
     const parsed = await callAndParse<{ total: number }>(
       h.client,
       "get_commit_pull_requests",
@@ -29,11 +29,7 @@ describe("get_commit_pull_requests", () => {
   });
 
   test("returns empty list", async () => {
-    mockJson(h.mockClients.api.get, {
-      values: [],
-      size: 0,
-      isLastPage: true,
-    });
+    mockJson(h.mockClients.api.get, aPaginated([]));
     const parsed = await callAndParse<{ total: number }>(
       h.client,
       "get_commit_pull_requests",
@@ -43,11 +39,10 @@ describe("get_commit_pull_requests", () => {
   });
 
   test("returns isLastPage false for multi-page", async () => {
-    mockJson(h.mockClients.api.get, {
-      values: [{ id: 1 }],
-      size: 100,
-      isLastPage: false,
-    });
+    mockJson(
+      h.mockClients.api.get,
+      aPaginated([{ id: 1 }], { size: 100, isLastPage: false }),
+    );
     const parsed = await callAndParse<{ isLastPage: boolean }>(
       h.client,
       "get_commit_pull_requests",
@@ -57,7 +52,7 @@ describe("get_commit_pull_requests", () => {
   });
 
   test("passes limit and start", async () => {
-    mockJson(h.mockClients.api.get, { values: [], size: 0, isLastPage: true });
+    mockJson(h.mockClients.api.get, aPaginated([]));
     await callAndParse(h.client, "get_commit_pull_requests", {
       project: "TEST",
       repository: "my-repo",
@@ -73,7 +68,7 @@ describe("get_commit_pull_requests", () => {
   });
 
   test("uses default project", async () => {
-    mockJson(h.mockClients.api.get, { values: [], size: 0, isLastPage: true });
+    mockJson(h.mockClients.api.get, aPaginated([]));
     await callAndParse(h.client, "get_commit_pull_requests", {
       repository: "my-repo",
       commitId: "abc123",
