@@ -1,6 +1,7 @@
 import { describe, test, expect } from "vitest";
 import { registerHookTools } from "../../tools/hooks.js";
 import { mockJson, mockReject } from "../test-utils.js";
+import { aPaginated } from "../test-builders.js";
 import {
   callAndParse,
   callRaw,
@@ -15,11 +16,10 @@ describe("list_repository_hooks", () => {
   });
 
   test("returns hooks", async () => {
-    mockJson(h.mockClients.api.get, {
-      values: [{ key: "hook1", enabled: true }],
-      size: 1,
-      isLastPage: true,
-    });
+    mockJson(
+      h.mockClients.api.get,
+      aPaginated([{ key: "hook1", enabled: true }]),
+    );
     const p = await callAndParse<{ total: number }>(
       h.client,
       "list_repository_hooks",
@@ -33,7 +33,7 @@ describe("list_repository_hooks", () => {
   });
 
   test("returns empty", async () => {
-    mockJson(h.mockClients.api.get, { values: [], size: 0, isLastPage: true });
+    mockJson(h.mockClients.api.get, aPaginated([]));
     const p = await callAndParse<{ total: number }>(
       h.client,
       "list_repository_hooks",
@@ -52,7 +52,7 @@ describe("list_repository_hooks", () => {
   });
 
   test("uses default project when not provided", async () => {
-    mockJson(h.mockClients.api.get, { values: [], size: 0, isLastPage: true });
+    mockJson(h.mockClients.api.get, aPaginated([]));
     await callAndParse(h.client, "list_repository_hooks", {
       repository: "r",
     });

@@ -7,6 +7,7 @@ import {
   expectCalledWithSearchParams,
   setupToolHarness,
 } from "../tool-test-utils.js";
+import { aTag, aPaginated } from "../test-builders.js";
 
 describe("list_tags", () => {
   const h = setupToolHarness({
@@ -15,14 +16,13 @@ describe("list_tags", () => {
   });
 
   test("returns tags from the API", async () => {
-    mockJson(h.mockClients.api.get, {
-      values: [
-        { id: "refs/tags/v1.0.0", displayId: "v1.0.0", type: "TAG" },
-        { id: "refs/tags/v2.0.0", displayId: "v2.0.0", type: "TAG" },
-      ],
-      size: 2,
-      isLastPage: true,
-    });
+    mockJson(
+      h.mockClients.api.get,
+      aPaginated([
+        aTag({ displayId: "v1.0.0" }),
+        aTag({ displayId: "v2.0.0" }),
+      ]),
+    );
 
     const parsed = await callAndParse<{
       total: number;
@@ -38,11 +38,7 @@ describe("list_tags", () => {
   });
 
   test("passes filterText as search param", async () => {
-    mockJson(h.mockClients.api.get, {
-      values: [],
-      size: 0,
-      isLastPage: true,
-    });
+    mockJson(h.mockClients.api.get, aPaginated([]));
 
     await callAndParse(h.client, "list_tags", {
       project: "TEST",
@@ -58,11 +54,7 @@ describe("list_tags", () => {
   });
 
   test("omits filterText from searchParams when not provided", async () => {
-    mockJson(h.mockClients.api.get, {
-      values: [],
-      size: 0,
-      isLastPage: true,
-    });
+    mockJson(h.mockClients.api.get, aPaginated([]));
 
     await callAndParse(h.client, "list_tags", { repository: "my-repo" });
 
@@ -76,11 +68,7 @@ describe("list_tags", () => {
   });
 
   test("uses default project when not provided", async () => {
-    mockJson(h.mockClients.api.get, {
-      values: [],
-      size: 0,
-      isLastPage: true,
-    });
+    mockJson(h.mockClients.api.get, aPaginated([]));
 
     await callAndParse(h.client, "list_tags", { repository: "my-repo" });
 
@@ -91,11 +79,7 @@ describe("list_tags", () => {
   });
 
   test("returns raw output when fields is '*all'", async () => {
-    mockJson(h.mockClients.api.get, {
-      values: [{ id: "refs/tags/v1.0.0", extra: "kept" }],
-      size: 1,
-      isLastPage: true,
-    });
+    mockJson(h.mockClients.api.get, aPaginated([{ ...aTag(), extra: "kept" }]));
 
     const parsed = await callAndParse<{
       tags: Array<{ extra: string }>;
@@ -109,11 +93,10 @@ describe("list_tags", () => {
   });
 
   test("returns custom fields subset when fields is provided", async () => {
-    mockJson(h.mockClients.api.get, {
-      values: [{ id: "refs/tags/v1.0.0", displayId: "v1.0.0", hash: "abc123" }],
-      size: 1,
-      isLastPage: true,
-    });
+    mockJson(
+      h.mockClients.api.get,
+      aPaginated([aTag({ displayId: "v1.0.0" })]),
+    );
 
     const parsed = await callAndParse<{
       tags: Array<{ id: string; displayId: string }>;

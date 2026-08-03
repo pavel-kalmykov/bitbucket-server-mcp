@@ -8,6 +8,7 @@ import {
   expectCalledWithJson,
   setupToolHarness,
 } from "../tool-test-utils.js";
+import { aPaginated } from "../test-builders.js";
 
 describe("list_labels", () => {
   const h = setupToolHarness({
@@ -16,11 +17,10 @@ describe("list_labels", () => {
   });
 
   test("returns labels from the API", async () => {
-    mockJson(h.mockClients.api.get, {
-      values: [{ name: "bug" }, { name: "feature" }],
-      size: 2,
-      isLastPage: true,
-    });
+    mockJson(
+      h.mockClients.api.get,
+      aPaginated([{ name: "bug" }, { name: "feature" }]),
+    );
 
     const parsed = await callAndParse<{
       total: number;
@@ -36,11 +36,7 @@ describe("list_labels", () => {
   });
 
   test("returns empty list when no labels exist", async () => {
-    mockJson(h.mockClients.api.get, {
-      values: [],
-      size: 0,
-      isLastPage: true,
-    });
+    mockJson(h.mockClients.api.get, aPaginated([]));
 
     const parsed = await callAndParse<{ total: number }>(
       h.client,
@@ -55,11 +51,10 @@ describe("list_labels", () => {
   });
 
   test("returns isLastPage false for multi-page responses", async () => {
-    mockJson(h.mockClients.api.get, {
-      values: [{ name: "bug" }],
-      size: 100,
-      isLastPage: false,
-    });
+    mockJson(
+      h.mockClients.api.get,
+      aPaginated([{ name: "bug" }], { size: 100, isLastPage: false }),
+    );
 
     const parsed = await callAndParse<{ total: number; isLastPage: boolean }>(
       h.client,
@@ -79,11 +74,7 @@ describe("list_labels", () => {
   });
 
   test("uses default project when not provided", async () => {
-    mockJson(h.mockClients.api.get, {
-      values: [],
-      size: 0,
-      isLastPage: true,
-    });
+    mockJson(h.mockClients.api.get, aPaginated([]));
 
     await callAndParse(h.client, "list_labels", {
       repository: "my-repo",

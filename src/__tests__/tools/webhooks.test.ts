@@ -1,6 +1,7 @@
 import { describe, test, expect } from "vitest";
 import { registerWebhookTools } from "../../tools/webhooks.js";
 import { mockJson, mockReject } from "../test-utils.js";
+import { aPaginated } from "../test-builders.js";
 import {
   callAndParse,
   callRaw,
@@ -15,11 +16,10 @@ describe("list_webhooks", () => {
   });
 
   test("returns webhooks from the API", async () => {
-    mockJson(h.mockClients.api.get, {
-      values: [{ id: 1, name: "ci-hook", url: "https://ci.example.com/hook" }],
-      size: 1,
-      isLastPage: true,
-    });
+    mockJson(
+      h.mockClients.api.get,
+      aPaginated([{ id: 1, name: "ci-hook", url: "https://ci.example.com/hook" }]),
+    );
 
     const parsed = await callAndParse<{
       total: number;
@@ -38,11 +38,7 @@ describe("list_webhooks", () => {
   });
 
   test("returns empty list", async () => {
-    mockJson(h.mockClients.api.get, {
-      values: [],
-      size: 0,
-      isLastPage: true,
-    });
+    mockJson(h.mockClients.api.get, aPaginated([]));
 
     const parsed = await callAndParse<{ total: number }>(
       h.client,
