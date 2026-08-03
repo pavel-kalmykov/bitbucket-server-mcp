@@ -14,6 +14,18 @@ export default defineConfig({
         functions: 80,
         lines: 80,
         statements: 80,
+        "src/tools/**/*.ts": {
+          branches: 95,
+          functions: 95,
+          lines: 95,
+          statements: 95,
+        },
+        "src/http/**/*.ts": {
+          branches: 90,
+          functions: 90,
+          lines: 90,
+          statements: 90,
+        },
       },
     },
   },
