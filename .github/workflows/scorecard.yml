@@ -11,7 +11,7 @@ concurrency:
   group: ${{ github.workflow }}
   cancel-in-progress: false
 
-permissions: read-all
+permissions: {}
 
 jobs:
   analyze:
