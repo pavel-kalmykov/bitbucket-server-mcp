@@ -1,15 +1,11 @@
-import { describe, test, expect, beforeAll, afterAll } from "vitest";
+import { test, expect } from "vitest";
 import {
   VERSIONS_WITH_THREAD_RESOLVED,
   VERSIONS_WITHOUT_THREAD_RESOLVED,
 } from "./versions.js";
-import {
-  startBitbucket,
-  type StartedBitbucket,
-} from "./bitbucket-container.js";
-import { bootstrap, createComment, type Scenario } from "./bootstrap.js";
-import { setupMcpAgainst, type McpAgainstBitbucket } from "./mcp-harness.js";
+import { createComment } from "./bootstrap.js";
 import { callAndParse } from "../tool-test-utils.js";
+import { describeBitbucket } from "./e2e-suite.js";
 import type { RestComment } from "../../generated/types.js";
 
 type CommentPayload = Pick<
@@ -31,24 +27,9 @@ type CommentPayload = Pick<
  * used for setup (creating the seed comment, provisioning the repo),
  * which the MCP does not expose as tools.
  */
-describe.each(VERSIONS_WITH_THREAD_RESOLVED)(
-  "threadResolved supported: Bitbucket $name",
-  (version) => {
-    let bb: StartedBitbucket;
-    let mcp: McpAgainstBitbucket;
-    let scenario: Scenario;
-
-    beforeAll(async () => {
-      bb = await startBitbucket(version);
-      scenario = await bootstrap(bb.api);
-      mcp = await setupMcpAgainst(bb);
-    }, 420_000);
-
-    afterAll(async () => {
-      await mcp?.close();
-      await bb?.stop();
-    });
-
+describeBitbucket(
+  "threadResolved supported",
+  ({ bb, mcp, s: scenario }) => {
     test("fresh comment starts with threadResolved=false", async () => {
       const c = await createComment(bb.api, scenario, "needs review");
       expect(c.threadResolved).toBe(false);
@@ -109,26 +90,12 @@ describe.each(VERSIONS_WITH_THREAD_RESOLVED)(
       expect(resolved.threadResolved).toBe(true);
     });
   },
+  VERSIONS_WITH_THREAD_RESOLVED,
 );
 
-describe.each(VERSIONS_WITHOUT_THREAD_RESOLVED)(
-  "threadResolved unsupported: Bitbucket $name",
-  (version) => {
-    let bb: StartedBitbucket;
-    let mcp: McpAgainstBitbucket;
-    let scenario: Scenario;
-
-    beforeAll(async () => {
-      bb = await startBitbucket(version);
-      scenario = await bootstrap(bb.api);
-      mcp = await setupMcpAgainst(bb);
-    }, 420_000);
-
-    afterAll(async () => {
-      await mcp?.close();
-      await bb?.stop();
-    });
-
+describeBitbucket(
+  "threadResolved unsupported",
+  ({ bb, mcp, s: scenario }) => {
     test("fresh comment omits the threadResolved field", async () => {
       const c = await createComment(bb.api, scenario, "hey");
       expect(c.threadResolved).toBeUndefined();
@@ -152,4 +119,5 @@ describe.each(VERSIONS_WITHOUT_THREAD_RESOLVED)(
       expect(updated.threadResolved).toBeUndefined();
     });
   },
+  VERSIONS_WITHOUT_THREAD_RESOLVED,
 );

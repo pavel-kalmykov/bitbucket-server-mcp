@@ -1,10 +1,6 @@
-import { describe, test, expect, beforeAll, afterAll } from "vitest";
+import { test, expect } from "vitest";
 import ky from "ky";
-import {
-  startBitbucket,
-  type StartedBitbucket,
-} from "./bitbucket-container.js";
-import { SELECTED_VERSIONS } from "./versions.js";
+import { describeBitbucket } from "./e2e-suite.js";
 
 /**
  * Smoke tier: for every declared version, confirm the healthcheck
@@ -13,17 +9,7 @@ import { SELECTED_VERSIONS } from "./versions.js";
  * surface server messages, and Atlassian has changed their
  * documentation around them more than once.
  */
-describe.each(SELECTED_VERSIONS)("smoke: Bitbucket $name", (version) => {
-  let bb: StartedBitbucket;
-
-  beforeAll(async () => {
-    bb = await startBitbucket(version);
-  }, 420_000);
-
-  afterAll(async () => {
-    await bb?.stop();
-  });
-
+describeBitbucket("smoke", ({ bb }) => {
   test("GET /application-properties returns a parseable version", async () => {
     const res = await ky
       .get(`${bb.url}/rest/api/1.0/application-properties`, {
@@ -32,7 +18,7 @@ describe.each(SELECTED_VERSIONS)("smoke: Bitbucket $name", (version) => {
       .json<{ version: string; buildNumber: string; displayName: string }>();
     expect(res.version).toMatch(/^\d+\.\d+(\.\d+)?$/);
     expect(res.displayName).toBe("Bitbucket");
-    expect(res.version.startsWith(version.name)).toBe(true);
+    expect(res.version.startsWith(bb.version)).toBe(true);
   });
 
   test("unauthenticated call returns the Bitbucket error shape", async () => {
