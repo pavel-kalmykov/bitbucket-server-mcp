@@ -6,7 +6,8 @@ on:
   pull_request:
     branches: [main]
   schedule:
-    - cron: "35 0 * * 6" # Saturday 00:35 UTC
+    - cron: "42 5 * * 3" # Wednesday 05:42 UTC
+  workflow_dispatch:
 
 permissions: {}
 
@@ -20,16 +21,18 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       security-events: write
-      contents: read
     steps:
       - uses: step-security/harden-runner@a5ad31d6a139d249332a2605b85202e8c0b78450 # v2.19.1
         with:
           egress-policy: audit
 
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          persist-credentials: false
 
       - uses: github/codeql-action/init@7851e55dc3be31ec4bcc3ef98453de2cb306e698 # codeql-bundle-v2.25.3
         with:
           languages: javascript-typescript
+          queries: security-extended
 
       - uses: github/codeql-action/analyze@7851e55dc3be31ec4bcc3ef98453de2cb306e698 # codeql-bundle-v2.25.3
