@@ -8,6 +8,7 @@ import {
   curateList,
   DEFAULT_USER_FIELDS,
 } from "../response/curate.js";
+import { getUserProfile, searchUsers } from "../core/users.js";
 
 export function registerUserTools(ctx: ToolContext) {
   const { server, clients } = ctx;
@@ -24,9 +25,7 @@ export function registerUserTools(ctx: ToolContext) {
       annotations: toolAnnotations(),
     },
     async ({ userSlug, fields }) => {
-      const data = await clients.api
-        .get(`users/${userSlug}`)
-        .json<Record<string, unknown>>();
+      const data = await getUserProfile(clients, userSlug);
 
       return formatResponse(
         curateResponse(data, fields ?? DEFAULT_USER_FIELDS),
@@ -52,15 +51,7 @@ export function registerUserTools(ctx: ToolContext) {
       annotations: toolAnnotations(),
     },
     async ({ filter, limit = 25, start = 0, fields }) => {
-      const data = await clients.api
-        .get("users", {
-          searchParams: { filter, limit, start },
-        })
-        .json<{
-          values: Record<string, unknown>[];
-          size: number;
-          isLastPage: boolean;
-        }>();
+      const data = await searchUsers(clients, filter, { limit, start });
 
       return formatResponse(
         buildPaginated(data, {
