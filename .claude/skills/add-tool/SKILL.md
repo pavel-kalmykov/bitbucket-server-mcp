@@ -30,8 +30,9 @@ description: Use when adding a new Bitbucket API endpoint to the MCP server
 **Implement:**
 
 1. Define the tool in `src/tools/<name>.ts`. Follow the existing pattern.
-2. Register it in `src/server.ts` (the `register*Tools` call) and in
-   `src/__tests__/e2e/mcp-harness.ts`.
+2. Register it in `src/tools/index.ts` by adding the registration function
+   to the `TOOL_REGISTRARS` array. Both `server.ts` and the E2E harness
+   read from this array automatically.
 3. Write an E2E test in `src/__tests__/e2e/<name>.e2e.test.ts` that goes
    through the full MCP round-trip against ephemeral Bitbucket containers
    (`startBitbucket` + `setupMcpAgainst`).

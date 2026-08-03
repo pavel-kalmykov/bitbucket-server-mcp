@@ -27,12 +27,14 @@ src/
   entry.ts          # Entry point (STDIO transport)
   server.ts         # McpServer setup, tool/resource/prompt registration
   config.ts         # Environment variable parsing and validation
-  client.ts         # HTTP client factory (ky instances per API base URL)
-  types.ts          # Shared TypeScript interfaces
+  http/client.ts    # HTTP client factory (ky instances per API base URL)
+  http/cache.ts     # LRU cache with TTL
+  http/errors.ts    # Error serialization for MCP responses
   tools/            # Tool implementations by domain
+  tools/index.ts    # Central tool registry (server.ts + E2E harness share this)
+  response/         # Response curation, formatting, and annotation helpers
   resources/        # MCP Resources
   prompts/          # MCP Prompts (e.g. review-pr)
-  utils/            # Cache, error handling, response formatting, diff truncation
 ```
 
 ## Adding a new tool
@@ -47,42 +49,39 @@ Each tool module in `src/tools/` exports a registration function that receives t
 server.registerTool('my_tool', {
   description: 'What this tool does. Lead with a verb.',
   inputSchema: {
-    project: z.string().optional().describe('Project key. Defaults to BITBUCKET_DEFAULT_PROJECT.'),
-    repository: z.string().describe('Repository slug.'),
-    // ... other params with Zod schemas
+    project: projectParam(),
+    repository: repositoryParam(),
   },
-  annotations: { readOnlyHint: true },  // or destructiveHint, openWorldHint, etc.
+  annotations: toolAnnotations(),
 }, async ({ project, repository }) => {
-  try {
-    const resolvedProject = resolveProject(project, defaultProject);
-    const data = await clients.api.get(`projects/${resolvedProject}/repos/${repository}/...`).json();
-    return formatResponse(data);
-  } catch (error) {
-    return handleToolError(error);
-  }
+  const resolvedProject = ctx.resolveProject(project);
+  const data = await clients.api
+    .get(`projects/${resolvedProject}/repos/${repository}/...`)
+    .json<Record<string, unknown>>();
+  return formatResponse(curateResponse(data, DEFAULT_REPO_FIELDS));
 });
 ```
 
-3. **Register it** by importing and calling your registration function in `src/server.ts`.
+3. **Register it** by adding your registration function to the `TOOL_REGISTRARS` array in `src/tools/index.ts`. Both `src/server.ts` and the E2E harness read from this array, so there is no separate registration step.
 
 4. **Verify**: `npm test`, `npm run lint`, `npm run build`.
 
 ## Response curation
 
-Read tools that return Bitbucket entities (PRs, projects, repositories, branches, commits) should curate their responses to reduce token usage. Use the utilities in `src/utils/curate.ts`:
+Read tools that return Bitbucket entities (PRs, projects, repositories, branches, commits) should curate their responses to reduce token usage. Use the utilities in `src/response/curate.ts`:
 
 ```typescript
-import { curateResponse, curateList, DEFAULT_PR_FIELDS } from '../utils/curate.js';
+import { curateResponse, curateList, DEFAULT_PR_FIELDS } from '../response/curate.js';
 
 // Single entity
 return formatResponse(curateResponse(data, fields ?? DEFAULT_PR_FIELDS));
 
 // List of entities
-return formatResponse({
-  total: data.size,
-  values: curateList(data.values, fields ?? DEFAULT_PR_FIELDS),
-  isLastPage: data.isLastPage,
-});
+return formatResponse(
+  buildPaginated(data, {
+    values: curateList(data.values, fields ?? DEFAULT_PR_FIELDS),
+  }),
+);
 ```
 
 Every read tool that returns entities should expose a `fields` parameter:
@@ -93,7 +92,7 @@ fields: z.string().optional().describe(
 )
 ```
 
-Default field sets are defined in `src/utils/curate.ts` (`DEFAULT_PR_FIELDS`, `DEFAULT_PROJECT_FIELDS`, etc.). They include only the fields an LLM typically needs. Nested paths like `author.user.name` pick specific sub-fields from objects and arrays.
+Default field sets are defined in `src/response/curate.ts` (`DEFAULT_PR_FIELDS`, `DEFAULT_PROJECT_FIELDS`, etc.). They include only the fields an LLM typically needs. Nested paths like `author.user.name` pick specific sub-fields from objects and arrays.
 
 ## HTTP clients
 
@@ -109,7 +108,7 @@ All instances share auth headers, custom headers, timeout (30s), and retry confi
 
 ## Caching
 
-The `ApiCache` instance (from `src/utils/cache.ts`) is passed to every tool registration function. It wraps an LRU cache with TTL (configurable via `BITBUCKET_CACHE_TTL`, default 5 minutes).
+The `ApiCache` instance (from `src/http/cache.ts`) is passed to every tool registration function. It wraps an LRU cache with TTL (configurable via `BITBUCKET_CACHE_TTL`, default 5 minutes).
 
 Use it for data that changes infrequently (repo metadata, project lists, default reviewers):
 
@@ -133,9 +132,9 @@ Do not cache volatile data like PR details, comments, or activities.
 
 ## Error handling
 
-Tools should never throw. Wrap the handler body in try/catch and return `handleToolError(error)` from `src/http/errors.ts`. This returns `isError: true` with a recovery-oriented message that helps the LLM retry or adjust.
+Tool handlers do not need try/catch blocks. `server.ts` wraps every handler in a Proxy that catches errors and returns `handleToolError(error)` from `src/http/errors.ts`. Handlers can throw or let promises reject naturally.
 
-For ky's `HTTPError`, `handleToolError` reads the pre-parsed body from `error.data` (ky v2 populates it before throwing). Detection uses `error instanceof HTTPError`, not a home-grown type guard: the ky class is the single source of truth for what an HTTP error looks like, so we cannot accidentally match a shape the library does not actually produce.
+For ky's `HTTPError`, `handleToolError` reads the pre-parsed body from `error.data` (ky v2 populates it before throwing). Detection uses `error instanceof HTTPError`, not a home-grown type guard.
 
 **Do not duck-type on `error.response.data?.message` or similar hand-rolled predicates.** ky's `HTTPError` puts the parsed body on `error.data`; no real instance matches an axios-shaped `response.data.message`, so a predicate like that silently drops the body in production. The "duck-typed fake HTTPError does NOT match" test in `errors.test.ts` guards against slipping back.
 
@@ -145,15 +144,33 @@ Use `formatResponse(data)` to wrap data in the standard MCP content format.
 
 ## Testing
 
-Tests use vitest with mocked ky instances for tool-level tests:
+The test suite has three layers:
+
+| Layer | Location | Purpose | Runner |
+|---|---|---|---|
+| Unit | `src/__tests__/tools/` | Individual tool handlers with mocked HTTP | `npm test` |
+| Integration | `src/__tests__/integration/` | Cross-cutting behavior (annotations, schema resources) | `npm test` |
+| E2E | `src/__tests__/e2e/` | Full MCP round-trip against ephemeral Bitbucket containers | `npm run test:e2e` |
+
+Unit tests use `setupToolHarness` (from `src/__tests__/tool-test-utils.ts`) which creates a McpServer with a real InMemoryTransport and mocked ky clients. Each test calls `h.client.callTool(...)` and asserts on the structured response:
 
 ```typescript
-(mockClients.api.get as ReturnType<typeof vi.fn>).mockReturnValue({
-  json: () => Promise.resolve({ /* mock data */ }),
+const h = setupToolHarness({
+  register: registerBranchTools,
+  defaultProject: "DEFAULT",
+});
+
+test("lists branches", async () => {
+  mockJson(h.mockClients.api.get, { values: [...], size: 2, isLastPage: true });
+  const result = await callAndParse(h.client, "list_branches", { repository: "r" });
+  expect(result.branches).toHaveLength(2);
 });
 ```
 
+E2E tests run against real Bitbucket Server containers via testcontainers. Each feature gets one E2E file that exercises the tool's happy path through the real API. CI gates E2E on pull requests.
+
 Run all tests: `npm test`
+Run unit tests only: `npx vitest run --config vitest.config.ts`
 Run a specific file: `npx vitest run src/__tests__/tools/yourfile.test.ts`
 
 ### Testing errors from external libraries

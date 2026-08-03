@@ -4,27 +4,7 @@ import { InMemoryTransport } from "@modelcontextprotocol/sdk/inMemory.js";
 import { createApiClients } from "../../http/client.js";
 import { ApiCache } from "../../http/cache.js";
 import { ToolContext } from "../../tools/shared.js";
-import { registerCommentTools } from "../../tools/comments.js";
-import { registerLabelTools } from "../../tools/labels.js";
-import { registerForkTools } from "../../tools/forks.js";
-import { registerBranchTools } from "../../tools/branches.js";
-import { registerTagTools } from "../../tools/tags.js";
-import { registerPullRequestTools } from "../../tools/pull-requests.js";
-import { registerUserTools } from "../../tools/users.js";
-import { registerDefaultReviewerTools } from "../../tools/default-reviewers.js";
-import { registerWebhookTools } from "../../tools/webhooks.js";
-import { registerRepositoryTools } from "../../tools/repositories.js";
-import { registerSshKeyTools } from "../../tools/ssh-keys.js";
-import { registerGpgKeyTools } from "../../tools/gpg-keys.js";
-import { registerDeploymentTools } from "../../tools/deployments.js";
-import { registerHookTools } from "../../tools/hooks.js";
-import { registerMergeCheckTools } from "../../tools/merge-checks.js";
-import { registerReviewerGroupTools } from "../../tools/reviewer-groups.js";
-import { registerSecretScanningTools } from "../../tools/secret-scanning.js";
-import { registerCommitCommentTools } from "../../tools/commit-comments.js";
-import { registerInsightTools } from "../../tools/insights.js";
-import { registerSearchTools } from "../../tools/search.js";
-import { registerSystemTools } from "../../tools/system.js";
+import { TOOL_REGISTRARS } from "../../tools/index.js";
 import { logger } from "../../logging.js";
 import type { BitbucketConfig } from "../../types.js";
 import type { StartedBitbucket } from "./bitbucket-container.js";
@@ -54,27 +34,7 @@ export async function setupMcpAgainst(
     cache: new ApiCache({ defaultTtlMs: 100 }),
     logger,
   });
-  registerCommentTools(ctx);
-  registerLabelTools(ctx);
-  registerForkTools(ctx);
-  registerBranchTools(ctx);
-  registerTagTools(ctx);
-  registerPullRequestTools(ctx);
-  registerUserTools(ctx);
-  registerDefaultReviewerTools(ctx);
-  registerWebhookTools(ctx);
-  registerRepositoryTools(ctx);
-  registerSshKeyTools(ctx);
-  registerGpgKeyTools(ctx);
-  registerDeploymentTools(ctx);
-  registerHookTools(ctx);
-  registerMergeCheckTools(ctx);
-  registerReviewerGroupTools(ctx);
-  registerSecretScanningTools(ctx);
-  registerCommitCommentTools(ctx);
-  registerInsightTools(ctx);
-  registerSearchTools(ctx);
-  registerSystemTools(ctx);
+  for (const register of TOOL_REGISTRARS) register(ctx);
 
   const [clientTransport, serverTransport] =
     InMemoryTransport.createLinkedPair();

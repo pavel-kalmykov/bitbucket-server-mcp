@@ -2,16 +2,21 @@ import { readFileSync, readdirSync, existsSync } from "node:fs";
 
 const TOOLS_DIR = "src/tools";
 const E2E_DIR = "src/__tests__/e2e";
-const HARNESS = `${E2E_DIR}/mcp-harness.ts`;
-
-const SKIP = new Set(["shared.ts", "params.ts"]);
+const SKIP = new Set(["shared.ts", "params.ts", "index.ts"]);
 
 // Gaps that predate the coverage check; to be closed in follow-up PRs.
 const KNOWN_GAPS: Record<string, string> = {
   search: "search.e2e.test.ts",
 };
 
-const harnessContent = readFileSync(HARNESS, "utf8");
+const registryContent = readFileSync(`${TOOLS_DIR}/index.ts`, "utf8");
+
+const registered = new Set<string>();
+for (const line of registryContent.split("\n")) {
+  const m = line.match(/from "\.\/([\w-]+)\.js"/);
+  if (m) registered.add(m[1]);
+}
+
 let failed = false;
 
 for (const file of readdirSync(TOOLS_DIR)) {
@@ -19,13 +24,9 @@ for (const file of readdirSync(TOOLS_DIR)) {
 
   const base = file.replace(/\.ts$/, "");
 
-  // Check harness imports anything from the tool file
-  const jsFile = file.replace(/\.ts$/, ".js");
-  const harnessRe = new RegExp(
-    `import .+ from "\\.\\./\\.\\./tools/${jsFile}"`,
-  );
-  if (!harnessRe.test(harnessContent)) {
-    console.error(`Tool not registered in harness: ${TOOLS_DIR}/${file}`);
+  // Check the tool module is imported in the registry
+  if (!registered.has(base)) {
+    console.error(`Tool not in registry: ${TOOLS_DIR}/${file}`);
     failed = true;
   }
 
