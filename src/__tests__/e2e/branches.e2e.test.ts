@@ -1,29 +1,8 @@
-import { describe, test, expect, beforeAll, afterAll } from "vitest";
-import { SELECTED_VERSIONS } from "./versions.js";
-import {
-  startBitbucket,
-  type StartedBitbucket,
-} from "./bitbucket-container.js";
-import { bootstrap, type Scenario } from "./bootstrap.js";
-import { setupMcpAgainst, type McpAgainstBitbucket } from "./mcp-harness.js";
+import { test, expect } from "vitest";
+import { describeBitbucket } from "./e2e-suite.js";
 import { callAndParse } from "../tool-test-utils.js";
 
-describe.each(SELECTED_VERSIONS)("branches: Bitbucket $name", (version) => {
-  let bb: StartedBitbucket;
-  let mcp: McpAgainstBitbucket;
-  let s: Scenario;
-
-  beforeAll(async () => {
-    bb = await startBitbucket(version);
-    s = await bootstrap(bb.api);
-    mcp = await setupMcpAgainst(bb);
-  }, 420_000);
-
-  afterAll(async () => {
-    await mcp?.close();
-    await bb?.stop();
-  });
-
+describeBitbucket("branches", ({ mcp, s }) => {
   test("list_branches returns main and feature", async () => {
     const parsed = await callAndParse<{
       total: number;
