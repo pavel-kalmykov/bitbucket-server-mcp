@@ -1,26 +1,8 @@
-import { describe, test, expect, beforeAll, afterAll } from "vitest";
-import { SELECTED_VERSIONS } from "./versions.js";
-import {
-  startBitbucket,
-  type StartedBitbucket,
-} from "./bitbucket-container.js";
-import { setupMcpAgainst, type McpAgainstBitbucket } from "./mcp-harness.js";
+import { test, expect } from "vitest";
 import { callAndParse, callRaw } from "../tool-test-utils.js";
+import { describeBitbucket } from "./e2e-suite.js";
 
-describe.each(SELECTED_VERSIONS)("users: Bitbucket $name", (version) => {
-  let bb: StartedBitbucket;
-  let mcp: McpAgainstBitbucket;
-
-  beforeAll(async () => {
-    bb = await startBitbucket(version);
-    mcp = await setupMcpAgainst(bb);
-  }, 420_000);
-
-  afterAll(async () => {
-    await mcp?.close();
-    await bb?.stop();
-  });
-
+describeBitbucket("users", ({ bb, mcp }) => {
   test("search_users finds the admin user", async () => {
     const parsed = await callAndParse<{
       total: number;

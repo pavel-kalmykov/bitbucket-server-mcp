@@ -1,26 +1,8 @@
+import { test, expect } from "vitest";
 import { callRaw } from "../tool-test-utils.js";
-import { describe, test, expect, beforeAll, afterAll } from "vitest";
-import { SELECTED_VERSIONS } from "./versions.js";
-import {
-  startBitbucket,
-  type StartedBitbucket,
-} from "./bitbucket-container.js";
-import { setupMcpAgainst, type McpAgainstBitbucket } from "./mcp-harness.js";
+import { describeBitbucket } from "./e2e-suite.js";
 
-describe.each(SELECTED_VERSIONS)("system: Bitbucket $name", (version) => {
-  let bb: StartedBitbucket;
-  let mcp: McpAgainstBitbucket;
-
-  beforeAll(async () => {
-    bb = await startBitbucket(version);
-    mcp = await setupMcpAgainst(bb);
-  }, 420_000);
-
-  afterAll(async () => {
-    await mcp?.close();
-    await bb?.stop();
-  });
-
+describeBitbucket("system", ({ mcp }) => {
   test("get_server_info returns version", async () => {
     const result = await callRaw(mcp.client, "get_server_info", {});
     const content = result.content;
