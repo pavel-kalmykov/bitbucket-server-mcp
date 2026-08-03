@@ -2,7 +2,7 @@ import { z } from "zod";
 import { formatResponse, type ToolSuccessResult } from "../response/format.js";
 import { toolAnnotations } from "../response/annotations.js";
 import type { ToolContext } from "./shared.js";
-import type { ApiClients } from "../http/client.js";
+import type { ApiClients } from "../core/http/client.js";
 import { projectParam, repositoryParam } from "./params.js";
 import { curateResponse, DEFAULT_COMMENT_FIELDS } from "../response/curate.js";
 

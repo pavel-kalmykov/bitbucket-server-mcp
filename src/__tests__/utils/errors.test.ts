@@ -5,7 +5,7 @@ import {
   formatApiError,
   extractBitbucketMessage,
   handleToolError,
-} from "../../http/errors.js";
+} from "../../core/http/errors.js";
 import type { components } from "../../generated/bitbucket-api.js";
 import { setupHttpCapture } from "../http-test-utils.js";
 

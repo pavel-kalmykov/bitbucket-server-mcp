@@ -1,6 +1,6 @@
 import { describe, test, expect, vi, afterEach } from "vitest";
 import { http, HttpResponse } from "msw";
-import { createApiClients, getPaginated } from "../../http/client.js";
+import { createApiClients, getPaginated } from "../../core/http/client.js";
 import type { BitbucketConfig } from "../../types.js";
 import { setupHttpCapture } from "../http-test-utils.js";
 import { logger } from "../../logging.js";
