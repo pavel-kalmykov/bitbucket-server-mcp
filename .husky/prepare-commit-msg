@@ -1,0 +1,10 @@
+#!/usr/bin/env sh
+# Append Signed-off-by for DCO
+NAME=$(git config user.name)
+EMAIL=$(git config user.email)
+SIGNOFF="Signed-off-by: $NAME <$EMAIL>"
+
+# Only append if not already present
+if ! grep -qs "^$SIGNOFF" "$1"; then
+  printf '\n%s\n' "$SIGNOFF" >> "$1"
+fi
