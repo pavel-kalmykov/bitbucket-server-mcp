@@ -63,6 +63,10 @@ jobs:
       - name: Test
         run: ${{ matrix.node-version == '24.x' && 'npm run test:coverage' || 'npm test' }}
 
+      - name: Verify publish (dry-run)
+        if: matrix.node-version == '24.x'
+        run: npm pack --dry-run
+
       - name: Upload coverage to Codecov
         if: matrix.node-version == '24.x'
         uses: codecov/codecov-action@3f20e214133d0983f9a10f3d63b0faf9241a3daa # v6.0.0
