@@ -1,6 +1,10 @@
 import { test, fc } from "@fast-check/vitest";
-import { describe, expect } from "vitest";
+import { describe, expect, beforeAll } from "vitest";
 import { curateResponse, curateList } from "../../response/curate.js";
+
+beforeAll(() => {
+  fc.configureGlobal({ seed: 0 });
+});
 
 const arbitraryObject = fc.dictionary(
   fc.stringMatching(/^[a-z][a-zA-Z0-9]*$/),
@@ -97,6 +101,59 @@ describe("curateResponse (property-based)", () => {
       expect(result.reviewers).toEqual(
         reviewers.map(({ name, status }) => ({ name, status })),
       );
+    },
+  );
+
+  test.prop([
+    fc.dictionary(
+      fc.stringMatching(/^[a-z][a-zA-Z0-9]*$/),
+      fc.oneof(fc.string(), fc.integer(), fc.boolean(), fc.constant(null)),
+      { minKeys: 1 },
+    ),
+  ])(
+    "idempotence: curating twice with the same fields produces the same result",
+    (data) => {
+      const keys = Object.keys(data).slice(0, 3);
+      const fieldSpec = keys.join(",");
+      const first = curateResponse(data, fieldSpec);
+      const second = curateResponse(first, fieldSpec);
+      expect(second).toEqual(first);
+    },
+  );
+
+  test.prop([
+    fc.dictionary(
+      fc.stringMatching(/^[a-z][a-zA-Z0-9]*$/),
+      fc.oneof(fc.string(), fc.integer(), fc.boolean(), fc.constant(null)),
+      { minKeys: 2 },
+    ),
+  ])(
+    "field-order independence: different field order produces the same keys",
+    (data) => {
+      const keys = Object.keys(data).slice(0, 3);
+      const result1 = curateResponse(data, `${keys[0]},${keys[1]}`);
+      const result2 = curateResponse(data, `${keys[1]},${keys[0]}`);
+      expect(result1).toEqual(result2);
+    },
+  );
+
+  test.prop([
+    fc.dictionary(
+      fc.stringMatching(/^[a-z][a-zA-Z0-9]*$/),
+      fc.oneof(fc.string(), fc.integer(), fc.boolean(), fc.constant(null)),
+      { minKeys: 3 },
+    ),
+  ])(
+    "subset monotonicity: fewer requested fields produce fewer keys",
+    (data) => {
+      const keys = Object.keys(data);
+      const allFields = keys.join(",");
+      const subsetFields = keys.slice(0, 2).join(",");
+      const full = curateResponse(data, allFields);
+      const subset = curateResponse(data, subsetFields);
+      for (const key of Object.keys(subset)) {
+        expect(full).toHaveProperty(key);
+      }
     },
   );
 });
