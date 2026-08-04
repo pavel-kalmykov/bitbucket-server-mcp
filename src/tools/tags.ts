@@ -10,7 +10,6 @@ import {
   curateResponse,
   DEFAULT_TAG_FIELDS,
 } from "../response/curate.js";
-import { getPaginated } from "../core/http/client.js";
 import type { ToolContext } from "./shared.js";
 import {
   projectParam,
@@ -18,20 +17,23 @@ import {
   startParam,
   fieldsParam,
 } from "./params.js";
-import type { ApiClients } from "../core/http/client.js";
-
-interface TagActionContext {
-  clients: ApiClients;
-  resolvedProject: string;
-  repository: string;
-  name: string;
-  startPoint?: string;
-  message?: string;
-}
+import {
+  listTags,
+  getTag as getTagCore,
+  createTag,
+  deleteTag,
+} from "../core/refs.js";
 
 const tagActions: Record<
   string,
-  (ctx: TagActionContext) => Promise<ToolSuccessResult>
+  (ctx: {
+    clients: import("../core/http/client.js").ApiClients;
+    resolvedProject: string;
+    repository: string;
+    name: string;
+    startPoint?: string;
+    message?: string;
+  }) => Promise<ToolSuccessResult>
 > = {
   create: async ({
     clients,
@@ -41,22 +43,19 @@ const tagActions: Record<
     startPoint,
     message,
   }) => {
-    const data = await clients.api
-      .post(`projects/${resolvedProject}/repos/${repository}/tags`, {
-        json: {
-          name: `refs/tags/${name}`,
-          startPoint,
-          message,
-        },
-      })
-      .json<Record<string, unknown>>();
+    const data = await createTag(
+      clients,
+      resolvedProject,
+      repository,
+      name,
+      startPoint,
+      message,
+    );
     return formatResponse(curateResponse(data, DEFAULT_TAG_FIELDS));
   },
   delete: async ({ clients, resolvedProject, repository, name }) => {
-    await clients.git
-      .delete(`projects/${resolvedProject}/repos/${repository}/tags/${name}`)
-      .json();
-    return formatResponse({ deleted: true, tag: name });
+    const result = await deleteTag(clients, resolvedProject, repository, name);
+    return formatResponse(result);
   },
 };
 
@@ -93,15 +92,11 @@ export function registerTagTools(ctx: ToolContext) {
       fields,
     }) => {
       const resolvedProject = ctx.resolveProject(project);
-      const searchParams: Record<string, string | number> = { limit, start };
-      if (filterText) searchParams.filterText = filterText;
-
-      const data = await getPaginated(
-        clients.api,
-        `projects/${resolvedProject}/repos/${repository}/tags`,
-        { searchParams },
-      );
-
+      const data = await listTags(clients, resolvedProject, repository, {
+        filterText,
+        limit,
+        start,
+      });
       return formatResponse(
         buildPaginated(data, {
           tags: curateList(data.values, fields ?? DEFAULT_TAG_FIELDS),
@@ -114,7 +109,7 @@ export function registerTagTools(ctx: ToolContext) {
     "get_tag",
     {
       description:
-        "Get details of a specific tag by its name. Supports custom field selection via the `fields` param (`'*all'` for full raw response, `'id,displayId,hash'` for a custom subset).",
+        "Get details of a specific tag by its name. Supports custom field selection via the `fields` param.",
       inputSchema: {
         project: projectParam(),
         repository: repositoryParam(),
@@ -125,10 +120,7 @@ export function registerTagTools(ctx: ToolContext) {
     },
     async ({ project, repository, name, fields }) => {
       const resolvedProject = ctx.resolveProject(project);
-      const data = await clients.api
-        .get(`projects/${resolvedProject}/repos/${repository}/tags/${name}`)
-        .json<Record<string, unknown>>();
-
+      const data = await getTagCore(clients, resolvedProject, repository, name);
       return formatResponse(curateResponse(data, fields ?? DEFAULT_TAG_FIELDS));
     },
   );
@@ -160,7 +152,7 @@ export function registerTagTools(ctx: ToolContext) {
     },
     async ({ action, project, repository, name, startPoint, message }) => {
       const resolvedProject = ctx.resolveProject(project);
-      return await tagActions[action]({
+      return tagActions[action]({
         clients,
         resolvedProject,
         repository,
