@@ -5,6 +5,10 @@
   "type": "module",
   "main": "build/entry.js",
   "types": "build/entry.d.ts",
+  "exports": {
+    ".": "./build/index.js",
+    "./core": "./build/core/index.js"
+  },
   "files": [
     "build",
     "!build/__tests__"
