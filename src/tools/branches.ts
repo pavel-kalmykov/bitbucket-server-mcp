@@ -1,5 +1,4 @@
 import { z } from "zod";
-import { HTTPError } from "ky";
 import {
   formatResponse,
   buildPaginated,
@@ -12,7 +11,6 @@ import {
   DEFAULT_BRANCH_FIELDS,
   DEFAULT_COMMIT_FIELDS,
 } from "../response/curate.js";
-import { getPaginated } from "../core/http/client.js";
 import type { ToolContext } from "./shared.js";
 import {
   projectParam,
@@ -21,25 +19,30 @@ import {
   startParam,
   fieldsParam,
 } from "./params.js";
-import type { ApiClients } from "../core/http/client.js";
 import type { Commit as BaseCommit } from "../generated/types.js";
+import {
+  listBranchRestrictions,
+  listBranches,
+  listCommits,
+  createBranch,
+  deleteBranch,
+  getCommit as getBranchCommit,
+  compareRefs as compareBranchRefs,
+} from "../core/refs.js";
 
-// Extend: the API returns slug/displayName on author but the spec doesn't document them
 type Commit = BaseCommit & {
   author?: { name?: string; slug?: string; displayName?: string };
 };
 
-interface BranchActionContext {
-  clients: ApiClients;
-  resolvedProject: string;
-  repository: string;
-  branch: string;
-  startPoint?: string;
-}
-
 const branchActions: Record<
   string,
-  (ctx: BranchActionContext) => Promise<ToolSuccessResult>
+  (ctx: {
+    clients: import("../core/http/client.js").ApiClients;
+    resolvedProject: string;
+    repository: string;
+    branch: string;
+    startPoint?: string;
+  }) => Promise<ToolSuccessResult>
 > = {
   create: async ({
     clients,
@@ -48,26 +51,23 @@ const branchActions: Record<
     branch,
     startPoint,
   }) => {
-    const data = await clients.branchUtils
-      .post(`projects/${resolvedProject}/repos/${repository}/branches`, {
-        json: { name: `refs/heads/${branch}`, startPoint },
-      })
-      .json<Record<string, unknown>>();
+    const data = await createBranch(
+      clients,
+      resolvedProject,
+      repository,
+      branch,
+      startPoint,
+    );
     return formatResponse(curateResponse(data, DEFAULT_BRANCH_FIELDS));
   },
   delete: async ({ clients, resolvedProject, repository, branch }) => {
-    const defaultBranch = await clients.api
-      .get(`projects/${resolvedProject}/repos/${repository}/default-branch`)
-      .json<{ displayId?: string }>();
-    if (defaultBranch.displayId === branch) {
-      throw new Error(`Cannot delete the default branch "${branch}".`);
-    }
-    await clients.branchUtils
-      .post(`projects/${resolvedProject}/repos/${repository}/branches`, {
-        json: { name: `refs/heads/${branch}`, dryRun: false },
-      })
-      .json();
-    return formatResponse({ deleted: true, branch });
+    const result = await deleteBranch(
+      clients,
+      resolvedProject,
+      repository,
+      branch,
+    );
+    return formatResponse(result);
   },
 };
 
@@ -89,21 +89,14 @@ export function registerBranchTools(ctx: ToolContext) {
     },
     async ({ project, repository, limit = 25, start = 0 }) => {
       const resolvedProject = ctx.resolveProject(project);
-      const data = await getPaginated(
-        clients.branchUtils,
-        `projects/${resolvedProject}/repos/${repository}/restrictions`,
-        { searchParams: { limit, start } },
-      ).catch((e) => {
-        if (e instanceof HTTPError && e.response.status === 404) {
-          return { values: [], size: 0, isLastPage: true } as const;
-        }
-        throw e;
-      });
-
+      const data = await listBranchRestrictions(
+        clients,
+        resolvedProject,
+        repository,
+        { limit, start },
+      );
       return formatResponse(
-        buildPaginated(data, {
-          restrictions: data.values,
-        }),
+        buildPaginated(data, { restrictions: data.values }),
       );
     },
   );
@@ -112,7 +105,7 @@ export function registerBranchTools(ctx: ToolContext) {
     "list_branches",
     {
       description:
-        "List branches in a repository. Also returns the default branch when available. Supports custom field selection via the `fields` param (`'*all'` for full raw response, `'displayId,latestCommit'` for a custom subset).",
+        "List branches in a repository. Also returns the default branch when available. Supports custom field selection via the `fields` param.",
       inputSchema: {
         project: projectParam(),
         repository: repositoryParam(),
@@ -138,23 +131,13 @@ export function registerBranchTools(ctx: ToolContext) {
       fields,
     }) => {
       const resolvedProject = ctx.resolveProject(project);
-      const searchParams: Record<string, string | number> = { limit, start };
-      if (filterText) searchParams.filterText = filterText;
-
-      const [branchData, defaultBranch] = await Promise.all([
-        getPaginated(
-          clients.api,
-          `projects/${resolvedProject}/repos/${repository}/branches`,
-          { searchParams },
-        ),
-        clients.api
-          .get(`projects/${resolvedProject}/repos/${repository}/default-branch`)
-          .json<Record<string, unknown>>()
-          .catch(() => null),
-      ]);
-
+      const { branches: branchData, defaultBranch } = await listBranches(
+        clients,
+        resolvedProject,
+        repository,
+        { filterText, limit, start },
+      );
       const activeFields = fields ?? DEFAULT_BRANCH_FIELDS;
-
       return formatResponse(
         buildPaginated(branchData, {
           branches: curateList(branchData.values, activeFields),
@@ -170,7 +153,7 @@ export function registerBranchTools(ctx: ToolContext) {
     "list_commits",
     {
       description:
-        "List commits in a repository, optionally filtered by branch and author. Supports custom field selection via the `fields` param (`'*all'` for full raw response, `'id,message,author.name'` for a custom subset).",
+        "List commits in a repository, optionally filtered by branch and author. Supports custom field selection via the `fields` param.",
       inputSchema: {
         project: projectParam(),
         repository: repositoryParam(),
@@ -182,7 +165,7 @@ export function registerBranchTools(ctx: ToolContext) {
           .string()
           .optional()
           .describe(
-            "Client-side filter by author (case-insensitive match on name, slug, or displayName). Only filters the current page of results. Use with start/limit to paginate for more matches.",
+            "Client-side filter by author (case-insensitive match on name, slug, or displayName).",
           ),
         limit: z
           .number()
@@ -203,17 +186,12 @@ export function registerBranchTools(ctx: ToolContext) {
       fields,
     }) => {
       const resolvedProject = ctx.resolveProject(project);
-      const searchParams: Record<string, string | number> = { limit, start };
-      if (branch) searchParams.until = branch;
-
-      const data = await getPaginated<Commit>(
-        clients.api,
-        `projects/${resolvedProject}/repos/${repository}/commits`,
-        { searchParams },
-      );
-
-      let commits = data.values;
-
+      const data = await listCommits(clients, resolvedProject, repository, {
+        branch,
+        limit,
+        start,
+      });
+      let commits: Commit[] = data.values as Commit[];
       if (author) {
         const authorLower = author.toLowerCase();
         commits = commits.filter((commit) => {
@@ -225,7 +203,6 @@ export function registerBranchTools(ctx: ToolContext) {
           );
         });
       }
-
       return formatResponse(
         buildPaginated(data, {
           total: author ? commits.length : data.size,
@@ -258,7 +235,7 @@ export function registerBranchTools(ctx: ToolContext) {
     },
     async ({ action, project, repository, branch, startPoint }) => {
       const resolvedProject = ctx.resolveProject(project);
-      return await branchActions[action]({
+      return branchActions[action]({
         clients,
         resolvedProject,
         repository,
@@ -272,7 +249,7 @@ export function registerBranchTools(ctx: ToolContext) {
     "get_commit",
     {
       description:
-        "Get details of a specific commit by its ID. Supports custom field selection via the `fields` param (`'*all'` for full raw response, `'id,message,author.name'` for a custom subset).",
+        "Get details of a specific commit by its ID. Supports custom field selection via the `fields` param.",
       inputSchema: {
         project: projectParam(),
         repository: repositoryParam(),
@@ -283,12 +260,12 @@ export function registerBranchTools(ctx: ToolContext) {
     },
     async ({ project, repository, commitId, fields }) => {
       const resolvedProject = ctx.resolveProject(project);
-      const data = await clients.api
-        .get(
-          `projects/${resolvedProject}/repos/${repository}/commits/${commitId}`,
-        )
-        .json<Record<string, unknown>>();
-
+      const data = await getBranchCommit(
+        clients,
+        resolvedProject,
+        repository,
+        commitId,
+      );
       return formatResponse(
         curateResponse(data, fields ?? DEFAULT_COMMIT_FIELDS),
       );
@@ -299,7 +276,7 @@ export function registerBranchTools(ctx: ToolContext) {
     "compare_refs",
     {
       description:
-        "Compare two refs and list commits accessible from `to` but not from `from`. Supports custom field selection via the `fields` param (`'*all'` for full raw response, `'id,message,author.name'` for a custom subset).",
+        "Compare two refs and list commits accessible from `to` but not from `from`. Supports custom field selection via the `fields` param.",
       inputSchema: {
         project: projectParam(),
         repository: repositoryParam(),
@@ -330,19 +307,17 @@ export function registerBranchTools(ctx: ToolContext) {
       fields,
     }) => {
       const resolvedProject = ctx.resolveProject(project);
-      const searchParams: Record<string, string | number> = {
-        limit,
-        start,
-      };
-      if (from) searchParams.from = from;
-      if (to) searchParams.to = to;
-
-      const data = await getPaginated(
-        clients.api,
-        `projects/${resolvedProject}/repos/${repository}/compare/commits`,
-        { searchParams },
+      const data = await compareBranchRefs(
+        clients,
+        resolvedProject,
+        repository,
+        {
+          from,
+          to,
+          limit,
+          start,
+        },
       );
-
       return formatResponse(
         buildPaginated(data, {
           commits: curateList(data.values, fields ?? DEFAULT_COMMIT_FIELDS),
