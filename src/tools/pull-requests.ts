@@ -14,6 +14,14 @@ import {
   DEFAULT_ACTIVITY_FIELDS,
 } from "../response/curate.js";
 import { getPaginated } from "../core/http/client.js";
+import {
+  createPr,
+  getPr,
+  listPrs,
+  listDashboardPrs,
+  getPrCommits,
+  getCommitPrs,
+} from "../core/pull-requests.js";
 import type { ApiClients } from "../core/http/client.js";
 import { mergeDefaultReviewers } from "./shared.js";
 import type { ToolContext } from "./shared.js";
@@ -172,12 +180,12 @@ export function registerPullRequestTools(ctx: ToolContext) {
         reviewers: allReviewers,
       };
 
-      const data = await clients.api
-        .post(`projects/${resolvedProject}/repos/${repository}/pull-requests`, {
-          json: body,
-        })
-        .json<Record<string, unknown>>();
-
+      const data = await createPr(
+        clients,
+        resolvedProject,
+        repository,
+        body as unknown as Record<string, unknown>,
+      );
       return formatResponse(curateResponse(data, DEFAULT_PR_FIELDS));
     },
   );
@@ -346,11 +354,12 @@ export function registerPullRequestTools(ctx: ToolContext) {
       const resolvedProject = ctx.resolveProject(project);
 
       // Fetch current version for optimistic locking
-      const pr = await clients.api
-        .get(
-          `projects/${resolvedProject}/repos/${repository}/pull-requests/${prId}`,
-        )
-        .json<PullRequest>();
+      const pr = (await getPr(
+        clients,
+        resolvedProject,
+        repository,
+        prId,
+      )) as PullRequest;
 
       const body: PullRequestMergeRequest = { version: pr.version };
       if (message) body.message = message;
@@ -390,11 +399,12 @@ export function registerPullRequestTools(ctx: ToolContext) {
       const resolvedProject = ctx.resolveProject(project);
 
       // Fetch current version for optimistic locking
-      const pr = await clients.api
-        .get(
-          `projects/${resolvedProject}/repos/${repository}/pull-requests/${prId}`,
-        )
-        .json<PullRequest>();
+      const pr = (await getPr(
+        clients,
+        resolvedProject,
+        repository,
+        prId,
+      )) as PullRequest;
 
       const body: PullRequestDeclineRequest = {
         version: pr.version,
@@ -461,13 +471,14 @@ export function registerPullRequestTools(ctx: ToolContext) {
       if (direction) searchParams.direction = direction;
       if (order) searchParams.order = order;
 
-      const data = await getPaginated<PullRequest>(
-        clients.api,
-        `projects/${resolvedProject}/repos/${repository}/pull-requests`,
-        { searchParams },
+      const data = await listPrs(
+        clients,
+        resolvedProject,
+        repository,
+        searchParams,
       );
 
-      let pullRequests = data.values;
+      let pullRequests = data.values as PullRequest[];
 
       if (author) {
         const authorLower = author.toLowerCase();
@@ -536,9 +547,7 @@ export function registerPullRequestTools(ctx: ToolContext) {
       if (order) searchParams.order = order;
       if (closedSince) searchParams.closedSince = closedSince;
 
-      const data = await getPaginated(clients.api, "dashboard/pull-requests", {
-        searchParams,
-      });
+      const data = await listDashboardPrs(clients, searchParams);
 
       return formatResponse({
         ...data,
@@ -735,10 +744,12 @@ export function registerPullRequestTools(ctx: ToolContext) {
     },
     async ({ project, repository, prId, limit = 25, start = 0, fields }) => {
       const resolvedProject = ctx.resolveProject(project);
-      const data = await getPaginated(
-        clients.api,
-        `projects/${resolvedProject}/repos/${repository}/pull-requests/${prId}/commits`,
-        { searchParams: { limit, start } },
+      const data = await getPrCommits(
+        clients,
+        resolvedProject,
+        repository,
+        prId,
+        { limit, start },
       );
 
       return formatResponse(
@@ -773,10 +784,12 @@ export function registerPullRequestTools(ctx: ToolContext) {
       fields,
     }) => {
       const resolvedProject = ctx.resolveProject(project);
-      const data = await getPaginated(
-        clients.api,
-        `projects/${resolvedProject}/repos/${repository}/commits/${commitId}/pull-requests`,
-        { searchParams: { limit, start } },
+      const data = await getCommitPrs(
+        clients,
+        resolvedProject,
+        repository,
+        commitId,
+        { limit, start },
       );
 
       return formatResponse(
