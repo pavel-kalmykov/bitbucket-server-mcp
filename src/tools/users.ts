@@ -8,7 +8,7 @@ import {
   curateList,
   DEFAULT_USER_FIELDS,
 } from "../response/curate.js";
-import { getUserProfile, searchUsers } from "../core/users.js";
+import { getUserProfile, searchUsers } from "../api/users.js";
 
 export function registerUserTools(ctx: ToolContext) {
   const { server, clients } = ctx;

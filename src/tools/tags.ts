@@ -10,7 +10,7 @@ import {
   curateResponse,
   DEFAULT_TAG_FIELDS,
 } from "../response/curate.js";
-import { getPaginated } from "../core/http/client.js";
+import { getPaginated } from "../api/http/client.js";
 import type { ToolContext } from "./shared.js";
 import {
   projectParam,
@@ -18,7 +18,7 @@ import {
   startParam,
   fieldsParam,
 } from "./params.js";
-import type { ApiClients } from "../core/http/client.js";
+import type { ApiClients } from "../api/http/client.js";
 
 interface TagActionContext {
   clients: ApiClients;

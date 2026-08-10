@@ -5,9 +5,9 @@ import {
   type ToolSuccessResult,
 } from "../response/format.js";
 import { toolAnnotations } from "../response/annotations.js";
-import { getPaginated } from "../core/http/client.js";
+import { getPaginated } from "../api/http/client.js";
 import type { ToolContext } from "./shared.js";
-import type { ApiClients } from "../core/http/client.js";
+import type { ApiClients } from "../api/http/client.js";
 import {
   projectParam,
   repositoryParam,

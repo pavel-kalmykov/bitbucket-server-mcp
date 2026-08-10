@@ -9,7 +9,7 @@ import {
   DEFAULT_PROJECT_FIELDS,
   DEFAULT_REPOSITORY_FIELDS,
 } from "../response/curate.js";
-import { getPaginated } from "../core/http/client.js";
+import { getPaginated } from "../api/http/client.js";
 import type { ToolContext } from "./shared.js";
 import {
   projectParam,
