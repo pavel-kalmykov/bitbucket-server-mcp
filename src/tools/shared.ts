@@ -1,6 +1,6 @@
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
-import type { ApiClients } from "../core/http/client.js";
-import type { ApiCache } from "../core/http/cache.js";
+import type { ApiClients } from "../api/http/client.js";
+import type { ApiCache } from "../api/http/cache.js";
 import type { Logger } from "../logging.js";
 
 interface ToolContextParams {
