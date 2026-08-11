@@ -10,7 +10,8 @@
     "!build/__tests__"
   ],
   "bin": {
-    "bitbucket-server-mcp": "build/entry.js"
+    "bitbucket-server-mcp": "build/entry.js",
+    "bbs": "build/cli/main.js"
   },
   "publishConfig": {
     "access": "public"
