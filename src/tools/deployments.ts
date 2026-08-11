@@ -3,12 +3,16 @@ import { formatResponse, type ToolSuccessResult } from "../response/format.js";
 import { toolAnnotations } from "../response/annotations.js";
 import type { ToolContext } from "./shared.js";
 import type { ApiClients } from "../api/http/client.js";
-import type { Deployment } from "../generated/types.js";
 import { projectParam, repositoryParam } from "./params.js";
 import {
   curateResponse,
   DEFAULT_DEPLOYMENT_FIELDS,
 } from "../response/curate.js";
+import {
+  getDeployment,
+  createDeployment,
+  deleteDeployment,
+} from "../api/admin.js";
 
 const deploymentPath = (project: string, repo: string, commit: string) =>
   `projects/${project}/repos/${repo}/commits/${commit}/deployments`;
@@ -49,20 +53,13 @@ const deploymentActions: Record<
     environmentKey,
     deploymentSequenceNumber,
   }) => {
-    requireParams(
-      { key, environmentKey, deploymentSequenceNumber },
-      ["key", "environmentKey", "deploymentSequenceNumber"],
-      "get",
+    const data = await getDeployment(
+      clients,
+      basePath,
+      key!,
+      environmentKey!,
+      deploymentSequenceNumber!,
     );
-    const data = await clients.api
-      .get(basePath, {
-        searchParams: {
-          key: key!,
-          environmentKey: environmentKey!,
-          deploymentSequenceNumber: String(deploymentSequenceNumber!),
-        },
-      })
-      .json<Deployment>();
     return formatResponse(curateResponse(data, DEFAULT_DEPLOYMENT_FIELDS));
   },
 
@@ -121,9 +118,7 @@ const deploymentActions: Record<
       body.url = url;
     }
 
-    const data = await clients.api
-      .post(basePath, { json: body })
-      .json<Deployment>();
+    const data = await createDeployment(clients, basePath, body);
     return formatResponse(curateResponse(data, DEFAULT_DEPLOYMENT_FIELDS));
   },
 
@@ -134,18 +129,13 @@ const deploymentActions: Record<
     environmentKey,
     deploymentSequenceNumber,
   }) => {
-    requireParams(
-      { key, environmentKey, deploymentSequenceNumber },
-      ["key", "environmentKey", "deploymentSequenceNumber"],
-      "delete",
+    await deleteDeployment(
+      clients,
+      basePath,
+      key!,
+      environmentKey!,
+      deploymentSequenceNumber!,
     );
-    await clients.api.delete(basePath, {
-      searchParams: {
-        key: key!,
-        environmentKey: environmentKey!,
-        deploymentSequenceNumber: String(deploymentSequenceNumber!),
-      },
-    });
     return formatResponse({
       deleted: true,
       key,
@@ -236,8 +226,7 @@ export function registerDeploymentTools(ctx: ToolContext) {
     async ({ action, project, repository, commitId, ...rest }) => {
       const resolvedProject = ctx.resolveProject(project);
       const basePath = deploymentPath(resolvedProject, repository, commitId);
-      const handler = deploymentActions[action];
-      return handler({ clients, basePath, ...rest });
+      return deploymentActions[action]({ clients, basePath, ...rest });
     },
   );
 }

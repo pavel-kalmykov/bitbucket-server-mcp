@@ -3,6 +3,7 @@ import { toolAnnotations } from "../response/annotations.js";
 import type { ToolContext } from "./shared.js";
 import { projectParam, repositoryParam, fieldsParam } from "./params.js";
 import { curateList, DEFAULT_REVIEWER_FIELDS } from "../response/curate.js";
+import { listDefaultReviewerConditions } from "../api/admin.js";
 
 export function registerDefaultReviewerTools(ctx: ToolContext) {
   const { server, clients } = ctx;
@@ -21,10 +22,11 @@ export function registerDefaultReviewerTools(ctx: ToolContext) {
     },
     async ({ project, repository, fields }) => {
       const resolvedProject = ctx.resolveProject(project);
-      const data = await clients.defaultReviewers
-        .get(`projects/${resolvedProject}/repos/${repository}/conditions`)
-        .json<Record<string, unknown>[]>();
-
+      const data = await listDefaultReviewerConditions(
+        clients,
+        resolvedProject,
+        repository,
+      );
       return formatResponse(
         curateList(data, fields ?? DEFAULT_REVIEWER_FIELDS),
       );

@@ -13,7 +13,6 @@ import {
   DEFAULT_COMMIT_FIELDS,
   DEFAULT_ACTIVITY_FIELDS,
 } from "../response/curate.js";
-import { getPaginated } from "../api/http/client.js";
 import type { ApiClients } from "../api/http/client.js";
 import { mergeDefaultReviewers } from "./shared.js";
 import type { ToolContext } from "./shared.js";
@@ -30,9 +29,26 @@ import type {
   PullRequestMergeRequest,
   PullRequestDeclineRequest,
 } from "../generated/types.js";
+import {
+  createPr,
+  getPr,
+  getPrMerge,
+  getPrBuildSummaries,
+  updatePr,
+  mergePr,
+  declinePr,
+  listPrs,
+  listDashboardPrs,
+  getPrActivity,
+  getPrDiff,
+  getPrDiffStat,
+  getPrCommits,
+  getCommitPrs,
+  approvePr,
+  unapprovePr,
+  publishReview,
+} from "../api/pull-requests.js";
 
-// Extend generated types with fields we know are present in API responses
-// Extend: the API returns these fields but the 8.5 spec marks them optional or missing
 type PullRequest = BasePullRequest & {
   version: number;
   author?: { user?: { name?: string; slug?: string; displayName?: string } };
@@ -53,9 +69,6 @@ type Activity = PullRequestActivity & {
   comment?: { author?: { name: string } };
 };
 
-// Create PR accepts RestPullRequest as body, but the API only needs a subset.
-// The spec's type requires fields (project.name, project.type) that aren't
-// needed for creation, so we keep a manual type for what we actually send.
 interface CreatePrBody {
   title: string;
   description?: string;
@@ -172,11 +185,12 @@ export function registerPullRequestTools(ctx: ToolContext) {
         reviewers: allReviewers,
       };
 
-      const data = await clients.api
-        .post(`projects/${resolvedProject}/repos/${repository}/pull-requests`, {
-          json: body,
-        })
-        .json<Record<string, unknown>>();
+      const data = await createPr(
+        clients,
+        resolvedProject,
+        repository,
+        body as unknown as Record<string, unknown>,
+      );
 
       return formatResponse(curateResponse(data, DEFAULT_PR_FIELDS));
     },
@@ -186,7 +200,7 @@ export function registerPullRequestTools(ctx: ToolContext) {
     "get_pull_request",
     {
       description:
-        "Get details of a specific pull request including status, reviewers, and metadata. Supports custom field selection via the `fields` param (`'*all'` for full raw response, `'id,title,state'` for a custom subset).",
+        "Get details of a specific pull request including status, reviewers, and metadata. Supports custom field selection via the `fields` param.",
       inputSchema: {
         project: projectParam(),
         repository: repositoryParam(),
@@ -196,13 +210,13 @@ export function registerPullRequestTools(ctx: ToolContext) {
           .boolean()
           .optional()
           .describe(
-            "Include merge vetoes from the /merge endpoint (default: false). Adds `mergeCheck` with canMerge, conflicted, outcome, and vetoes fields.",
+            "Include merge vetoes from the /merge endpoint (default: false).",
           ),
         includeBuildSummaries: z
           .boolean()
           .optional()
           .describe(
-            "Include build summaries from the UI-layer endpoint (default: false). Adds `buildSummaries` with aggregated CI status per commit. May not be available in older Bitbucket deployments.",
+            "Include build summaries from the UI-layer endpoint (default: false).",
           ),
       },
       annotations: toolAnnotations(),
@@ -216,21 +230,21 @@ export function registerPullRequestTools(ctx: ToolContext) {
       includeBuildSummaries,
     }) => {
       const resolvedProject = ctx.resolveProject(project);
-      const basePath = `projects/${resolvedProject}/repos/${repository}/pull-requests/${prId}`;
 
       const [prData, mergeCheck, buildSummaries] = await Promise.all([
-        clients.api.get(basePath).json<PullRequest>(),
+        getPr(clients, resolvedProject, repository, prId),
         includeMergeVetoes
-          ? clients.api
-              .get(`${basePath}/merge`)
-              .json<Record<string, unknown>>()
-              .catch(() => null)
+          ? getPrMerge(clients, resolvedProject, repository, prId).catch(
+              () => null,
+            )
           : null,
         includeBuildSummaries
-          ? clients.ui
-              .get(`${basePath}/build-summaries`)
-              .json<Record<string, unknown>>()
-              .catch(() => null)
+          ? getPrBuildSummaries(
+              clients,
+              resolvedProject,
+              repository,
+              prId,
+            ).catch(() => null)
           : null,
       ]);
 
@@ -274,15 +288,13 @@ export function registerPullRequestTools(ctx: ToolContext) {
     }) => {
       const resolvedProject = ctx.resolveProject(project);
 
-      // Fetch current PR state
-      const current = await clients.api
-        .get(
-          `projects/${resolvedProject}/repos/${repository}/pull-requests/${prId}`,
-        )
-        .json<PullRequest>();
+      const current = (await getPr(
+        clients,
+        resolvedProject,
+        repository,
+        prId,
+      )) as PullRequest;
 
-      // Only send the fields the PUT endpoint accepts. Spreading the full
-      // PR object causes a 400 because the API rejects fields like `author`.
       const updated: Record<string, unknown> = {
         id: current.id,
         version: current.version,
@@ -300,13 +312,13 @@ export function registerPullRequestTools(ctx: ToolContext) {
           : current.reviewers,
       };
 
-      const data = await clients.api
-        .put(
-          `projects/${resolvedProject}/repos/${repository}/pull-requests/${prId}`,
-          { json: updated },
-        )
-        .json<Record<string, unknown>>();
-
+      const data = await updatePr(
+        clients,
+        resolvedProject,
+        repository,
+        prId,
+        updated,
+      );
       return formatResponse(curateResponse(data, DEFAULT_PR_FIELDS));
     },
   );
@@ -345,25 +357,24 @@ export function registerPullRequestTools(ctx: ToolContext) {
     async ({ project, repository, prId, message, strategy }) => {
       const resolvedProject = ctx.resolveProject(project);
 
-      // Fetch current version for optimistic locking
-      const pr = await clients.api
-        .get(
-          `projects/${resolvedProject}/repos/${repository}/pull-requests/${prId}`,
-        )
-        .json<PullRequest>();
+      const pr = (await getPr(
+        clients,
+        resolvedProject,
+        repository,
+        prId,
+      )) as PullRequest;
 
       const body: PullRequestMergeRequest = { version: pr.version };
       if (message) body.message = message;
 
-      const searchParams: Record<string, string> = {};
-      if (strategy) searchParams.strategyId = strategy;
-
-      const data = await clients.api
-        .post(
-          `projects/${resolvedProject}/repos/${repository}/pull-requests/${prId}/merge`,
-          { json: body, searchParams },
-        )
-        .json<Record<string, unknown>>();
+      const data = await mergePr(
+        clients,
+        resolvedProject,
+        repository,
+        prId,
+        body as unknown as Record<string, unknown>,
+        strategy,
+      );
 
       return formatResponse(curateResponse(data, DEFAULT_PR_FIELDS));
     },
@@ -389,24 +400,25 @@ export function registerPullRequestTools(ctx: ToolContext) {
     async ({ project, repository, prId, message }) => {
       const resolvedProject = ctx.resolveProject(project);
 
-      // Fetch current version for optimistic locking
-      const pr = await clients.api
-        .get(
-          `projects/${resolvedProject}/repos/${repository}/pull-requests/${prId}`,
-        )
-        .json<PullRequest>();
+      const pr = (await getPr(
+        clients,
+        resolvedProject,
+        repository,
+        prId,
+      )) as PullRequest;
 
       const body: PullRequestDeclineRequest = {
         version: pr.version,
         ...(message && { comment: message }),
       };
 
-      const data = await clients.api
-        .post(
-          `projects/${resolvedProject}/repos/${repository}/pull-requests/${prId}/decline`,
-          { json: body },
-        )
-        .json<Record<string, unknown>>();
+      const data = await declinePr(
+        clients,
+        resolvedProject,
+        repository,
+        prId,
+        body as unknown as Record<string, unknown>,
+      );
 
       return formatResponse(curateResponse(data, DEFAULT_PR_FIELDS));
     },
@@ -416,7 +428,7 @@ export function registerPullRequestTools(ctx: ToolContext) {
     "list_pull_requests",
     {
       description:
-        "List pull requests in a repository. Supports filtering by state, direction, order, and client-side author filtering. Supports custom field selection via the `fields` param (`'*all'` for full raw response, `'id,title,state'` for a custom subset).",
+        "List pull requests in a repository. Supports filtering by state, direction, order, and client-side author filtering. Supports custom field selection via the `fields` param.",
       inputSchema: {
         project: projectParam(),
         repository: repositoryParam(),
@@ -461,13 +473,14 @@ export function registerPullRequestTools(ctx: ToolContext) {
       if (direction) searchParams.direction = direction;
       if (order) searchParams.order = order;
 
-      const data = await getPaginated<PullRequest>(
-        clients.api,
-        `projects/${resolvedProject}/repos/${repository}/pull-requests`,
-        { searchParams },
+      const data = await listPrs(
+        clients,
+        resolvedProject,
+        repository,
+        searchParams,
       );
 
-      let pullRequests = data.values;
+      let pullRequests = data.values as PullRequest[];
 
       if (author) {
         const authorLower = author.toLowerCase();
@@ -494,7 +507,7 @@ export function registerPullRequestTools(ctx: ToolContext) {
     "list_dashboard_pull_requests",
     {
       description:
-        "Get pull requests from the authenticated user dashboard. No project/repo needed. Supports custom field selection via the `fields` param (`'*all'` for full raw response, `'id,title,state'` for a custom subset).",
+        "Get pull requests from the authenticated user dashboard. No project/repo needed. Supports custom field selection via the `fields` param.",
       inputSchema: {
         state: z
           .enum(["OPEN", "MERGED", "DECLINED", "ALL"])
@@ -536,9 +549,7 @@ export function registerPullRequestTools(ctx: ToolContext) {
       if (order) searchParams.order = order;
       if (closedSince) searchParams.closedSince = closedSince;
 
-      const data = await getPaginated(clients.api, "dashboard/pull-requests", {
-        searchParams,
-      });
+      const data = await listDashboardPrs(clients, searchParams);
 
       return formatResponse({
         ...data,
@@ -583,13 +594,18 @@ export function registerPullRequestTools(ctx: ToolContext) {
       fields,
     }) => {
       const resolvedProject = ctx.resolveProject(project);
-      const data = await getPaginated<Activity>(
-        clients.api,
-        `projects/${resolvedProject}/repos/${repository}/pull-requests/${prId}/activities`,
-        { searchParams: { limit, start } },
+      const data = await getPrActivity(
+        clients,
+        resolvedProject,
+        repository,
+        prId,
+        {
+          limit,
+          start,
+        },
       );
 
-      let activities = data.values;
+      let activities = data.values as Activity[];
 
       if (excludeUsers?.length) {
         const excluded = new Set(excludeUsers.map((u) => u.toLowerCase()));
@@ -620,7 +636,7 @@ export function registerPullRequestTools(ctx: ToolContext) {
     "get_diff",
     {
       description:
-        "Get the diff of a pull request. Use stat=true for a lightweight summary of changed files (and line counts if the server supports it) instead of the full diff.",
+        "Get the diff of a pull request. Use stat=true for a lightweight summary of changed files instead of the full diff.",
       inputSchema: {
         project: projectParam(),
         repository: repositoryParam(),
@@ -634,21 +650,15 @@ export function registerPullRequestTools(ctx: ToolContext) {
         filePath: z
           .string()
           .optional()
-          .describe(
-            "Path to a specific file to get the diff for. Use with stat=true first to discover file paths, then request individual diffs.",
-          ),
+          .describe("Path to a specific file to get the diff for."),
         contextLines: z
           .number()
           .optional()
-          .describe(
-            "Number of context lines around changes (default: 10). Ignored when stat=true.",
-          ),
+          .describe("Number of context lines around changes (default: 10)."),
         maxLinesPerFile: z
           .number()
           .optional()
-          .describe(
-            "Max lines per file. 0 = no limit. Defaults to BITBUCKET_DIFF_MAX_LINES_PER_FILE. Ignored when stat=true.",
-          ),
+          .describe("Max lines per file. 0 = no limit."),
       },
       annotations: toolAnnotations(),
     },
@@ -662,51 +672,25 @@ export function registerPullRequestTools(ctx: ToolContext) {
       maxLinesPerFile,
     }) => {
       const resolvedProject = ctx.resolveProject(project);
-      const basePath = `projects/${resolvedProject}/repos/${repository}/pull-requests/${prId}`;
 
       if (stat) {
-        const changesData = await clients.api
-          .get(`${basePath}/changes`, {
-            searchParams: { limit: 1000 },
-          })
-          .json<{
-            values: Array<{
-              path: { toString: string };
-              type: string;
-              nodeType: string;
-            }>;
-          }>();
-
-        const files = changesData.values.map((c) => ({
-          path: c.path.toString,
-          type: c.type,
-        }));
-
-        let summary: Record<string, number> | undefined;
-        try {
-          summary = await clients.api
-            .get(`${basePath}/diff-stats-summary`)
-            .json<Record<string, number>>();
-        } catch {
-          // diff-stats-summary only available on Bitbucket DC 9.1+
-        }
-
-        return formatResponse({
-          files,
-          totalFiles: files.length,
-          ...(summary && { summary }),
-        });
+        const data = await getPrDiffStat(
+          clients,
+          resolvedProject,
+          repository,
+          prId,
+        );
+        return formatResponse(data);
       }
 
-      const diffUrl = filePath
-        ? `${basePath}/diff/${filePath}`
-        : `${basePath}/diff`;
-      const rawDiff = await clients.api
-        .get(diffUrl, {
-          searchParams: { contextLines, withComments: false },
-          headers: { Accept: "text/plain" },
-        })
-        .text();
+      const rawDiff = await getPrDiff(
+        clients,
+        resolvedProject,
+        repository,
+        prId,
+        filePath,
+        contextLines,
+      );
 
       const effectiveMaxLines =
         maxLinesPerFile !== undefined ? maxLinesPerFile : ctx.maxLinesPerFile;
@@ -718,6 +702,7 @@ export function registerPullRequestTools(ctx: ToolContext) {
       return formatResponse(diffContent);
     },
   );
+
   server.registerTool(
     "get_pull_request_commits",
     {
@@ -735,10 +720,15 @@ export function registerPullRequestTools(ctx: ToolContext) {
     },
     async ({ project, repository, prId, limit = 25, start = 0, fields }) => {
       const resolvedProject = ctx.resolveProject(project);
-      const data = await getPaginated(
-        clients.api,
-        `projects/${resolvedProject}/repos/${repository}/pull-requests/${prId}/commits`,
-        { searchParams: { limit, start } },
+      const data = await getPrCommits(
+        clients,
+        resolvedProject,
+        repository,
+        prId,
+        {
+          limit,
+          start,
+        },
       );
 
       return formatResponse(
@@ -773,10 +763,15 @@ export function registerPullRequestTools(ctx: ToolContext) {
       fields,
     }) => {
       const resolvedProject = ctx.resolveProject(project);
-      const data = await getPaginated(
-        clients.api,
-        `projects/${resolvedProject}/repos/${repository}/commits/${commitId}/pull-requests`,
-        { searchParams: { limit, start } },
+      const data = await getCommitPrs(
+        clients,
+        resolvedProject,
+        repository,
+        commitId,
+        {
+          limit,
+          start,
+        },
       );
 
       return formatResponse(
@@ -790,7 +785,8 @@ export function registerPullRequestTools(ctx: ToolContext) {
 
 interface ReviewActionContext {
   clients: ApiClients;
-  prPath: string;
+  resolvedProject: string;
+  repository: string;
   prId: number;
   commentText?: string;
   participantStatus?: "APPROVED" | "NEEDS_WORK";
@@ -805,26 +801,35 @@ const reviewActions: Record<
   string,
   (ctx: ReviewActionContext) => Promise<ToolSuccessResult>
 > = {
-  approve: async ({ clients, prPath }) => {
-    const data = await clients.api
-      .post(`${prPath}/approve`, { json: {} })
-      .json();
+  approve: async ({ clients, resolvedProject, repository, prId }) => {
+    const data = await approvePr(clients, resolvedProject, repository, prId);
     return formatResponse(data);
   },
 
-  unapprove: async ({ clients, prPath, prId }) => {
-    await clients.api.delete(`${prPath}/approve`);
+  unapprove: async ({ clients, resolvedProject, repository, prId }) => {
+    await unapprovePr(clients, resolvedProject, repository, prId);
     return formatResponse({ unapproved: true, prId });
   },
 
-  publish: async ({ clients, prPath, commentText, participantStatus }) => {
+  publish: async ({
+    clients,
+    resolvedProject,
+    repository,
+    prId,
+    commentText,
+    participantStatus,
+  }) => {
     const body: PublishReviewBody = {
       commentText: commentText ?? null,
       ...(participantStatus && { participantStatus }),
     };
-    const data = await clients.api
-      .put(`${prPath}/review`, { json: body })
-      .json();
+    const data = await publishReview(
+      clients,
+      resolvedProject,
+      repository,
+      prId,
+      body as unknown as Record<string, unknown>,
+    );
     return formatResponse(data);
   },
 };
@@ -867,11 +872,10 @@ export function registerReviewTools(ctx: ToolContext) {
       participantStatus,
     }) => {
       const resolvedProject = ctx.resolveProject(project);
-      const prPath = `projects/${resolvedProject}/repos/${repository}/pull-requests/${prId}`;
-      const handler = reviewActions[action];
-      return await handler({
+      return await reviewActions[action]({
         clients,
-        prPath,
+        resolvedProject,
+        repository,
         prId,
         commentText,
         participantStatus,

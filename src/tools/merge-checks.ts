@@ -3,6 +3,7 @@ import { formatResponse } from "../response/format.js";
 import { toolAnnotations } from "../response/annotations.js";
 import type { ToolContext } from "./shared.js";
 import { projectParam, repositoryParam } from "./params.js";
+import { listMergeChecks, configureHook } from "../api/webhooks.js";
 
 export function registerMergeCheckTools(ctx: ToolContext) {
   const { server, clients } = ctx;
@@ -20,42 +21,11 @@ export function registerMergeCheckTools(ctx: ToolContext) {
     },
     async ({ project, repository }) => {
       const resolvedProject = ctx.resolveProject(project);
-      const hooks = await clients.api
-        .get(`projects/${resolvedProject}/repos/${repository}/settings/hooks`)
-        .json<{
-          values: Array<{
-            key: string;
-            enabled: boolean;
-            details?: {
-              name?: string;
-              description?: string;
-              type?: string;
-            };
-          }>;
-        }>();
-
-      const mergeCheckHooks = hooks.values.filter(
-        (h) => h.details?.type === "PRE_PULL_REQUEST_MERGE",
+      const checks = await listMergeChecks(
+        clients,
+        resolvedProject,
+        repository,
       );
-
-      const checks = await Promise.all(
-        mergeCheckHooks.map(async (hook) => {
-          const settings = await clients.api
-            .get(
-              `projects/${resolvedProject}/repos/${repository}/settings/hooks/${hook.key}/settings`,
-            )
-            .json<Record<string, unknown>>()
-            .catch(() => ({}));
-          return {
-            key: hook.key,
-            name: hook.details?.name,
-            description: hook.details?.description,
-            enabled: hook.enabled,
-            settings,
-          };
-        }),
-      );
-
       return formatResponse(checks);
     },
   );
@@ -79,13 +49,13 @@ export function registerMergeCheckTools(ctx: ToolContext) {
     },
     async ({ project, repository, hookKey, settings }) => {
       const resolvedProject = ctx.resolveProject(project);
-      const data = await clients.api
-        .put(
-          `projects/${resolvedProject}/repos/${repository}/settings/hooks/${hookKey}/settings`,
-          { json: settings },
-        )
-        .json();
-
+      const data = await configureHook(
+        clients,
+        resolvedProject,
+        repository,
+        hookKey,
+        settings,
+      );
       return formatResponse(data);
     },
   );

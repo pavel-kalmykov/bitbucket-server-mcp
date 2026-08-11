@@ -6,6 +6,7 @@ import {
   curateList,
   DEFAULT_SECRET_SCANNING_FIELDS,
 } from "../response/curate.js";
+import { listSecretScanningRules } from "../api/admin.js";
 
 export function registerSecretScanningTools(ctx: ToolContext) {
   const { server, clients } = ctx;
@@ -24,14 +25,13 @@ export function registerSecretScanningTools(ctx: ToolContext) {
     },
     async ({ project, repository, fields }) => {
       const resolvedProject = ctx.resolveProject(project);
-      const data = await clients.api
-        .get(
-          `projects/${resolvedProject}/repos/${repository}/secret-scanning/allowlist`,
-        )
-        .json<{ values: Record<string, unknown>[] }>();
-
+      const data = await listSecretScanningRules(
+        clients,
+        resolvedProject,
+        repository,
+      );
       return formatResponse(
-        curateList(data.values, fields ?? DEFAULT_SECRET_SCANNING_FIELDS),
+        curateList(data, fields ?? DEFAULT_SECRET_SCANNING_FIELDS),
       );
     },
   );

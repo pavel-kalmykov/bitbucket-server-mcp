@@ -5,7 +5,6 @@ import {
   type ToolSuccessResult,
 } from "../response/format.js";
 import { toolAnnotations } from "../response/annotations.js";
-import { getPaginated } from "../api/http/client.js";
 import type { ToolContext } from "./shared.js";
 import type { ApiClients } from "../api/http/client.js";
 import {
@@ -16,6 +15,12 @@ import {
   fieldsParam,
 } from "./params.js";
 import { curateList, DEFAULT_WEBHOOK_FIELDS } from "../response/curate.js";
+import {
+  listWebhooks,
+  createWebhook,
+  updateWebhook,
+  deleteWebhook,
+} from "../api/webhooks.js";
 
 interface WebhookActionContext {
   clients: ApiClients;
@@ -43,11 +48,12 @@ const webhookActions: Record<
   }) => {
     const body: Record<string, unknown> = { name, url, events };
     if (active !== undefined) body.active = active;
-    const data = await clients.api
-      .post(`projects/${resolvedProject}/repos/${repository}/webhooks`, {
-        json: body,
-      })
-      .json();
+    const data = await createWebhook(
+      clients,
+      resolvedProject,
+      repository,
+      body,
+    );
     return formatResponse(data);
   },
   update: async ({
@@ -65,18 +71,17 @@ const webhookActions: Record<
     if (url !== undefined) body.url = url;
     if (events !== undefined) body.events = events;
     if (active !== undefined) body.active = active;
-    const data = await clients.api
-      .put(
-        `projects/${resolvedProject}/repos/${repository}/webhooks/${webhookId}`,
-        { json: body },
-      )
-      .json();
+    const data = await updateWebhook(
+      clients,
+      resolvedProject,
+      repository,
+      webhookId!,
+      body,
+    );
     return formatResponse(data);
   },
   delete: async ({ clients, resolvedProject, repository, webhookId }) => {
-    await clients.api.delete(
-      `projects/${resolvedProject}/repos/${repository}/webhooks/${webhookId}`,
-    );
+    await deleteWebhook(clients, resolvedProject, repository, webhookId!);
     return formatResponse({ deleted: true, webhookId });
   },
 };
@@ -99,12 +104,10 @@ export function registerWebhookTools(ctx: ToolContext) {
     },
     async ({ project, repository, limit = 25, start = 0, fields }) => {
       const resolvedProject = ctx.resolveProject(project);
-      const data = await getPaginated(
-        clients.api,
-        `projects/${resolvedProject}/repos/${repository}/webhooks`,
-        { searchParams: { limit, start } },
-      );
-
+      const data = await listWebhooks(clients, resolvedProject, repository, {
+        limit,
+        start,
+      });
       return formatResponse(
         buildPaginated(data, {
           webhooks: curateList(data.values, fields ?? DEFAULT_WEBHOOK_FIELDS),
@@ -163,8 +166,7 @@ export function registerWebhookTools(ctx: ToolContext) {
       active,
     }) => {
       const resolvedProject = ctx.resolveProject(project);
-      const handler = webhookActions[action];
-      return await handler({
+      return await webhookActions[action]({
         clients,
         resolvedProject,
         repository,
