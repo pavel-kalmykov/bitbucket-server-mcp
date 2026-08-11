@@ -7,7 +7,8 @@
   "types": "build/entry.d.ts",
   "files": [
     "build",
-    "!build/__tests__"
+    "!build/__tests__",
+    "skill"
   ],
   "bin": {
     "bitbucket-server-mcp": "build/entry.js",
