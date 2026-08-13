@@ -2,7 +2,7 @@ import { z } from "zod";
 import { formatResponse, type ToolSuccessResult } from "../response/format.js";
 import { toolAnnotations } from "../response/annotations.js";
 import type { ToolContext } from "./shared.js";
-import type { ApiClients } from "../core/http/client.js";
+import type { ApiClients } from "../api/http/client.js";
 import type { Deployment } from "../generated/types.js";
 import { projectParam, repositoryParam } from "./params.js";
 import {
