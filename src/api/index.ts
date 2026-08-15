@@ -5,3 +5,5 @@ export { handleToolError } from "./http/errors.js";
 export { runStartupHealthcheck } from "./http/healthcheck.js";
 export { getUserProfile, searchUsers } from "./users.js";
 export type { UserSearchResult } from "./users.js";
+export * from "./branches.js";
+export * from "./tags.js";
