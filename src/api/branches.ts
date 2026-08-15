@@ -2,111 +2,132 @@ import { HTTPError } from "ky";
 import type { ApiClients } from "./http/client.js";
 import { getPaginated } from "./http/client.js";
 import type { Paginated } from "../response/validate.js";
+
 export async function listBranchRestrictions(
-  c: ApiClients,
-  p: string,
-  r: string,
-  o?: { limit?: number; start?: number },
+  clients: ApiClients,
+  project: string,
+  repository: string,
+  options?: { limit?: number; start?: number },
 ): Promise<Paginated<Record<string, unknown>>> {
-  const { limit = 25, start = 0 } = o ?? {};
-  return getPaginated(c.branchUtils, `projects/${p}/repos/${r}/restrictions`, {
-    searchParams: { limit, start },
-  }).catch((e) => {
-    if (e instanceof HTTPError && e.response.status === 404)
+  const { limit = 25, start = 0 } = options ?? {};
+  return getPaginated(
+    clients.branchUtils,
+    `projects/${project}/repos/${repository}/restrictions`,
+    { searchParams: { limit, start } },
+  ).catch((e) => {
+    if (e instanceof HTTPError && e.response.status === 404) {
       return { values: [], size: 0, isLastPage: true } as Paginated<
         Record<string, unknown>
       >;
+    }
     throw e;
   });
 }
+
 export async function listBranches(
-  c: ApiClients,
-  p: string,
-  r: string,
-  o?: { filterText?: string; limit?: number; start?: number },
+  clients: ApiClients,
+  project: string,
+  repository: string,
+  options?: { filterText?: string; limit?: number; start?: number },
 ): Promise<{
   branches: Paginated<Record<string, unknown>>;
   defaultBranch: Record<string, unknown> | null;
 }> {
-  const { filterText, limit = 25, start = 0 } = o ?? {};
-  const sp: Record<string, string | number> = { limit, start };
-  if (filterText) sp.filterText = filterText;
-  const [bd, db] = await Promise.all([
-    getPaginated(c.api, `projects/${p}/repos/${r}/branches`, {
-      searchParams: sp,
-    }),
-    c.api
-      .get(`projects/${p}/repos/${r}/default-branch`)
+  const { filterText, limit = 25, start = 0 } = options ?? {};
+  const searchParams: Record<string, string | number> = { limit, start };
+  if (filterText) searchParams.filterText = filterText;
+
+  const [branches, defaultBranch] = await Promise.all([
+    getPaginated(
+      clients.api,
+      `projects/${project}/repos/${repository}/branches`,
+      { searchParams },
+    ),
+    clients.api
+      .get(`projects/${project}/repos/${repository}/default-branch`)
       .json<Record<string, unknown>>()
       .catch(() => null),
   ]);
-  return { branches: bd, defaultBranch: db };
+
+  return { branches, defaultBranch };
 }
+
 export async function listCommits(
-  c: ApiClients,
-  p: string,
-  r: string,
-  o?: { branch?: string; limit?: number; start?: number },
+  clients: ApiClients,
+  project: string,
+  repository: string,
+  options?: { branch?: string; limit?: number; start?: number },
 ): Promise<Paginated<Record<string, unknown>>> {
-  const { branch, limit = 25, start = 0 } = o ?? {};
-  const sp: Record<string, string | number> = { limit, start };
-  if (branch) sp.until = branch;
-  return getPaginated(c.api, `projects/${p}/repos/${r}/commits`, {
-    searchParams: sp,
-  });
+  const { branch, limit = 25, start = 0 } = options ?? {};
+  const searchParams: Record<string, string | number> = { limit, start };
+  if (branch) searchParams.until = branch;
+
+  return getPaginated(
+    clients.api,
+    `projects/${project}/repos/${repository}/commits`,
+    { searchParams },
+  );
 }
+
 export async function createBranch(
-  c: ApiClients,
-  p: string,
-  r: string,
-  b: string,
-  sp?: string,
+  clients: ApiClients,
+  project: string,
+  repository: string,
+  branch: string,
+  startPoint?: string,
 ): Promise<Record<string, unknown>> {
-  return c.branchUtils
-    .post(`projects/${p}/repos/${r}/branches`, {
-      json: { name: `refs/heads/${b}`, startPoint: sp },
+  return clients.branchUtils
+    .post(`projects/${project}/repos/${repository}/branches`, {
+      json: { name: `refs/heads/${branch}`, startPoint },
     })
     .json<Record<string, unknown>>();
 }
+
 export async function deleteBranch(
-  c: ApiClients,
-  p: string,
-  r: string,
-  b: string,
+  clients: ApiClients,
+  project: string,
+  repository: string,
+  branch: string,
 ): Promise<{ deleted: true; branch: string }> {
-  const db = await c.api
-    .get(`projects/${p}/repos/${r}/default-branch`)
+  const defaultBranch = await clients.api
+    .get(`projects/${project}/repos/${repository}/default-branch`)
     .json<{ displayId?: string }>();
-  if (db.displayId === b)
-    throw new Error(`Cannot delete the default branch "${b}".`);
-  await c.branchUtils
-    .post(`projects/${p}/repos/${r}/branches`, {
-      json: { name: `refs/heads/${b}`, dryRun: false },
+  if (defaultBranch.displayId === branch) {
+    throw new Error(`Cannot delete the default branch "${branch}".`);
+  }
+  await clients.branchUtils
+    .post(`projects/${project}/repos/${repository}/branches`, {
+      json: { name: `refs/heads/${branch}`, dryRun: false },
     })
     .json();
-  return { deleted: true, branch: b };
+  return { deleted: true, branch };
 }
+
 export async function getCommit(
-  c: ApiClients,
-  p: string,
-  r: string,
-  id: string,
+  clients: ApiClients,
+  project: string,
+  repository: string,
+  commitId: string,
 ): Promise<Record<string, unknown>> {
-  return c.api
-    .get(`projects/${p}/repos/${r}/commits/${id}`)
+  return clients.api
+    .get(`projects/${project}/repos/${repository}/commits/${commitId}`)
     .json<Record<string, unknown>>();
 }
+
 export async function compareRefs(
-  c: ApiClients,
-  p: string,
-  r: string,
-  o?: { from?: string; to?: string; limit?: number; start?: number },
+  clients: ApiClients,
+  project: string,
+  repository: string,
+  options?: { from?: string; to?: string; limit?: number; start?: number },
 ): Promise<Paginated<Record<string, unknown>>> {
-  const { from, to, limit = 25, start = 0 } = o ?? {};
-  const sp: Record<string, string | number> = { limit, start };
-  if (from) sp.from = from;
-  if (to) sp.to = to;
-  return getPaginated(c.api, `projects/${p}/repos/${r}/compare/commits`, {
-    searchParams: sp,
-  });
+  const { from, to, limit = 25, start = 0 } = options ?? {};
+  const searchParams: Record<string, string | number> = { limit, start };
+  if (from) searchParams.from = from;
+  if (to) searchParams.to = to;
+
+  return getPaginated(
+    clients.api,
+    `projects/${project}/repos/${repository}/compare/commits`,
+    { searchParams },
+  );
 }
