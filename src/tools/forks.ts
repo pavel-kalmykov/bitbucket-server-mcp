@@ -10,7 +10,6 @@ import {
   curateResponse,
   DEFAULT_REPOSITORY_FIELDS,
 } from "../response/curate.js";
-import { getPaginated } from "../api/http/client.js";
 import type { ToolContext } from "./shared.js";
 import {
   projectParam,
@@ -19,6 +18,7 @@ import {
   fieldsParam,
 } from "./params.js";
 import type { ApiClients } from "../api/http/client.js";
+import { listForks, forkRepository } from "../api/repositories.js";
 
 interface ForkActionContext {
   clients: ApiClients;
@@ -41,12 +41,13 @@ const forkActions: Record<
   }) => {
     const body: Record<string, unknown> = {};
     if (name) body.name = name;
-    if (target_project) {
-      body.project = { key: target_project };
-    }
-    const data = await clients.api
-      .post(`projects/${resolvedProject}/repos/${repository}`, { json: body })
-      .json<Record<string, unknown>>();
+    if (target_project) body.project = { key: target_project };
+    const data = await forkRepository(
+      clients,
+      resolvedProject,
+      repository,
+      body,
+    );
     return formatResponse(curateResponse(data, DEFAULT_REPOSITORY_FIELDS));
   },
 };
@@ -58,7 +59,7 @@ export function registerForkTools(ctx: ToolContext) {
     "list_forks",
     {
       description:
-        "List forks of a repository. Supports custom field selection via the `fields` param (`'*all'` for full raw response, `'slug,name'` for a custom subset).",
+        "List forks of a repository. Supports custom field selection via the `fields` param.",
       inputSchema: {
         project: projectParam(),
         repository: repositoryParam(),
@@ -73,12 +74,10 @@ export function registerForkTools(ctx: ToolContext) {
     },
     async ({ project, repository, limit = 25, start = 0, fields }) => {
       const resolvedProject = ctx.resolveProject(project);
-      const data = await getPaginated(
-        clients.api,
-        `projects/${resolvedProject}/repos/${repository}/forks`,
-        { searchParams: { limit, start } },
-      );
-
+      const data = await listForks(clients, resolvedProject, repository, {
+        limit,
+        start,
+      });
       return formatResponse(
         buildPaginated(data, {
           forks: curateList(data.values, fields ?? DEFAULT_REPOSITORY_FIELDS),
@@ -120,8 +119,7 @@ export function registerForkTools(ctx: ToolContext) {
     },
     async ({ project, repository, name, target_project }) => {
       const resolvedProject = ctx.resolveProject(project);
-      const handler = forkActions.fork;
-      return await handler({
+      return await forkActions.fork({
         clients,
         resolvedProject,
         repository,

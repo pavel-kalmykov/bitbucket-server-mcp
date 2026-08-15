@@ -5,7 +5,6 @@ import {
   type ToolSuccessResult,
 } from "../response/format.js";
 import { toolAnnotations } from "../response/annotations.js";
-import { getPaginated } from "../api/http/client.js";
 import type { ToolContext } from "./shared.js";
 import type { ApiClients } from "../api/http/client.js";
 import {
@@ -14,6 +13,7 @@ import {
   limitParam,
   startParam,
 } from "./params.js";
+import { listLabels, addLabel, removeLabel } from "../api/repositories.js";
 
 interface LabelActionContext {
   clients: ApiClients;
@@ -27,17 +27,11 @@ const labelActions: Record<
   (ctx: LabelActionContext) => Promise<ToolSuccessResult>
 > = {
   add: async ({ clients, resolvedProject, repository, name }) => {
-    const data = await clients.api
-      .post(`projects/${resolvedProject}/repos/${repository}/labels`, {
-        json: { name },
-      })
-      .json();
+    const data = await addLabel(clients, resolvedProject, repository, name);
     return formatResponse(data);
   },
   remove: async ({ clients, resolvedProject, repository, name }) => {
-    await clients.api.delete(
-      `projects/${resolvedProject}/repos/${repository}/labels/${name}`,
-    );
+    await removeLabel(clients, resolvedProject, repository, name);
     return formatResponse({ deleted: true, label: name });
   },
 };
@@ -59,12 +53,10 @@ export function registerLabelTools(ctx: ToolContext) {
     },
     async ({ project, repository, limit = 25, start = 0 }) => {
       const resolvedProject = ctx.resolveProject(project);
-      const data = await getPaginated(
-        clients.api,
-        `projects/${resolvedProject}/repos/${repository}/labels`,
-        { searchParams: { limit, start } },
-      );
-
+      const data = await listLabels(clients, resolvedProject, repository, {
+        limit,
+        start,
+      });
       return formatResponse(
         buildPaginated(data, {
           labels: data.values,
@@ -91,8 +83,7 @@ export function registerLabelTools(ctx: ToolContext) {
     },
     async ({ action, project, repository, name }) => {
       const resolvedProject = ctx.resolveProject(project);
-      const handler = labelActions[action];
-      return await handler({
+      return await labelActions[action]({
         clients,
         resolvedProject,
         repository,

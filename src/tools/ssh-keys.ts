@@ -8,6 +8,7 @@ import { toolAnnotations } from "../response/annotations.js";
 import type { ToolContext } from "./shared.js";
 import type { ApiClients } from "../api/http/client.js";
 import { limitParam, startParam } from "./params.js";
+import { listSshKeys, addSshKey, deleteSshKey } from "../api/keys.js";
 
 interface SshKeyActionContext {
   clients: ApiClients;
@@ -20,11 +21,11 @@ const sshKeyActions: Record<
   (ctx: SshKeyActionContext) => Promise<ToolSuccessResult>
 > = {
   add: async ({ clients, text }) => {
-    const data = await clients.ssh.post("keys", { json: { text } }).json();
+    const data = await addSshKey(clients, text);
     return formatResponse(data);
   },
   delete: async ({ clients, keyId }) => {
-    await clients.ssh.delete(`keys/${keyId}`);
+    await deleteSshKey(clients, keyId!);
     return formatResponse({ deleted: true, keyId });
   },
 };
@@ -47,13 +48,7 @@ export function registerSshKeyTools(ctx: ToolContext) {
       annotations: toolAnnotations(),
     },
     async ({ userSlug, limit = 25, start = 0 }) => {
-      const searchParams: Record<string, string | number> = { limit, start };
-      if (userSlug) searchParams.user = userSlug;
-
-      const data = await clients.ssh
-        .get("keys", { searchParams })
-        .json<{ values: unknown[]; size: number; isLastPage: boolean }>();
-
+      const data = await listSshKeys(clients, { userSlug, limit, start });
       return formatResponse(
         buildPaginated(data, {
           keys: data.values,

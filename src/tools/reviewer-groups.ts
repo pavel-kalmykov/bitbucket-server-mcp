@@ -8,6 +8,11 @@ import {
   curateList,
   DEFAULT_REVIEWER_GROUP_FIELDS,
 } from "../response/curate.js";
+import {
+  listReviewerGroups,
+  createReviewerGroup,
+  deleteReviewerGroup,
+} from "../api/admin.js";
 
 interface ReviewerGroupActionContext {
   clients: ApiClients;
@@ -30,24 +35,18 @@ const reviewerGroupActions: Record<
     description,
     reviewers,
   }) => {
-    const data = await clients.api
-      .post(
-        `projects/${resolvedProject}/repos/${repository}/settings/reviewer-groups`,
-        {
-          json: {
-            name,
-            description,
-            reviewers: reviewers?.map((r) => ({ name: r })),
-          },
-        },
-      )
-      .json();
+    const data = await createReviewerGroup(
+      clients,
+      resolvedProject,
+      repository,
+      name,
+      description,
+      reviewers,
+    );
     return formatResponse(data);
   },
   delete: async ({ clients, resolvedProject, repository, name }) => {
-    await clients.api.delete(
-      `projects/${resolvedProject}/repos/${repository}/settings/reviewer-groups/${name}`,
-    );
+    await deleteReviewerGroup(clients, resolvedProject, repository, name);
     return formatResponse({ deleted: true, name });
   },
 };
@@ -68,14 +67,13 @@ export function registerReviewerGroupTools(ctx: ToolContext) {
     },
     async ({ project, repository, fields }) => {
       const resolvedProject = ctx.resolveProject(project);
-      const data = await clients.api
-        .get(
-          `projects/${resolvedProject}/repos/${repository}/settings/reviewer-groups`,
-        )
-        .json<{ values: Record<string, unknown>[] }>();
-
+      const data = await listReviewerGroups(
+        clients,
+        resolvedProject,
+        repository,
+      );
       return formatResponse(
-        curateList(data.values, fields ?? DEFAULT_REVIEWER_GROUP_FIELDS),
+        curateList(data, fields ?? DEFAULT_REVIEWER_GROUP_FIELDS),
       );
     },
   );
@@ -106,8 +104,7 @@ export function registerReviewerGroupTools(ctx: ToolContext) {
     },
     async ({ action, project, repository, name, description, reviewers }) => {
       const resolvedProject = ctx.resolveProject(project);
-      const handler = reviewerGroupActions[action];
-      return await handler({
+      return await reviewerGroupActions[action]({
         clients,
         resolvedProject,
         repository,

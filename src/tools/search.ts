@@ -4,6 +4,7 @@ import { toolAnnotations } from "../response/annotations.js";
 import { curateList, DEFAULT_SEARCH_FIELDS } from "../response/curate.js";
 import type { ToolContext } from "./shared.js";
 import { limitParam, startParam, fieldsParam } from "./params.js";
+import { searchCode } from "../api/misc.js";
 
 export function registerSearchTools(ctx: ToolContext) {
   const { server, clients } = ctx;
@@ -11,7 +12,7 @@ export function registerSearchTools(ctx: ToolContext) {
     "search",
     {
       description:
-        "Search for code or files across Bitbucket repositories. Supports filtering by project, repository, and search type. Supports custom field selection via the `fields` param (`'*all'` for full raw response, `'file,hitCount'` for a custom subset).",
+        "Search for code or files across Bitbucket repositories. Supports filtering by project, repository, and search type. Supports custom field selection via the `fields` param.",
       inputSchema: {
         query: z.string().describe("Search query string."),
         project: z
@@ -60,23 +61,7 @@ export function registerSearchTools(ctx: ToolContext) {
         effectiveQuery = `"${effectiveQuery}"`;
       }
 
-      const data = await clients.search
-        .post("search", {
-          json: {
-            query: effectiveQuery,
-            entities: {
-              code: { start, limit },
-            },
-          },
-        })
-        .json<{
-          code: {
-            values: Record<string, unknown>[];
-            isLastPage: boolean;
-            count?: number;
-            nextStart?: number;
-          };
-        }>();
+      const data = await searchCode(clients, effectiveQuery, start, limit);
 
       return formatResponse({
         values: curateList(data.code.values, fields ?? DEFAULT_SEARCH_FIELDS),

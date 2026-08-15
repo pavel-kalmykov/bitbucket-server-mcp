@@ -9,7 +9,6 @@ import {
   DEFAULT_PROJECT_FIELDS,
   DEFAULT_REPOSITORY_FIELDS,
 } from "../response/curate.js";
-import { getPaginated } from "../api/http/client.js";
 import type { ToolContext } from "./shared.js";
 import {
   projectParam,
@@ -17,6 +16,17 @@ import {
   startParam,
   fieldsParam,
 } from "./params.js";
+import {
+  listProjects,
+  listRepositories,
+  browseRepository,
+  getFileContent,
+  uploadAttachment,
+  editFile,
+  getFileBlame,
+  createRepository,
+  deleteRepository,
+} from "../api/repositories.js";
 
 export function registerRepositoryTools(ctx: ToolContext) {
   const { server, clients } = ctx;
@@ -24,7 +34,7 @@ export function registerRepositoryTools(ctx: ToolContext) {
     "list_projects",
     {
       description:
-        "List all Bitbucket projects you have access to. Use this first to discover project keys. Supports custom field selection via the `fields` param (`'*all'` for full raw response, `'key,name'` for a custom subset).",
+        "List all Bitbucket projects you have access to. Use this first to discover project keys. Supports custom field selection via the `fields` param.",
       inputSchema: {
         limit: z
           .number()
@@ -36,10 +46,7 @@ export function registerRepositoryTools(ctx: ToolContext) {
       annotations: toolAnnotations(),
     },
     async ({ limit = 25, start = 0, fields }) => {
-      const data = await getPaginated(clients.api, "projects", {
-        searchParams: { limit, start },
-      });
-
+      const data = await listProjects(clients, { limit, start });
       return formatResponse(
         buildPaginated(data, {
           projects: curateList(data.values, fields ?? DEFAULT_PROJECT_FIELDS),
@@ -52,7 +59,7 @@ export function registerRepositoryTools(ctx: ToolContext) {
     "list_repositories",
     {
       description:
-        "List repositories in a project. Use this to find repository slugs for other operations. Supports custom field selection via the `fields` param (`'*all'` for full raw response, `'slug,name'` for a custom subset).",
+        "List repositories in a project. Use this to find repository slugs for other operations. Supports custom field selection via the `fields` param.",
       inputSchema: {
         project: projectParam(),
         limit: z
@@ -68,12 +75,10 @@ export function registerRepositoryTools(ctx: ToolContext) {
     },
     async ({ project, limit = 25, start = 0, fields }) => {
       const resolvedProject = ctx.resolveProject(project);
-      const data = await getPaginated(
-        clients.api,
-        `projects/${resolvedProject}/repos`,
-        { searchParams: { limit, start } },
-      );
-
+      const data = await listRepositories(clients, resolvedProject, {
+        limit,
+        start,
+      });
       return formatResponse(
         buildPaginated(data, {
           repositories: curateList(
@@ -110,14 +115,16 @@ export function registerRepositoryTools(ctx: ToolContext) {
     },
     async ({ project, repository, path, branch, limit = 50 }) => {
       const resolvedProject = ctx.resolveProject(project);
-      const endpoint = path
-        ? `projects/${resolvedProject}/repos/${repository}/browse/${path}`
-        : `projects/${resolvedProject}/repos/${repository}/browse`;
-
-      const searchParams: Record<string, string | number> = { limit };
-      if (branch) searchParams.at = branch;
-
-      const data = await clients.api.get(endpoint, { searchParams }).json();
+      const data = await browseRepository(
+        clients,
+        resolvedProject,
+        repository,
+        {
+          path,
+          branch,
+          limit,
+        },
+      );
       return formatResponse(data);
     },
   );
@@ -155,16 +162,17 @@ export function registerRepositoryTools(ctx: ToolContext) {
       start = 0,
     }) => {
       const resolvedProject = ctx.resolveProject(project);
-      const searchParams: Record<string, string | number> = { limit, start };
-      if (branch) searchParams.at = branch;
-
-      const data = await clients.api
-        .get(
-          `projects/${resolvedProject}/repos/${repository}/browse/${filePath}`,
-          { searchParams },
-        )
-        .json();
-
+      const data = await getFileContent(
+        clients,
+        resolvedProject,
+        repository,
+        filePath,
+        {
+          branch,
+          limit,
+          start,
+        },
+      );
       return formatResponse(data);
     },
   );
@@ -195,20 +203,12 @@ export function registerRepositoryTools(ctx: ToolContext) {
       const formData = new FormData();
       formData.append("files", blob, fileName);
 
-      const data = await clients.api
-        .post(`projects/${resolvedProject}/repos/${repository}/attachments`, {
-          body: formData,
-        })
-        .json<{
-          attachments: Array<{
-            id: number;
-            url: string;
-            links: {
-              self: { href: string };
-              attachment: { href: string };
-            };
-          }>;
-        }>();
+      const data = await uploadAttachment(
+        clients,
+        resolvedProject,
+        repository,
+        formData,
+      );
 
       const attachment = data.attachments[0];
       const ref = attachment.links.attachment.href;
@@ -273,13 +273,13 @@ export function registerRepositoryTools(ctx: ToolContext) {
       if (sourceCommitId) formData.append("sourceCommitId", sourceCommitId);
       if (sourceBranch) formData.append("sourceBranch", sourceBranch);
 
-      const data = await clients.api
-        .put(
-          `projects/${resolvedProject}/repos/${repository}/browse/${filePath}`,
-          { body: formData },
-        )
-        .json();
-
+      const data = await editFile(
+        clients,
+        resolvedProject,
+        repository,
+        filePath,
+        formData,
+      );
       return formatResponse(data);
     },
   );
@@ -302,16 +302,13 @@ export function registerRepositoryTools(ctx: ToolContext) {
     },
     async ({ project, repository, filePath, branch }) => {
       const resolvedProject = ctx.resolveProject(project);
-      const searchParams: Record<string, string> = { blame: "" };
-      if (branch) searchParams.at = branch;
-
-      const data = await clients.api
-        .get(
-          `projects/${resolvedProject}/repos/${repository}/browse/${filePath}`,
-          { searchParams },
-        )
-        .json();
-
+      const data = await getFileBlame(
+        clients,
+        resolvedProject,
+        repository,
+        filePath,
+        branch,
+      );
       return formatResponse(data);
     },
   );
@@ -340,10 +337,7 @@ export function registerRepositoryTools(ctx: ToolContext) {
       if (description) body.description = description;
       if (defaultBranch) body.defaultBranch = defaultBranch;
 
-      const data = await clients.api
-        .post(`projects/${resolvedProject}/repos`, { json: body })
-        .json<Record<string, unknown>>();
-
+      const data = await createRepository(clients, resolvedProject, body);
       return formatResponse(curateResponse(data, DEFAULT_REPOSITORY_FIELDS));
     },
   );
@@ -364,10 +358,7 @@ export function registerRepositoryTools(ctx: ToolContext) {
     },
     async ({ project, repository }) => {
       const resolvedProject = ctx.resolveProject(project);
-      await clients.api.delete(
-        `projects/${resolvedProject}/repos/${repository}`,
-      );
-
+      await deleteRepository(clients, resolvedProject, repository);
       return formatResponse({ deleted: true, repository });
     },
   );

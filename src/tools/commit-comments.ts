@@ -5,7 +5,6 @@ import {
   type ToolSuccessResult,
 } from "../response/format.js";
 import { toolAnnotations } from "../response/annotations.js";
-import { getPaginated } from "../api/http/client.js";
 import type { ToolContext } from "./shared.js";
 import type { ApiClients } from "../api/http/client.js";
 import {
@@ -20,6 +19,12 @@ import {
   curateList,
   DEFAULT_COMMENT_FIELDS,
 } from "../response/curate.js";
+import {
+  listCommitComments,
+  createCommitComment,
+  updateCommitComment,
+  deleteCommitComment,
+} from "../api/misc.js";
 
 interface CommitCommentActionContext {
   clients: ApiClients;
@@ -36,12 +41,13 @@ const commitCommentActions: Record<
   (ctx: CommitCommentActionContext) => Promise<ToolSuccessResult>
 > = {
   create: async ({ clients, resolvedProject, repository, commitId, text }) => {
-    const data = await clients.api
-      .post(
-        `projects/${resolvedProject}/repos/${repository}/commits/${commitId}/comments`,
-        { json: { text } },
-      )
-      .json<Record<string, unknown>>();
+    const data = await createCommitComment(
+      clients,
+      resolvedProject,
+      repository,
+      commitId,
+      text!,
+    );
     return formatResponse(curateResponse(data, DEFAULT_COMMENT_FIELDS));
   },
   edit: async ({
@@ -53,12 +59,14 @@ const commitCommentActions: Record<
     text,
     version,
   }) => {
-    const data = await clients.api
-      .put(
-        `projects/${resolvedProject}/repos/${repository}/commits/${commitId}/comments/${commentId}`,
-        { json: { text, version } },
-      )
-      .json<Record<string, unknown>>();
+    const data = await updateCommitComment(
+      clients,
+      resolvedProject,
+      repository,
+      commitId,
+      commentId!,
+      { text, version },
+    );
     return formatResponse(curateResponse(data, DEFAULT_COMMENT_FIELDS));
   },
   delete: async ({
@@ -69,9 +77,13 @@ const commitCommentActions: Record<
     commentId,
     version,
   }) => {
-    await clients.api.delete(
-      `projects/${resolvedProject}/repos/${repository}/commits/${commitId}/comments/${commentId}`,
-      { searchParams: { version: version! } },
+    await deleteCommitComment(
+      clients,
+      resolvedProject,
+      repository,
+      commitId,
+      commentId!,
+      version!,
     );
     return formatResponse({ deleted: true, commentId });
   },
@@ -104,10 +116,12 @@ export function registerCommitCommentTools(ctx: ToolContext) {
       fields,
     }) => {
       const resolvedProject = ctx.resolveProject(project);
-      const data = await getPaginated(
-        clients.api,
-        `projects/${resolvedProject}/repos/${repository}/commits/${commitId}/comments`,
-        { searchParams: { limit, start } },
+      const data = await listCommitComments(
+        clients,
+        resolvedProject,
+        repository,
+        commitId,
+        { limit, start },
       );
 
       return formatResponse(
@@ -160,8 +174,7 @@ export function registerCommitCommentTools(ctx: ToolContext) {
       version,
     }) => {
       const resolvedProject = ctx.resolveProject(project);
-      const handler = commitCommentActions[action];
-      return await handler({
+      return await commitCommentActions[action]({
         clients,
         resolvedProject,
         repository,

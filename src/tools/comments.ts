@@ -5,6 +5,14 @@ import type { ToolContext } from "./shared.js";
 import type { ApiClients } from "../api/http/client.js";
 import { projectParam, repositoryParam } from "./params.js";
 import { curateResponse, DEFAULT_COMMENT_FIELDS } from "../response/curate.js";
+import {
+  createPrComment,
+  updatePrComment,
+  deletePrComment,
+  reactToComment,
+  unreactFromComment,
+} from "../api/pull-requests.js";
+import { searchEmoticons } from "../api/misc.js";
 
 interface CommentActionContext {
   clients: ApiClients;
@@ -83,9 +91,11 @@ const commentActions: Record<
         },
       }),
     };
-    const data = await clients.api
-      .post(basePath, { json: body })
-      .json<Record<string, unknown>>();
+    const data = await createPrComment(
+      clients,
+      basePath,
+      body as unknown as Record<string, unknown>,
+    );
     return formatResponse(curateResponse(data, DEFAULT_COMMENT_FIELDS));
   },
 
@@ -106,16 +116,17 @@ const commentActions: Record<
       ...(state && { state }),
       ...(threadResolved !== undefined && { threadResolved }),
     };
-    const data = await clients.api
-      .put(`${basePath}/${commentId}`, { json: body })
-      .json<Record<string, unknown>>();
+    const data = await updatePrComment(
+      clients,
+      basePath,
+      commentId!,
+      body as unknown as Record<string, unknown>,
+    );
     return formatResponse(curateResponse(data, DEFAULT_COMMENT_FIELDS));
   },
 
   delete: async ({ clients, basePath, commentId, version }) => {
-    await clients.api.delete(`${basePath}/${commentId}`, {
-      searchParams: { version: version! },
-    });
+    await deletePrComment(clients, basePath, commentId!, version!);
     return formatResponse({ deleted: true, commentId });
   },
 
@@ -128,7 +139,7 @@ const commentActions: Record<
     emoticon,
   }) => {
     const reactionPath = `projects/${resolvedProject}/repos/${repository}/pull-requests/${prId}/comments/${commentId}/reactions/${emoticon}`;
-    await clients.commentLikes.put(reactionPath);
+    await reactToComment(clients, reactionPath);
     return formatResponse({ react: true, commentId, emoticon });
   },
 
@@ -141,7 +152,7 @@ const commentActions: Record<
     emoticon,
   }) => {
     const reactionPath = `projects/${resolvedProject}/repos/${repository}/pull-requests/${prId}/comments/${commentId}/reactions/${emoticon}`;
-    await clients.commentLikes.delete(reactionPath);
+    await unreactFromComment(clients, reactionPath);
     return formatResponse({ unreact: true, commentId, emoticon });
   },
 };
@@ -153,7 +164,7 @@ export function registerCommentTools(ctx: ToolContext) {
     "manage_comment",
     {
       description:
-        'Manage pull request comments. Actions: "create" (general, inline, threaded, or tasks), "edit" (update text/severity/state/threadResolved), "delete", "react" (add emoji reaction), "unreact" (remove reaction). `state: RESOLVED` toggles the task checkbox on a BLOCKER comment; `threadResolved: true` closes the conversation (the "Resolve" button in the UI). They are independent and can be passed together.',
+        'Manage pull request comments. Actions: "create" (general, inline, threaded, or tasks), "edit" (update text/severity/state/threadResolved), "delete", "react" (add emoji reaction), "unreact" (remove reaction).',
       inputSchema: {
         action: z
           .enum(["create", "edit", "delete", "react", "unreact"])
@@ -194,9 +205,7 @@ export function registerCommentTools(ctx: ToolContext) {
         threadResolved: z
           .boolean()
           .optional()
-          .describe(
-            "Close or reopen the comment thread (edit only). Independent of `state`. Requires Bitbucket Data Center >= 8.9; older servers accept the PUT but ignore the field.",
-          ),
+          .describe("Close or reopen the comment thread (edit only)."),
         filePath: z
           .string()
           .optional()
@@ -208,27 +217,19 @@ export function registerCommentTools(ctx: ToolContext) {
         lineType: z
           .enum(["ADDED", "REMOVED", "CONTEXT"])
           .optional()
-          .describe(
-            "Type of line being commented on. ADDED = new line, REMOVED = deleted line, CONTEXT = unchanged line visible in the diff.",
-          ),
+          .describe("Type of line being commented on."),
         diffType: z
           .enum(["EFFECTIVE", "RANGE", "COMMIT"])
           .optional()
-          .describe(
-            "Which diff to anchor the comment on. EFFECTIVE = overall PR diff (default). COMMIT = a single commit's diff. RANGE = diff between two specific commits.",
-          ),
+          .describe("Which diff to anchor the comment on."),
         fileType: z
           .enum(["TO", "FROM"])
           .optional()
-          .describe(
-            "Which side of the diff. TO = new version (default). FROM = old version (useful for renames).",
-          ),
+          .describe("Which side of the diff."),
         emoticon: z
           .string()
           .optional()
-          .describe(
-            "Emoticon shortcut for react/unreact (e.g. thumbsup, heart, tada). Use search_emoticons to find available options.",
-          ),
+          .describe("Emoticon shortcut for react/unreact."),
       },
       annotations: toolAnnotations({
         readOnlyHint: false,
@@ -238,8 +239,7 @@ export function registerCommentTools(ctx: ToolContext) {
     async (params) => {
       const resolvedProject = ctx.resolveProject(params.project);
       const basePath = `projects/${resolvedProject}/repos/${params.repository}/pull-requests/${params.prId}/comments`;
-      const handler = commentActions[params.action];
-      return await handler({
+      return await commentActions[params.action]({
         clients,
         basePath,
         resolvedProject,
@@ -259,10 +259,8 @@ export function registerCommentTools(ctx: ToolContext) {
       annotations: toolAnnotations(),
     },
     async ({ query }) => {
-      const data = await clients.emoticons
-        .get("search", { searchParams: { query } })
-        .json<{ values: Array<{ shortcut: string }> }>();
-      return formatResponse(data.values.map((e) => e.shortcut));
+      const data = await searchEmoticons(clients, query);
+      return formatResponse(data.map((e) => e.shortcut));
     },
   );
 }

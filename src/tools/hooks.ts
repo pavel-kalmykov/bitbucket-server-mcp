@@ -5,7 +5,6 @@ import {
   type ToolSuccessResult,
 } from "../response/format.js";
 import { toolAnnotations } from "../response/annotations.js";
-import { getPaginated } from "../api/http/client.js";
 import type { ToolContext } from "./shared.js";
 import type { ApiClients } from "../api/http/client.js";
 import {
@@ -14,6 +13,7 @@ import {
   limitParam,
   startParam,
 } from "./params.js";
+import { listRepositoryHooks, configureHook } from "../api/webhooks.js";
 
 interface HookActionContext {
   clients: ApiClients;
@@ -28,17 +28,11 @@ const hookActions: Record<
   (ctx: HookActionContext) => Promise<ToolSuccessResult>
 > = {
   enable: async ({ clients, resolvedProject, repository, hookKey }) => {
-    await clients.api.put(
-      `projects/${resolvedProject}/repos/${repository}/settings/hooks/${hookKey}/settings`,
-      { json: {} },
-    );
+    await configureHook(clients, resolvedProject, repository, hookKey!, {});
     return formatResponse({ enabled: true, hookKey });
   },
   disable: async ({ clients, resolvedProject, repository, hookKey }) => {
-    await clients.api.put(
-      `projects/${resolvedProject}/repos/${repository}/settings/hooks/${hookKey}/settings`,
-      { json: {} },
-    );
+    await configureHook(clients, resolvedProject, repository, hookKey!, {});
     return formatResponse({ enabled: false, hookKey });
   },
   configure: async ({
@@ -48,12 +42,13 @@ const hookActions: Record<
     hookKey,
     settings,
   }) => {
-    const data = await clients.api
-      .put(
-        `projects/${resolvedProject}/repos/${repository}/settings/hooks/${hookKey}/settings`,
-        { json: settings ?? {} },
-      )
-      .json();
+    const data = await configureHook(
+      clients,
+      resolvedProject,
+      repository,
+      hookKey!,
+      settings ?? {},
+    );
     return formatResponse(data);
   },
 };
@@ -75,12 +70,15 @@ export function registerHookTools(ctx: ToolContext) {
     },
     async ({ project, repository, limit = 25, start = 0 }) => {
       const resolvedProject = ctx.resolveProject(project);
-      const data = await getPaginated(
-        clients.api,
-        `projects/${resolvedProject}/repos/${repository}/settings/hooks`,
-        { searchParams: { limit, start } },
+      const data = await listRepositoryHooks(
+        clients,
+        resolvedProject,
+        repository,
+        {
+          limit,
+          start,
+        },
       );
-
       return formatResponse(
         buildPaginated(data, {
           hooks: data.values,
@@ -117,8 +115,7 @@ export function registerHookTools(ctx: ToolContext) {
     },
     async ({ action, project, repository, hookKey, settings }) => {
       const resolvedProject = ctx.resolveProject(project);
-      const handler = hookActions[action];
-      return await handler({
+      return await hookActions[action]({
         clients,
         resolvedProject,
         repository,

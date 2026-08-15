@@ -8,6 +8,7 @@ import { toolAnnotations } from "../response/annotations.js";
 import type { ToolContext } from "./shared.js";
 import type { ApiClients } from "../api/http/client.js";
 import { limitParam, startParam } from "./params.js";
+import { listGpgKeys, addGpgKey, deleteGpgKey } from "../api/keys.js";
 
 interface GpgKeyActionContext {
   clients: ApiClients;
@@ -20,11 +21,11 @@ const gpgKeyActions: Record<
   (ctx: GpgKeyActionContext) => Promise<ToolSuccessResult>
 > = {
   add: async ({ clients, text }) => {
-    const data = await clients.gpg.post("keys", { json: { text } }).json();
+    const data = await addGpgKey(clients, text);
     return formatResponse(data);
   },
   delete: async ({ clients, keyId }) => {
-    await clients.gpg.delete(`keys/${keyId}`);
+    await deleteGpgKey(clients, keyId!);
     return formatResponse({ deleted: true, keyId });
   },
 };
@@ -47,13 +48,7 @@ export function registerGpgKeyTools(ctx: ToolContext) {
       annotations: toolAnnotations(),
     },
     async ({ userSlug, limit = 25, start = 0 }) => {
-      const searchParams: Record<string, string | number> = { limit, start };
-      if (userSlug) searchParams.user = userSlug;
-
-      const data = await clients.gpg
-        .get("keys", { searchParams })
-        .json<{ values: unknown[]; size: number; isLastPage: boolean }>();
-
+      const data = await listGpgKeys(clients, { userSlug, limit, start });
       return formatResponse(
         buildPaginated(data, {
           keys: data.values,
