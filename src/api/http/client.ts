@@ -1,9 +1,19 @@
 import ky, { type KyInstance, type Options } from "ky";
-import type { BitbucketConfig } from "../../types.js";
 import { logger } from "../../logging.js";
 import { validatePaginated, type Paginated } from "../../response/validate.js";
 
-export interface ApiClients {
+const DEFAULT_TIMEOUT_MS = 30_000;
+
+export interface HttpClientOptions {
+  baseUrl: string;
+  token?: string;
+  username?: string;
+  password?: string;
+  headers?: Record<string, string>;
+  timeoutMs?: number;
+}
+
+export interface HttpClients {
   api: KyInstance;
   buildStatus: KyInstance;
   commentLikes: KyInstance;
@@ -23,11 +33,11 @@ export interface ApiClients {
 // Value-based redaction avoids false positives from key-name heuristics
 // (e.g. `auth=public` would not be redacted) and catches tokens passed under
 // non-standard parameter names.
-function buildRedactor(config: BitbucketConfig): (text: string) => string {
+function buildRedactor(options: HttpClientOptions): (text: string) => string {
   const secrets = [
-    config.token,
-    config.password,
-    ...Object.values(config.customHeaders ?? {}),
+    options.token,
+    options.password,
+    ...Object.values(options.headers ?? {}),
   ].filter((v): v is string => !!v && v.length > 0);
 
   if (secrets.length === 0) return (text) => text;
@@ -36,14 +46,14 @@ function buildRedactor(config: BitbucketConfig): (text: string) => string {
     secrets.reduce((acc, secret) => acc.replaceAll(secret, "[REDACTED]"), text);
 }
 
-export function createApiClients(config: BitbucketConfig): ApiClients {
+export function createHttpClients(options: HttpClientOptions): HttpClients {
   const authHeaders: Record<string, string> = {};
 
-  if (config.token) {
-    authHeaders["Authorization"] = `Bearer ${config.token}`;
-  } else if (config.username && config.password) {
+  if (options.token) {
+    authHeaders["Authorization"] = `Bearer ${options.token}`;
+  } else if (options.username && options.password) {
     const credentials = Buffer.from(
-      `${config.username}:${config.password}`,
+      `${options.username}:${options.password}`,
     ).toString("base64");
     authHeaders["Authorization"] = `Basic ${credentials}`;
   }
@@ -57,13 +67,13 @@ export function createApiClients(config: BitbucketConfig): ApiClients {
   const allHeaders: Record<string, string> = {
     Accept: "application/json",
     ...authHeaders,
-    ...config.customHeaders,
+    ...options.headers,
   };
 
-  const redact = buildRedactor(config);
+  const redact = buildRedactor(options);
 
   const commonOptions: Options = {
-    timeout: config.requestTimeoutMs ?? 30_000,
+    timeout: options.timeoutMs ?? DEFAULT_TIMEOUT_MS,
     retry: {
       limit: 2,
       methods: ["get"],
@@ -105,7 +115,7 @@ export function createApiClients(config: BitbucketConfig): ApiClients {
   const create = (path: string) =>
     ky.create({
       ...commonOptions,
-      prefix: `${config.baseUrl}${path}`,
+      prefix: `${options.baseUrl}${path}`,
     });
 
   return {

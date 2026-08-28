@@ -21,7 +21,7 @@ import {
   startParam,
   fieldsParam,
 } from "./params.js";
-import type { ApiClients } from "../api/http/client.js";
+import type { HttpClients } from "../api/http/client.js";
 import type { Commit as BaseCommit } from "../generated/types.js";
 
 // Extend: the API returns slug/displayName on author but the spec doesn't document them
@@ -30,7 +30,7 @@ type Commit = BaseCommit & {
 };
 
 interface BranchActionContext {
-  clients: ApiClients;
+  clients: HttpClients;
   resolvedProject: string;
   repository: string;
   branch: string;

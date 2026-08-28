@@ -38,12 +38,12 @@ describe("ToolContext", () => {
 
     test("defaultProject defaults to undefined", () => {
       const ctx = createTestToolContext();
-      expect(ctx.defaultProject).toBeUndefined();
+      expect(ctx.bb.defaults.project).toBeUndefined();
     });
 
     test("defaultProject takes explicit value", () => {
       const ctx = createTestToolContext({ defaultProject: "PROJ" });
-      expect(ctx.defaultProject).toBe("PROJ");
+      expect(ctx.bb.defaults.project).toBe("PROJ");
     });
   });
 
@@ -105,9 +105,11 @@ describe("ToolContext", () => {
   });
 
   describe("resolveProject error message", () => {
-    test("mentions BITBUCKET_DEFAULT_PROJECT env var", () => {
+    test("names both ways to supply a project", () => {
       const ctx = createTestToolContext();
-      expect(() => ctx.resolveProject()).toThrow(/BITBUCKET_DEFAULT_PROJECT/);
+      expect(() => ctx.resolveProject()).toThrow(
+        /Pass `project` or configure `defaultProject`/,
+      );
     });
   });
 });

@@ -8,11 +8,15 @@ import { ToolContext } from "../tools/shared.js";
 import { ApiCache } from "../api/http/cache.js";
 import { logger } from "../logging.js";
 import type { ToolSuccessResult } from "../response/format.js";
-import { type MockApiClients, createMockClients } from "./test-utils.js";
+import {
+  type MockHttpClients,
+  createMockClients,
+  createTestClient,
+} from "./test-utils.js";
 
 interface ToolTestContext {
   readonly client: Client;
-  readonly mockClients: MockApiClients;
+  readonly mockClients: MockHttpClients;
   readonly ctx: ToolContext;
 }
 
@@ -47,14 +51,24 @@ export async function connectMcp(server: McpServer): Promise<McpConnection> {
  * both entry points stay in sync.
  */
 export function createTestToolContext(
-  overrides: Partial<ConstructorParameters<typeof ToolContext>[0]> = {},
+  overrides: {
+    server?: McpServer;
+    clients?: MockHttpClients;
+    cache?: ApiCache;
+    defaultProject?: string;
+    maxLinesPerFile?: number;
+  } = {},
 ): ToolContext {
   return new ToolContext({
-    server: new McpServer({ name: "test", version: "1.0.0" }),
-    clients: createMockClients(),
-    cache: new ApiCache({ defaultTtlMs: 100 }),
+    server:
+      overrides.server ?? new McpServer({ name: "test", version: "1.0.0" }),
+    bb: createTestClient({
+      http: overrides.clients ?? createMockClients(),
+      cache: overrides.cache ?? new ApiCache({ defaultTtlMs: 100 }),
+      defaultProject: overrides.defaultProject,
+    }),
     logger,
-    ...overrides,
+    maxLinesPerFile: overrides.maxLinesPerFile,
   });
 }
 
@@ -87,7 +101,7 @@ export function setupToolHarness(options: {
     server: undefined as McpServer | undefined,
     client: undefined as Client | undefined,
     conn: undefined as McpConnection | undefined,
-    mockClients: undefined as MockApiClients | undefined,
+    mockClients: undefined as MockHttpClients | undefined,
     ctx: undefined as ToolContext | undefined,
   };
 

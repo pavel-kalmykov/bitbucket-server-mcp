@@ -1,42 +1,35 @@
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
-import type { ApiClients } from "../api/http/client.js";
-import type { ApiCache } from "../api/http/cache.js";
+import type { HttpClients } from "../api/http/client.js";
+import type { BitbucketClient } from "../api/client.js";
+import { resolveProject } from "../api/context.js";
 import type { Logger } from "../logging.js";
+
+const DEFAULT_MAX_LINES_PER_FILE = 500;
 
 interface ToolContextParams {
   server: McpServer;
-  clients: ApiClients;
-  cache: ApiCache;
+  bb: BitbucketClient;
   logger: Logger;
-  defaultProject?: string;
   maxLinesPerFile?: number;
 }
 
 export class ToolContext {
   readonly server: McpServer;
-  readonly clients: ApiClients;
-  readonly cache: ApiCache;
+  readonly bb: BitbucketClient;
   readonly logger: Logger;
-  readonly defaultProject?: string;
+  readonly clients: HttpClients;
   readonly maxLinesPerFile: number;
 
   constructor(params: ToolContextParams) {
     this.server = params.server;
-    this.clients = params.clients;
-    this.cache = params.cache;
+    this.bb = params.bb;
     this.logger = params.logger;
-    this.defaultProject = params.defaultProject;
-    this.maxLinesPerFile = params.maxLinesPerFile ?? 500;
+    this.clients = params.bb.http;
+    this.maxLinesPerFile = params.maxLinesPerFile ?? DEFAULT_MAX_LINES_PER_FILE;
   }
 
   resolveProject(provided?: string): string {
-    const project = provided || this.defaultProject;
-    if (!project) {
-      throw new Error(
-        "Project is required. Provide it as a parameter or set BITBUCKET_DEFAULT_PROJECT.",
-      );
-    }
-    return project;
+    return resolveProject(this.bb, provided);
   }
 }
 
@@ -45,7 +38,7 @@ interface ReviewerEntry {
 }
 
 interface DefaultReviewerParams {
-  clients: ApiClients;
+  clients: HttpClients;
   resolvedProject: string;
   repository: string;
   srcProject: string;

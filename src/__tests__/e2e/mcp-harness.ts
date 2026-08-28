@@ -1,8 +1,7 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { InMemoryTransport } from "@modelcontextprotocol/sdk/inMemory.js";
-import { createApiClients } from "../../api/http/client.js";
-import { ApiCache } from "../../api/http/cache.js";
+import { createBitbucketClient } from "../../api/client.js";
 import { ToolContext } from "../../tools/shared.js";
 import { TOOL_REGISTRARS } from "../../tools/index.js";
 import { logger } from "../../logging.js";
@@ -15,23 +14,27 @@ export interface McpAgainstBitbucket {
 }
 
 export async function setupMcpAgainst(
-  bb: StartedBitbucket,
+  container: StartedBitbucket,
 ): Promise<McpAgainstBitbucket> {
   const config: BitbucketConfig = {
-    baseUrl: bb.url,
-    username: bb.admin.username,
-    password: bb.admin.password,
+    baseUrl: container.url,
+    username: container.admin.username,
+    password: container.admin.password,
     readOnly: false,
     customHeaders: { "X-Atlassian-Token": "no-check" },
     cacheTtlMs: 100,
     startupHealthcheck: false,
   };
-  const clients = createApiClients(config);
   const server = new McpServer({ name: "e2e", version: "1.0.0" });
   const ctx = new ToolContext({
     server,
-    clients,
-    cache: new ApiCache({ defaultTtlMs: 100 }),
+    bb: createBitbucketClient({
+      baseUrl: config.baseUrl,
+      username: config.username,
+      password: config.password,
+      headers: config.customHeaders,
+      cacheTtlMs: config.cacheTtlMs,
+    }),
     logger,
   });
   for (const register of TOOL_REGISTRARS) register(ctx);

@@ -1,8 +1,7 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { parseConfig } from "./config.js";
 import { handleToolError } from "./api/http/errors.js";
-import { createApiClients } from "./api/http/client.js";
-import { ApiCache } from "./api/http/cache.js";
+import { createBitbucketClient } from "./api/client.js";
 import { runStartupHealthcheck } from "./api/http/healthcheck.js";
 import { TOOL_REGISTRARS } from "./tools/index.js";
 import { registerResources } from "./resources/index.js";
@@ -48,8 +47,16 @@ For the full list of available fields per entity, read the bitbucket://schema/fi
 
 export function createServer(options?: BitbucketServerOptions) {
   const config = parseConfig(options);
-  const clients = createApiClients(config);
-  const cache = new ApiCache({ defaultTtlMs: config.cacheTtlMs });
+  const bb = createBitbucketClient({
+    baseUrl: config.baseUrl,
+    token: config.token,
+    username: config.username,
+    password: config.password,
+    defaultProject: config.defaultProject,
+    headers: config.customHeaders,
+    timeoutMs: config.requestTimeoutMs,
+    cacheTtlMs: config.cacheTtlMs,
+  });
 
   const server = new McpServer(
     {
@@ -98,16 +105,14 @@ export function createServer(options?: BitbucketServerOptions) {
 
   const ctx = new ToolContext({
     server: filteredServer,
-    clients,
-    cache,
+    bb,
     logger: log,
-    defaultProject: config.defaultProject,
     maxLinesPerFile: config.maxLinesPerFile,
   });
 
   for (const register of TOOL_REGISTRARS) register(ctx);
 
-  registerResources(server, clients, cache);
+  registerResources(server, bb.http, bb.cache);
   registerPrompts(server);
 
   // The MCP logger only emits once the server has connected to a
@@ -115,7 +120,7 @@ export function createServer(options?: BitbucketServerOptions) {
   // firing it here. entry.ts calls it after `server.connect()`.
   const maybeRunStartupHealthcheck = (): Promise<void> =>
     config.startupHealthcheck
-      ? runStartupHealthcheck(clients)
+      ? runStartupHealthcheck(bb.http)
       : Promise.resolve();
 
   return { server, config, runStartupHealthcheck: maybeRunStartupHealthcheck };

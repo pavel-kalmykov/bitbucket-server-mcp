@@ -7,7 +7,7 @@ import {
 import { toolAnnotations } from "../response/annotations.js";
 import { getPaginated } from "../api/http/client.js";
 import type { ToolContext } from "./shared.js";
-import type { ApiClients } from "../api/http/client.js";
+import type { HttpClients } from "../api/http/client.js";
 import {
   projectParam,
   repositoryParam,
@@ -18,7 +18,7 @@ import {
 import { curateList, DEFAULT_WEBHOOK_FIELDS } from "../response/curate.js";
 
 interface WebhookActionContext {
-  clients: ApiClients;
+  clients: HttpClients;
   resolvedProject: string;
   repository: string;
   name?: string;

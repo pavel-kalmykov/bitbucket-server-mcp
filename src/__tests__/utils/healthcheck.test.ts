@@ -1,6 +1,6 @@
 import { describe, test, expect, vi, beforeEach, afterEach } from "vitest";
 import { http, HttpResponse } from "msw";
-import { createApiClients } from "../../api/http/client.js";
+import { createHttpClients } from "../../api/http/client.js";
 import type { BitbucketConfig } from "../../types.js";
 import { runStartupHealthcheck } from "../../api/http/healthcheck.js";
 import { createServer } from "../../server.js";
@@ -53,7 +53,7 @@ describe("runStartupHealthcheck (via real ky against msw)", () => {
         () => HttpResponse.json({ version: "8.5.0" }),
       ),
     );
-    const clients = createApiClients(baseConfig({ token: "t" }));
+    const clients = createHttpClients(baseConfig({ token: "t" }));
     await runStartupHealthcheck(clients);
     expect(infoSpy).toHaveBeenCalledTimes(1);
     expect(infoSpy.mock.calls[0][0]).toMatch(/reachable/i);
@@ -76,7 +76,7 @@ describe("runStartupHealthcheck (via real ky against msw)", () => {
         () => HttpResponse.json(body, { status: 401 }),
       ),
     );
-    const clients = createApiClients(baseConfig({ token: "stale" }));
+    const clients = createHttpClients(baseConfig({ token: "stale" }));
     await runStartupHealthcheck(clients);
 
     const warnings = healthcheckWarnings();
@@ -96,7 +96,7 @@ describe("runStartupHealthcheck (via real ky against msw)", () => {
         () => HttpResponse.json({ errors: [] }, { status: 403 }),
       ),
     );
-    const clients = createApiClients(baseConfig({ token: "t" }));
+    const clients = createHttpClients(baseConfig({ token: "t" }));
     await runStartupHealthcheck(clients);
 
     const warnings = healthcheckWarnings();
@@ -113,7 +113,7 @@ describe("runStartupHealthcheck (via real ky against msw)", () => {
         () => HttpResponse.text("meltdown", { status: 500 }),
       ),
     );
-    const clients = createApiClients(baseConfig({ token: "t" }));
+    const clients = createHttpClients(baseConfig({ token: "t" }));
     await runStartupHealthcheck(clients);
 
     const warnings = healthcheckWarnings();
@@ -128,7 +128,7 @@ describe("runStartupHealthcheck (via real ky against msw)", () => {
         () => HttpResponse.error(),
       ),
     );
-    const clients = createApiClients(baseConfig({ token: "t" }));
+    const clients = createHttpClients(baseConfig({ token: "t" }));
     await runStartupHealthcheck(clients);
 
     const warnings = healthcheckWarnings();
@@ -147,7 +147,7 @@ describe("runStartupHealthcheck (via real ky against msw)", () => {
         () => HttpResponse.text("fail", { status: 500 }),
       ),
     );
-    const clients = createApiClients(baseConfig({ token: "t" }));
+    const clients = createHttpClients(baseConfig({ token: "t" }));
     await expect(runStartupHealthcheck(clients)).resolves.toBeUndefined();
   });
 });

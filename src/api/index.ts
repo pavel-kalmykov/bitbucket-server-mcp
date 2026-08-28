@@ -1,7 +1,9 @@
-export { createApiClients, getPaginated } from "./http/client.js";
-export type { ApiClients } from "./http/client.js";
+export { createBitbucketClient } from "./client.js";
+export type { BitbucketClient, BitbucketClientOptions } from "./client.js";
+export type { ApiDefaults } from "./context.js";
+export { createHttpClients } from "./http/client.js";
+export type { HttpClients, HttpClientOptions } from "./http/client.js";
 export { ApiCache } from "./http/cache.js";
 export { handleToolError } from "./http/errors.js";
 export { runStartupHealthcheck } from "./http/healthcheck.js";
-export { getUserProfile, searchUsers } from "./users.js";
-export type { UserSearchResult } from "./users.js";
+export type * from "./users.js";

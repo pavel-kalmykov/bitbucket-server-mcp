@@ -2,7 +2,7 @@ import { z } from "zod";
 import { formatResponse, type ToolSuccessResult } from "../response/format.js";
 import { toolAnnotations } from "../response/annotations.js";
 import type { ToolContext } from "./shared.js";
-import type { ApiClients } from "../api/http/client.js";
+import type { HttpClients } from "../api/http/client.js";
 import { projectParam, repositoryParam, fieldsParam } from "./params.js";
 import {
   curateList,
@@ -10,7 +10,7 @@ import {
 } from "../response/curate.js";
 
 interface ReviewerGroupActionContext {
-  clients: ApiClients;
+  clients: HttpClients;
   resolvedProject: string;
   repository: string;
   name: string;

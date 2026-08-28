@@ -4,7 +4,7 @@ import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { InMemoryTransport } from "@modelcontextprotocol/sdk/inMemory.js";
 import { registerResources } from "../../resources/index.js";
 import {
-  type MockApiClients,
+  type MockHttpClients,
   createMockClients,
   mockJson,
   mockError,
@@ -14,7 +14,7 @@ import { ApiCache } from "../../api/http/cache.js";
 describe("Resources", () => {
   let server: McpServer;
   let client: Client;
-  let mockClients: MockApiClients;
+  let mockClients: MockHttpClients;
   let serverTransport: ReturnType<typeof InMemoryTransport.createLinkedPair>[1];
 
   beforeEach(async () => {

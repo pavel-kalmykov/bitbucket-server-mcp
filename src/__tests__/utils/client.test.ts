@@ -1,69 +1,68 @@
 import { describe, test, expect, vi, afterEach } from "vitest";
 import { http, HttpResponse } from "msw";
-import { createApiClients, getPaginated } from "../../api/http/client.js";
-import type { BitbucketConfig } from "../../types.js";
+import { createHttpClients, getPaginated } from "../../api/http/client.js";
+import type { HttpClientOptions } from "../../api/http/client.js";
 import { setupHttpCapture } from "../http-test-utils.js";
 import { logger } from "../../logging.js";
 
 const { captured, server } = setupHttpCapture();
 
-function baseConfig(overrides: Partial<BitbucketConfig> = {}): BitbucketConfig {
+function baseOptions(
+  overrides: Partial<HttpClientOptions> = {},
+): HttpClientOptions {
   return {
     baseUrl: "https://git.example.com",
-    readOnly: false,
-    customHeaders: {},
-    cacheTtlMs: 300_000,
-    requestTimeoutMs: 30_000,
-    startupHealthcheck: false,
+    headers: {},
+    timeoutMs: 30_000,
     ...overrides,
   };
 }
 
-describe("createApiClients", () => {
+describe("createHttpClients", () => {
   describe("Authentication (decision table: token x username x password)", () => {
     test.each<{
       name: string;
-      config: Partial<BitbucketConfig>;
+      options: Partial<HttpClientOptions>;
       expectedHeader: string | null;
     }>([
       {
         name: "token only: Bearer auth",
-        config: { token: "secret-token" },
+        options: { token: "secret-token" },
         expectedHeader: "Bearer secret-token",
       },
       {
         name: "username + password: Basic auth",
-        config: { username: "alice", password: "hunter2" },
+        options: { username: "alice", password: "hunter2" },
         expectedHeader: `Basic ${Buffer.from("alice:hunter2").toString("base64")}`,
       },
       {
         name: "token + username + password: token wins",
-        config: { token: "t", username: "alice", password: "hunter2" },
+        options: { token: "t", username: "alice", password: "hunter2" },
         expectedHeader: "Bearer t",
       },
       {
         name: "username only (no password): no auth",
-        config: { username: "alice" },
+        options: { username: "alice" },
         expectedHeader: null,
       },
       {
         name: "password only (no username): no auth",
-        config: { password: "hunter2" },
+        options: { password: "hunter2" },
         expectedHeader: null,
       },
       {
         name: "no credentials: no auth",
-        config: {},
+        options: {},
         expectedHeader: null,
       },
-    ])("$name", async ({ config, expectedHeader }) => {
-      const clients = createApiClients(baseConfig(config));
+    ])("$name", async ({ options, expectedHeader }) => {
+      const clients = createHttpClients(baseOptions(options));
       await clients.api
         .get("projects")
         .json()
         .catch(() => undefined);
       // Ensure the request actually hit MSW. Without this, a ky-level failure
-      // before send (bad config, URL resolution) would leave `captured` empty
+      // before send (bad options, URL resolution) would leave `captured` empty
       // and `authorization ?? null` would pass the `expectedHeader: null`
       // rows for the wrong reason.
       expect(captured).toHaveLength(1);
@@ -74,10 +73,10 @@ describe("createApiClients", () => {
 
   describe("Custom headers", () => {
     test("forwards custom headers to every request", async () => {
-      const clients = createApiClients(
-        baseConfig({
+      const clients = createHttpClients(
+        baseOptions({
           token: "t",
-          customHeaders: { "X-Zero-Trust-Token": "zta-abc", "X-Trace": "t1" },
+          headers: { "X-Zero-Trust-Token": "zta-abc", "X-Trace": "t1" },
         }),
       );
       await clients.api
@@ -89,10 +88,10 @@ describe("createApiClients", () => {
     });
 
     test("custom headers override auth header when key collides", async () => {
-      const clients = createApiClients(
-        baseConfig({
+      const clients = createHttpClients(
+        baseOptions({
           token: "from-env",
-          customHeaders: { Authorization: "from-custom" },
+          headers: { Authorization: "from-custom" },
         }),
       );
       await clients.api
@@ -104,43 +103,41 @@ describe("createApiClients", () => {
   });
 
   describe("Accept header (decision table: custom Accept x custom Authorization)", () => {
-    // The merge in allHeaders puts customHeaders last, so either header
+    // The merge in allHeaders puts headers last, so either header
     // present in BITBUCKET_CUSTOM_HEADERS wins over its defaulted
     // counterpart. Four cells cover the full product.
     test.each<{
       name: string;
-      customHeaders: Record<string, string>;
+      headers: Record<string, string>;
       expectedAccept: string;
       expectedAuth: string;
     }>([
       {
         name: "default both",
-        customHeaders: {},
+        headers: {},
         expectedAccept: "application/json",
         expectedAuth: "Bearer t",
       },
       {
         name: "custom Accept, default Authorization",
-        customHeaders: { Accept: "application/xml" },
+        headers: { Accept: "application/xml" },
         expectedAccept: "application/xml",
         expectedAuth: "Bearer t",
       },
       {
         name: "default Accept, custom Authorization",
-        customHeaders: { Authorization: "Token custom" },
+        headers: { Authorization: "Token custom" },
         expectedAccept: "application/json",
         expectedAuth: "Token custom",
       },
       {
         name: "custom both",
-        customHeaders: { Accept: "text/plain", Authorization: "Token custom" },
+        headers: { Accept: "text/plain", Authorization: "Token custom" },
         expectedAccept: "text/plain",
         expectedAuth: "Token custom",
       },
-    ])("$name", async ({ customHeaders, expectedAccept, expectedAuth }) => {
-      const clients = createApiClients(
-        baseConfig({ token: "t", customHeaders }),
-      );
+    ])("$name", async ({ headers, expectedAccept, expectedAuth }) => {
+      const clients = createHttpClients(baseOptions({ token: "t", headers }));
       await clients.api
         .get("projects")
         .json()
@@ -151,7 +148,7 @@ describe("createApiClients", () => {
   });
 
   describe("Accept header propagation (every client uses the same beforeRequest hook)", () => {
-    test.each<[keyof ReturnType<typeof createApiClients>, string]>([
+    test.each<[keyof ReturnType<typeof createHttpClients>, string]>([
       ["api", "rest/api/1.0"],
       ["buildStatus", "rest/build-status/1.0"],
       ["commentLikes", "rest/comment-likes/1.0"],
@@ -161,7 +158,7 @@ describe("createApiClients", () => {
       ["branchUtils", "rest/branch-utils/1.0"],
       ["defaultReviewers", "rest/default-reviewers/1.0"],
     ])("%s client sends Accept: application/json", async (clientKey) => {
-      const clients = createApiClients(baseConfig({ token: "t" }));
+      const clients = createHttpClients(baseOptions({ token: "t" }));
       await clients[clientKey]
         .get("ping")
         .json()
@@ -171,7 +168,7 @@ describe("createApiClients", () => {
   });
 
   describe("URL prefixes (each client targets its REST endpoint)", () => {
-    test.each<[keyof ReturnType<typeof createApiClients>, string]>([
+    test.each<[keyof ReturnType<typeof createHttpClients>, string]>([
       ["api", "rest/api/1.0"],
       ["buildStatus", "rest/build-status/1.0"],
       ["commentLikes", "rest/comment-likes/1.0"],
@@ -181,7 +178,7 @@ describe("createApiClients", () => {
       ["branchUtils", "rest/branch-utils/1.0"],
       ["defaultReviewers", "rest/default-reviewers/1.0"],
     ])("%s client hits /%s", async (clientKey, expectedPath) => {
-      const clients = createApiClients(baseConfig({ token: "t" }));
+      const clients = createHttpClients(baseOptions({ token: "t" }));
       await clients[clientKey]
         .get("ping")
         .json()
@@ -204,7 +201,7 @@ describe("createApiClients", () => {
           http.get("https://git.example.com/rest/api/1.0/projects", respond),
         );
 
-        const clients = createApiClients(baseConfig({ token: "t" }));
+        const clients = createHttpClients(baseOptions({ token: "t" }));
         await clients.api.get("projects").json();
         expect(respond).toHaveBeenCalledTimes(2);
       },
@@ -219,7 +216,7 @@ describe("createApiClients", () => {
         }),
       );
 
-      const clients = createApiClients(baseConfig({ token: "t" }));
+      const clients = createHttpClients(baseOptions({ token: "t" }));
       await expect(clients.api.get("projects").json()).rejects.toThrow();
       expect(attempts).toBe(1);
     });
@@ -233,7 +230,7 @@ describe("createApiClients", () => {
         }),
       );
 
-      const clients = createApiClients(baseConfig({ token: "t" }));
+      const clients = createHttpClients(baseOptions({ token: "t" }));
       await expect(
         clients.api.post("projects", { json: {} }).json(),
       ).rejects.toThrow();
@@ -254,8 +251,8 @@ describe("createApiClients", () => {
         }),
       );
 
-      const clients = createApiClients(
-        baseConfig({ token: "t", requestTimeoutMs: 30_000 }),
+      const clients = createHttpClients(
+        baseOptions({ token: "t", timeoutMs: 30_000 }),
       );
       const promise = clients.api.get("projects").json();
       const assertion = expect(promise).rejects.toThrow();
@@ -269,8 +266,8 @@ describe("createApiClients", () => {
 
     test("redacts token value wherever it appears in the logged URL", async () => {
       const debugSpy = vi.spyOn(logger, "debug");
-      const clients = createApiClients(
-        baseConfig({ token: "super-secret-token" }),
+      const clients = createHttpClients(
+        baseOptions({ token: "super-secret-token" }),
       );
       // Simulate the token leaking into a query param (e.g. via a misconfigured base URL)
       await clients.api
@@ -289,8 +286,8 @@ describe("createApiClients", () => {
 
     test("redacts password value wherever it appears in the logged URL", async () => {
       const debugSpy = vi.spyOn(logger, "debug");
-      const clients = createApiClients(
-        baseConfig({ username: "alice", password: "hunter2" }),
+      const clients = createHttpClients(
+        baseOptions({ username: "alice", password: "hunter2" }),
       );
       await clients.api
         .get("projects", { searchParams: { pw: "hunter2" } })
@@ -306,8 +303,8 @@ describe("createApiClients", () => {
 
     test("redacts custom header values wherever they appear in the logged URL", async () => {
       const debugSpy = vi.spyOn(logger, "debug");
-      const clients = createApiClients(
-        baseConfig({ customHeaders: { "X-ZTA-Token": "zta-secret-xyz" } }),
+      const clients = createHttpClients(
+        baseOptions({ headers: { "X-ZTA-Token": "zta-secret-xyz" } }),
       );
       await clients.api
         .get("projects", { searchParams: { tok: "zta-secret-xyz" } })
@@ -323,7 +320,7 @@ describe("createApiClients", () => {
 
     test("does not redact innocent values that share a key name with credential params", async () => {
       const debugSpy = vi.spyOn(logger, "debug");
-      const clients = createApiClients(baseConfig({ token: "real-secret" }));
+      const clients = createHttpClients(baseOptions({ token: "real-secret" }));
       await clients.api
         .get("projects", { searchParams: { auth: "public-value" } })
         .json()
@@ -337,10 +334,10 @@ describe("createApiClients", () => {
 
   describe("beforeRequest hook sets auth headers on every request", () => {
     test("all auth headers are present on a GET request", async () => {
-      const clients = createApiClients(
-        baseConfig({
+      const clients = createHttpClients(
+        baseOptions({
           token: "my-token",
-          customHeaders: { "X-Custom": "value" },
+          headers: { "X-Custom": "value" },
         }),
       );
       await clients.api
@@ -362,7 +359,7 @@ describe("createApiClients", () => {
         }),
       );
 
-      const clients = createApiClients(baseConfig({ token: "t" }));
+      const clients = createHttpClients(baseOptions({ token: "t" }));
       await expect(
         clients.api.post("test", { json: {} }).json(),
       ).rejects.toThrow();
@@ -385,7 +382,7 @@ describe("createApiClients", () => {
       server.use(
         http.get("https://git.example.com/rest/api/1.0/projects", respond),
       );
-      const clients = createApiClients(baseConfig({ token: "t" }));
+      const clients = createHttpClients(baseOptions({ token: "t" }));
       await clients.api.get("projects").json();
       expect(respond).toHaveBeenCalledTimes(2);
       expect(warnSpy).not.toHaveBeenCalledWith(
@@ -408,7 +405,7 @@ describe("createApiClients", () => {
       server.use(
         http.get("https://git.example.com/rest/api/1.0/projects", respond),
       );
-      const clients = createApiClients(baseConfig({ token: "t" }));
+      const clients = createHttpClients(baseOptions({ token: "t" }));
       const start = Date.now();
       await clients.api.get("projects").json();
       expect(respond).toHaveBeenCalledTimes(2);
@@ -433,7 +430,7 @@ describe("createApiClients", () => {
       server.use(
         http.get("https://git.example.com/rest/api/1.0/projects", respond),
       );
-      const clients = createApiClients(baseConfig({ token: "t" }));
+      const clients = createHttpClients(baseOptions({ token: "t" }));
       await clients.api.get("projects").json();
       expect(respond).toHaveBeenCalledTimes(2);
       expect(warnSpy).toHaveBeenCalledWith(
@@ -458,7 +455,7 @@ describe("createApiClients", () => {
         ),
       );
 
-      const clients = createApiClients(baseConfig({ token: "t" }));
+      const clients = createHttpClients(baseOptions({ token: "t" }));
       const result = await getPaginated(
         clients.api,
         "projects/TEST/repos/my-repo/webhooks",

@@ -18,10 +18,10 @@ import {
   startParam,
   fieldsParam,
 } from "./params.js";
-import type { ApiClients } from "../api/http/client.js";
+import type { HttpClients } from "../api/http/client.js";
 
 interface ForkActionContext {
-  clients: ApiClients;
+  clients: HttpClients;
   resolvedProject: string;
   repository: string;
   name?: string;

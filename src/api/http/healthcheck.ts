@@ -1,5 +1,5 @@
 import { HTTPError } from "ky";
-import type { ApiClients } from "./client.js";
+import type { HttpClients } from "./client.js";
 import { logger } from "../../logging.js";
 import { extractBitbucketMessage } from "./errors.js";
 
@@ -13,7 +13,7 @@ import { extractBitbucketMessage } from "./errors.js";
  * would otherwise print.
  */
 export async function runStartupHealthcheck(
-  clients: ApiClients,
+  clients: HttpClients,
 ): Promise<void> {
   try {
     await clients.api.get("application-properties").json();

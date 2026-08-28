@@ -6,11 +6,11 @@ import {
 } from "../response/format.js";
 import { toolAnnotations } from "../response/annotations.js";
 import type { ToolContext } from "./shared.js";
-import type { ApiClients } from "../api/http/client.js";
+import type { HttpClients } from "../api/http/client.js";
 import { limitParam, startParam } from "./params.js";
 
 interface SshKeyActionContext {
-  clients: ApiClients;
+  clients: HttpClients;
   text: string;
   keyId?: number;
 }

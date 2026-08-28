@@ -7,7 +7,7 @@ import {
 import { toolAnnotations } from "../response/annotations.js";
 import { getPaginated } from "../api/http/client.js";
 import type { ToolContext } from "./shared.js";
-import type { ApiClients } from "../api/http/client.js";
+import type { HttpClients } from "../api/http/client.js";
 import {
   projectParam,
   repositoryParam,
@@ -16,7 +16,7 @@ import {
 } from "./params.js";
 
 interface HookActionContext {
-  clients: ApiClients;
+  clients: HttpClients;
   resolvedProject: string;
   repository: string;
   hookKey?: string;

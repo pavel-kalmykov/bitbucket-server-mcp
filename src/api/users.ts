@@ -1,4 +1,4 @@
-import type { ApiClients } from "./http/client.js";
+import type { ApiContext } from "./context.js";
 
 export interface UserSearchResult {
   values: Record<string, unknown>[];
@@ -6,22 +6,34 @@ export interface UserSearchResult {
   isLastPage: boolean;
 }
 
-export async function getUserProfile(
-  clients: ApiClients,
-  userSlug: string,
-): Promise<Record<string, unknown>> {
-  return clients.api.get(`users/${userSlug}`).json<Record<string, unknown>>();
+export interface GetUserParams {
+  userSlug: string;
 }
 
-export async function searchUsers(
-  clients: ApiClients,
-  filter: string,
-  options?: { limit?: number; start?: number },
-): Promise<UserSearchResult> {
-  const { limit = 25, start = 0 } = options ?? {};
-  return clients.api
-    .get("users", {
-      searchParams: { filter, limit, start },
-    })
-    .json<UserSearchResult>();
+export interface SearchUsersParams {
+  filter: string;
+  limit?: number;
+  start?: number;
 }
+
+export function usersApi(ctx: ApiContext) {
+  return {
+    async get({ userSlug }: GetUserParams): Promise<Record<string, unknown>> {
+      return ctx.http.api
+        .get(`users/${userSlug}`)
+        .json<Record<string, unknown>>();
+    },
+
+    async search({
+      filter,
+      limit = 25,
+      start = 0,
+    }: SearchUsersParams): Promise<UserSearchResult> {
+      return ctx.http.api
+        .get("users", { searchParams: { filter, limit, start } })
+        .json<UserSearchResult>();
+    },
+  };
+}
+
+export type UsersApi = ReturnType<typeof usersApi>;

@@ -14,7 +14,7 @@ import {
   DEFAULT_ACTIVITY_FIELDS,
 } from "../response/curate.js";
 import { getPaginated } from "../api/http/client.js";
-import type { ApiClients } from "../api/http/client.js";
+import type { HttpClients } from "../api/http/client.js";
 import { mergeDefaultReviewers } from "./shared.js";
 import type { ToolContext } from "./shared.js";
 import {
@@ -789,7 +789,7 @@ export function registerPullRequestTools(ctx: ToolContext) {
 }
 
 interface ReviewActionContext {
-  clients: ApiClients;
+  clients: HttpClients;
   prPath: string;
   prId: number;
   commentText?: string;

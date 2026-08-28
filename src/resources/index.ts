@@ -1,5 +1,5 @@
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
-import type { ApiClients } from "../api/http/client.js";
+import type { HttpClients } from "../api/http/client.js";
 import type { ApiCache } from "../api/http/cache.js";
 
 const FIELD_CATALOG: Record<string, string> = {
@@ -13,7 +13,7 @@ const FIELD_CATALOG: Record<string, string> = {
 
 export function registerResources(
   server: McpServer,
-  clients: ApiClients,
+  clients: HttpClients,
   cache: ApiCache,
 ) {
   server.registerResource(
