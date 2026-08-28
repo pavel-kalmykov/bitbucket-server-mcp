@@ -1,6 +1,6 @@
 import type { ApiContext } from "./context.js";
 import { getPaginated } from "./http/client.js";
-import type { Paginated } from "../response/validate.js";
+import type { Paginated } from "./http/pagination.js";
 
 export interface ListProjectsParams {
   limit?: number;

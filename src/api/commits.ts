@@ -1,7 +1,7 @@
 import type { ApiContext } from "./context.js";
 import { resolveProject } from "./context.js";
 import { getPaginated } from "./http/client.js";
-import type { Paginated } from "../response/validate.js";
+import type { Paginated } from "./http/pagination.js";
 import type { Commit as BaseCommit } from "../generated/types.js";
 
 // The API returns slug/displayName on author but the spec does not document them.

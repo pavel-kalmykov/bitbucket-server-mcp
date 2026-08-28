@@ -1,8 +1,8 @@
-import { HTTPError } from "ky";
+import { BitbucketApiError } from "./http/errors.js";
 import type { ApiContext } from "./context.js";
 import { resolveProject } from "./context.js";
 import { getPaginated } from "./http/client.js";
-import type { Paginated } from "../response/validate.js";
+import type { Paginated } from "./http/pagination.js";
 
 export interface ListBranchRestrictionsParams {
   project?: string;
@@ -65,7 +65,7 @@ export function branchesApi(ctx: ApiContext) {
         `projects/${resolveProject(ctx, project)}/repos/${repository}/restrictions`,
         { searchParams: { limit, start } },
       ).catch((error) => {
-        if (error instanceof HTTPError && error.response.status === 404) {
+        if (error instanceof BitbucketApiError && error.status === 404) {
           return { values: [], size: 0, isLastPage: true };
         }
         throw error;

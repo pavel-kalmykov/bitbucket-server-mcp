@@ -1,7 +1,7 @@
 import type { ApiContext } from "./context.js";
 import { resolveProject } from "./context.js";
 import { getPaginated } from "./http/client.js";
-import type { Paginated } from "../response/validate.js";
+import type { Paginated } from "./http/pagination.js";
 import type {
   PullRequest as BasePullRequest,
   PullRequestActivity,

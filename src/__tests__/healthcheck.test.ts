@@ -1,29 +1,24 @@
 import { describe, test, expect, vi, beforeEach, afterEach } from "vitest";
 import { http, HttpResponse } from "msw";
-import { createHttpClients } from "../../api/http/client.js";
-import type { BitbucketConfig } from "../../types.js";
-import { runStartupHealthcheck } from "../../api/http/healthcheck.js";
-import { createServer } from "../../server.js";
-import { logger } from "../../logging.js";
-import { setupHttpCapture } from "../http-test-utils.js";
-import type { components } from "../../generated/bitbucket-api.js";
+import { createBitbucketClient } from "../api/client.js";
+import type { BitbucketClientOptions } from "../api/client.js";
+import { runStartupHealthcheck } from "../healthcheck.js";
+import { createServer } from "../server.js";
+import { logger } from "../logging.js";
+import { setupHttpCapture } from "./http-test-utils.js";
+import type { components } from "../generated/bitbucket-api.js";
 
 type RestErrors = components["schemas"]["RestErrors"];
 
 const { server } = setupHttpCapture();
 
-function baseConfig(overrides: Partial<BitbucketConfig> = {}): BitbucketConfig {
-  return {
-    baseUrl: "https://git.example.com",
-    readOnly: false,
-    customHeaders: {},
-    cacheTtlMs: 300_000,
-    startupHealthcheck: true,
-    ...overrides,
-  };
+function baseOptions(
+  overrides: Partial<BitbucketClientOptions> = {},
+): BitbucketClientOptions {
+  return { baseUrl: "https://git.example.com", ...overrides };
 }
 
-describe("runStartupHealthcheck (via real ky against msw)", () => {
+describe("runStartupHealthcheck (via a real client against msw)", () => {
   let infoSpy: ReturnType<typeof vi.spyOn>;
   let warnSpy: ReturnType<typeof vi.spyOn>;
 
@@ -53,8 +48,8 @@ describe("runStartupHealthcheck (via real ky against msw)", () => {
         () => HttpResponse.json({ version: "8.5.0" }),
       ),
     );
-    const clients = createHttpClients(baseConfig({ token: "t" }));
-    await runStartupHealthcheck(clients);
+    const bb = createBitbucketClient(baseOptions({ token: "t" }));
+    await runStartupHealthcheck(bb);
     expect(infoSpy).toHaveBeenCalledTimes(1);
     expect(infoSpy.mock.calls[0][0]).toMatch(/reachable/i);
     expect(healthcheckWarnings()).toHaveLength(0);
@@ -76,8 +71,8 @@ describe("runStartupHealthcheck (via real ky against msw)", () => {
         () => HttpResponse.json(body, { status: 401 }),
       ),
     );
-    const clients = createHttpClients(baseConfig({ token: "stale" }));
-    await runStartupHealthcheck(clients);
+    const bb = createBitbucketClient(baseOptions({ token: "stale" }));
+    await runStartupHealthcheck(bb);
 
     const warnings = healthcheckWarnings();
     expect(warnings).toHaveLength(1);
@@ -96,8 +91,8 @@ describe("runStartupHealthcheck (via real ky against msw)", () => {
         () => HttpResponse.json({ errors: [] }, { status: 403 }),
       ),
     );
-    const clients = createHttpClients(baseConfig({ token: "t" }));
-    await runStartupHealthcheck(clients);
+    const bb = createBitbucketClient(baseOptions({ token: "t" }));
+    await runStartupHealthcheck(bb);
 
     const warnings = healthcheckWarnings();
     expect(warnings).toHaveLength(1);
@@ -113,8 +108,8 @@ describe("runStartupHealthcheck (via real ky against msw)", () => {
         () => HttpResponse.text("meltdown", { status: 500 }),
       ),
     );
-    const clients = createHttpClients(baseConfig({ token: "t" }));
-    await runStartupHealthcheck(clients);
+    const bb = createBitbucketClient(baseOptions({ token: "t" }));
+    await runStartupHealthcheck(bb);
 
     const warnings = healthcheckWarnings();
     expect(warnings).toHaveLength(1);
@@ -128,8 +123,8 @@ describe("runStartupHealthcheck (via real ky against msw)", () => {
         () => HttpResponse.error(),
       ),
     );
-    const clients = createHttpClients(baseConfig({ token: "t" }));
-    await runStartupHealthcheck(clients);
+    const bb = createBitbucketClient(baseOptions({ token: "t" }));
+    await runStartupHealthcheck(bb);
 
     const warnings = healthcheckWarnings();
     expect(warnings).toHaveLength(1);
@@ -147,8 +142,8 @@ describe("runStartupHealthcheck (via real ky against msw)", () => {
         () => HttpResponse.text("fail", { status: 500 }),
       ),
     );
-    const clients = createHttpClients(baseConfig({ token: "t" }));
-    await expect(runStartupHealthcheck(clients)).resolves.toBeUndefined();
+    const bb = createBitbucketClient(baseOptions({ token: "t" }));
+    await expect(runStartupHealthcheck(bb)).resolves.toBeUndefined();
   });
 });
 

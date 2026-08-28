@@ -6,10 +6,10 @@ import { registerResources } from "../../resources/index.js";
 import {
   type MockHttpClients,
   createMockClients,
+  createTestClient,
   mockJson,
   mockError,
 } from "../test-utils.js";
-import { ApiCache } from "../../api/http/cache.js";
 
 describe("Resources", () => {
   let server: McpServer;
@@ -21,7 +21,7 @@ describe("Resources", () => {
     server = new McpServer({ name: "test", version: "1.0.0" });
     mockClients = createMockClients();
 
-    registerResources(server, mockClients, new ApiCache());
+    registerResources(server, createTestClient({ http: mockClients }));
 
     const [clientTransport, sTransport] = InMemoryTransport.createLinkedPair();
     serverTransport = sTransport;

@@ -1,6 +1,7 @@
-import ky, { type KyInstance, type Options } from "ky";
+import ky, { HTTPError, type KyInstance, type Options } from "ky";
 import { logger } from "../../logging.js";
-import { validatePaginated, type Paginated } from "../../response/validate.js";
+import { BitbucketApiError } from "./errors.js";
+import { validatePaginated, type Paginated } from "./pagination.js";
 
 const DEFAULT_TIMEOUT_MS = 30_000;
 
@@ -61,9 +62,9 @@ export function createHttpClients(options: HttpClientOptions): HttpClients {
   // Accept is stated explicitly. Bitbucket Server's REST API already
   // returns JSON by default, but well-behaved proxies/gateways in front
   // of it can honor `Accept: application/json` instead of returning
-  // their own HTML error page. Proxies that ignore the Accept header
-  // are handled separately in `handleToolError` (raw-body cap at 500
-  // chars so an HTML login page cannot flood the MCP output).
+  // their own HTML error page. Proxies that ignore the Accept header are
+  // handled when building BitbucketApiError, whose message is capped so
+  // an HTML login page cannot flood it.
   const allHeaders: Record<string, string> = {
     Accept: "application/json",
     ...authHeaders,
@@ -87,6 +88,10 @@ export function createHttpClients(options: HttpClientOptions): HttpClients {
           }
           logger.debug(redact(`${request.method} ${request.url}`));
         },
+      ],
+      beforeError: [
+        ({ error }) =>
+          error instanceof HTTPError ? BitbucketApiError.from(error) : error,
       ],
       afterResponse: [
         ({ response }) => {
