@@ -1,5 +1,4 @@
 import { z } from "zod";
-import { HTTPError } from "ky";
 import {
   formatResponse,
   buildPaginated,
@@ -12,7 +11,6 @@ import {
   DEFAULT_BRANCH_FIELDS,
   DEFAULT_COMMIT_FIELDS,
 } from "../response/curate.js";
-import { getPaginated } from "../api/http/client.js";
 import type { ToolContext } from "./shared.js";
 import {
   projectParam,
@@ -21,58 +19,14 @@ import {
   startParam,
   fieldsParam,
 } from "./params.js";
-import type { HttpClients } from "../api/http/client.js";
-import type { Commit as BaseCommit } from "../generated/types.js";
 
-// Extend: the API returns slug/displayName on author but the spec doesn't document them
-type Commit = BaseCommit & {
-  author?: { name?: string; slug?: string; displayName?: string };
-};
-
-interface BranchActionContext {
-  clients: HttpClients;
-  resolvedProject: string;
-  repository: string;
-  branch: string;
-  startPoint?: string;
-}
-
-const branchActions: Record<
-  string,
-  (ctx: BranchActionContext) => Promise<ToolSuccessResult>
-> = {
-  create: async ({
-    clients,
-    resolvedProject,
-    repository,
-    branch,
-    startPoint,
-  }) => {
-    const data = await clients.branchUtils
-      .post(`projects/${resolvedProject}/repos/${repository}/branches`, {
-        json: { name: `refs/heads/${branch}`, startPoint },
-      })
-      .json<Record<string, unknown>>();
-    return formatResponse(curateResponse(data, DEFAULT_BRANCH_FIELDS));
-  },
-  delete: async ({ clients, resolvedProject, repository, branch }) => {
-    const defaultBranch = await clients.api
-      .get(`projects/${resolvedProject}/repos/${repository}/default-branch`)
-      .json<{ displayId?: string }>();
-    if (defaultBranch.displayId === branch) {
-      throw new Error(`Cannot delete the default branch "${branch}".`);
-    }
-    await clients.branchUtils
-      .post(`projects/${resolvedProject}/repos/${repository}/branches`, {
-        json: { name: `refs/heads/${branch}`, dryRun: false },
-      })
-      .json();
-    return formatResponse({ deleted: true, branch });
-  },
-};
+const actionParam = z
+  .enum(["create", "delete"])
+  .describe("Operation to perform.");
+type BranchAction = z.infer<typeof actionParam>;
 
 export function registerBranchTools(ctx: ToolContext) {
-  const { server, clients } = ctx;
+  const { server, bb } = ctx;
 
   server.registerTool(
     "list_branch_restrictions",
@@ -87,23 +41,11 @@ export function registerBranchTools(ctx: ToolContext) {
       },
       annotations: toolAnnotations(),
     },
-    async ({ project, repository, limit = 25, start = 0 }) => {
-      const resolvedProject = ctx.resolveProject(project);
-      const data = await getPaginated(
-        clients.branchUtils,
-        `projects/${resolvedProject}/repos/${repository}/restrictions`,
-        { searchParams: { limit, start } },
-      ).catch((e) => {
-        if (e instanceof HTTPError && e.response.status === 404) {
-          return { values: [], size: 0, isLastPage: true } as const;
-        }
-        throw e;
-      });
+    async (params) => {
+      const data = await bb.branches.listRestrictions(params);
 
       return formatResponse(
-        buildPaginated(data, {
-          restrictions: data.values,
-        }),
+        buildPaginated(data, { restrictions: data.values }),
       );
     },
   );
@@ -129,35 +71,13 @@ export function registerBranchTools(ctx: ToolContext) {
       },
       annotations: toolAnnotations(),
     },
-    async ({
-      project,
-      repository,
-      filterText,
-      limit = 25,
-      start = 0,
-      fields,
-    }) => {
-      const resolvedProject = ctx.resolveProject(project);
-      const searchParams: Record<string, string | number> = { limit, start };
-      if (filterText) searchParams.filterText = filterText;
-
-      const [branchData, defaultBranch] = await Promise.all([
-        getPaginated(
-          clients.api,
-          `projects/${resolvedProject}/repos/${repository}/branches`,
-          { searchParams },
-        ),
-        clients.api
-          .get(`projects/${resolvedProject}/repos/${repository}/default-branch`)
-          .json<Record<string, unknown>>()
-          .catch(() => null),
-      ]);
-
+    async ({ fields, ...params }) => {
+      const { branches, defaultBranch } = await bb.branches.list(params);
       const activeFields = fields ?? DEFAULT_BRANCH_FIELDS;
 
       return formatResponse(
-        buildPaginated(branchData, {
-          branches: curateList(branchData.values, activeFields),
+        buildPaginated(branches, {
+          branches: curateList(branches.values, activeFields),
           defaultBranch: defaultBranch
             ? curateResponse(defaultBranch, activeFields)
             : null,
@@ -193,43 +113,12 @@ export function registerBranchTools(ctx: ToolContext) {
       },
       annotations: toolAnnotations(),
     },
-    async ({
-      project,
-      repository,
-      branch,
-      author,
-      limit = 25,
-      start = 0,
-      fields,
-    }) => {
-      const resolvedProject = ctx.resolveProject(project);
-      const searchParams: Record<string, string | number> = { limit, start };
-      if (branch) searchParams.until = branch;
-
-      const data = await getPaginated<Commit>(
-        clients.api,
-        `projects/${resolvedProject}/repos/${repository}/commits`,
-        { searchParams },
-      );
-
-      let commits = data.values;
-
-      if (author) {
-        const authorLower = author.toLowerCase();
-        commits = commits.filter((commit) => {
-          const a = commit.author;
-          return (
-            a?.name?.toLowerCase().includes(authorLower) ||
-            a?.slug?.toLowerCase().includes(authorLower) ||
-            a?.displayName?.toLowerCase().includes(authorLower)
-          );
-        });
-      }
+    async ({ fields, ...params }) => {
+      const data = await bb.commits.list(params);
 
       return formatResponse(
         buildPaginated(data, {
-          total: author ? commits.length : data.size,
-          commits: curateList(commits, fields ?? DEFAULT_COMMIT_FIELDS),
+          commits: curateList(data.values, fields ?? DEFAULT_COMMIT_FIELDS),
         }),
       );
     },
@@ -241,7 +130,7 @@ export function registerBranchTools(ctx: ToolContext) {
       description:
         'Manage branches in a repository. Actions: "create" (create a new branch), "delete" (delete a branch). Refuses to delete the default branch.',
       inputSchema: {
-        action: z.enum(["create", "delete"]).describe("Operation to perform."),
+        action: actionParam,
         project: projectParam(),
         repository: repositoryParam(),
         branch: z.string().describe("Branch name."),
@@ -256,15 +145,19 @@ export function registerBranchTools(ctx: ToolContext) {
         idempotentHint: false,
       }),
     },
-    async ({ action, project, repository, branch, startPoint }) => {
-      const resolvedProject = ctx.resolveProject(project);
-      return await branchActions[action]({
-        clients,
-        resolvedProject,
-        repository,
-        branch,
-        startPoint,
-      });
+    async ({ action, ...params }) => {
+      const run: Record<BranchAction, () => Promise<ToolSuccessResult>> = {
+        create: async () =>
+          formatResponse(
+            curateResponse(
+              await bb.branches.create(params),
+              DEFAULT_BRANCH_FIELDS,
+            ),
+          ),
+        delete: async () => formatResponse(await bb.branches.delete(params)),
+      };
+
+      return run[action]();
     },
   );
 
@@ -281,13 +174,8 @@ export function registerBranchTools(ctx: ToolContext) {
       },
       annotations: toolAnnotations(),
     },
-    async ({ project, repository, commitId, fields }) => {
-      const resolvedProject = ctx.resolveProject(project);
-      const data = await clients.api
-        .get(
-          `projects/${resolvedProject}/repos/${repository}/commits/${commitId}`,
-        )
-        .json<Record<string, unknown>>();
+    async ({ fields, ...params }) => {
+      const data = await bb.commits.get(params);
 
       return formatResponse(
         curateResponse(data, fields ?? DEFAULT_COMMIT_FIELDS),
@@ -320,28 +208,8 @@ export function registerBranchTools(ctx: ToolContext) {
       },
       annotations: toolAnnotations(),
     },
-    async ({
-      project,
-      repository,
-      from,
-      to,
-      limit = 25,
-      start = 0,
-      fields,
-    }) => {
-      const resolvedProject = ctx.resolveProject(project);
-      const searchParams: Record<string, string | number> = {
-        limit,
-        start,
-      };
-      if (from) searchParams.from = from;
-      if (to) searchParams.to = to;
-
-      const data = await getPaginated(
-        clients.api,
-        `projects/${resolvedProject}/repos/${repository}/compare/commits`,
-        { searchParams },
-      );
+    async ({ fields, ...params }) => {
+      const data = await bb.commits.compare(params);
 
       return formatResponse(
         buildPaginated(data, {

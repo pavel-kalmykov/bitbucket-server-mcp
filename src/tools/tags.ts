@@ -10,7 +10,6 @@ import {
   curateResponse,
   DEFAULT_TAG_FIELDS,
 } from "../response/curate.js";
-import { getPaginated } from "../api/http/client.js";
 import type { ToolContext } from "./shared.js";
 import {
   projectParam,
@@ -18,50 +17,14 @@ import {
   startParam,
   fieldsParam,
 } from "./params.js";
-import type { HttpClients } from "../api/http/client.js";
 
-interface TagActionContext {
-  clients: HttpClients;
-  resolvedProject: string;
-  repository: string;
-  name: string;
-  startPoint?: string;
-  message?: string;
-}
-
-const tagActions: Record<
-  string,
-  (ctx: TagActionContext) => Promise<ToolSuccessResult>
-> = {
-  create: async ({
-    clients,
-    resolvedProject,
-    repository,
-    name,
-    startPoint,
-    message,
-  }) => {
-    const data = await clients.api
-      .post(`projects/${resolvedProject}/repos/${repository}/tags`, {
-        json: {
-          name: `refs/tags/${name}`,
-          startPoint,
-          message,
-        },
-      })
-      .json<Record<string, unknown>>();
-    return formatResponse(curateResponse(data, DEFAULT_TAG_FIELDS));
-  },
-  delete: async ({ clients, resolvedProject, repository, name }) => {
-    await clients.git
-      .delete(`projects/${resolvedProject}/repos/${repository}/tags/${name}`)
-      .json();
-    return formatResponse({ deleted: true, tag: name });
-  },
-};
+const actionParam = z
+  .enum(["create", "delete"])
+  .describe("Operation to perform.");
+type TagAction = z.infer<typeof actionParam>;
 
 export function registerTagTools(ctx: ToolContext) {
-  const { server, clients } = ctx;
+  const { server, bb } = ctx;
 
   server.registerTool(
     "list_tags",
@@ -84,23 +47,8 @@ export function registerTagTools(ctx: ToolContext) {
       },
       annotations: toolAnnotations(),
     },
-    async ({
-      project,
-      repository,
-      filterText,
-      limit = 25,
-      start = 0,
-      fields,
-    }) => {
-      const resolvedProject = ctx.resolveProject(project);
-      const searchParams: Record<string, string | number> = { limit, start };
-      if (filterText) searchParams.filterText = filterText;
-
-      const data = await getPaginated(
-        clients.api,
-        `projects/${resolvedProject}/repos/${repository}/tags`,
-        { searchParams },
-      );
+    async ({ fields, ...params }) => {
+      const data = await bb.tags.list(params);
 
       return formatResponse(
         buildPaginated(data, {
@@ -123,11 +71,8 @@ export function registerTagTools(ctx: ToolContext) {
       },
       annotations: toolAnnotations(),
     },
-    async ({ project, repository, name, fields }) => {
-      const resolvedProject = ctx.resolveProject(project);
-      const data = await clients.api
-        .get(`projects/${resolvedProject}/repos/${repository}/tags/${name}`)
-        .json<Record<string, unknown>>();
+    async ({ fields, ...params }) => {
+      const data = await bb.tags.get(params);
 
       return formatResponse(curateResponse(data, fields ?? DEFAULT_TAG_FIELDS));
     },
@@ -139,7 +84,7 @@ export function registerTagTools(ctx: ToolContext) {
       description:
         'Manage tags in a repository. Actions: "create" (create a new tag pointing to a commit), "delete" (delete a tag by name).',
       inputSchema: {
-        action: z.enum(["create", "delete"]).describe("Operation to perform."),
+        action: actionParam,
         project: projectParam(),
         repository: repositoryParam(),
         name: z.string().describe("Tag name (e.g. 'v1.0.0')."),
@@ -158,16 +103,16 @@ export function registerTagTools(ctx: ToolContext) {
         idempotentHint: false,
       }),
     },
-    async ({ action, project, repository, name, startPoint, message }) => {
-      const resolvedProject = ctx.resolveProject(project);
-      return await tagActions[action]({
-        clients,
-        resolvedProject,
-        repository,
-        name,
-        startPoint,
-        message,
-      });
+    async ({ action, ...params }) => {
+      const run: Record<TagAction, () => Promise<ToolSuccessResult>> = {
+        create: async () =>
+          formatResponse(
+            curateResponse(await bb.tags.create(params), DEFAULT_TAG_FIELDS),
+          ),
+        delete: async () => formatResponse(await bb.tags.delete(params)),
+      };
+
+      return run[action]();
     },
   );
 }

@@ -5,6 +5,9 @@ import {
 } from "./http/client.js";
 import { ApiCache } from "./http/cache.js";
 import type { ApiContext, ApiDefaults } from "./context.js";
+import { branchesApi, type BranchesApi } from "./branches.js";
+import { commitsApi, type CommitsApi } from "./commits.js";
+import { tagsApi, type TagsApi } from "./tags.js";
 import { usersApi, type UsersApi } from "./users.js";
 
 const DEFAULT_CACHE_TTL_MS = 5 * 60 * 1000;
@@ -29,6 +32,9 @@ export interface BitbucketClient {
   readonly http: HttpClients;
   readonly cache: ApiCache;
   readonly defaults: ApiDefaults;
+  readonly branches: BranchesApi;
+  readonly commits: CommitsApi;
+  readonly tags: TagsApi;
   readonly users: UsersApi;
 }
 
@@ -49,6 +55,9 @@ export function createBitbucketClient(
     http: context.http,
     cache: context.cache,
     defaults: context.defaults,
+    branches: branchesApi(context),
+    commits: commitsApi(context),
+    tags: tagsApi(context),
     users: usersApi(context),
   };
 }

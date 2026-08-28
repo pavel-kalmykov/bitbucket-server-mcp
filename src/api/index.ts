@@ -6,4 +6,7 @@ export type { HttpClients, HttpClientOptions } from "./http/client.js";
 export { ApiCache } from "./http/cache.js";
 export { handleToolError } from "./http/errors.js";
 export { runStartupHealthcheck } from "./http/healthcheck.js";
+export type * from "./branches.js";
+export type * from "./commits.js";
+export type * from "./tags.js";
 export type * from "./users.js";
