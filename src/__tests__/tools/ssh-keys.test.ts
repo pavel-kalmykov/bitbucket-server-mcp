@@ -16,10 +16,7 @@ describe("list_ssh_keys", () => {
   });
 
   test("returns keys", async () => {
-    mockJson(
-      h.mockClients.ssh.get,
-      aPaginated([{ id: 1, label: "k1" }]),
-    );
+    mockJson(h.mockClients.ssh.get, aPaginated([{ id: 1, label: "k1" }]));
     const p = await callAndParse<{ total: number }>(
       h.client,
       "list_ssh_keys",
@@ -104,4 +101,24 @@ describe("manage_ssh_keys", () => {
     });
     expect(r.isError).toBe(true);
   });
+
+  test.each([
+    {
+      action: "add" as const,
+      args: {},
+      expected: /text is required/,
+    },
+    {
+      action: "delete" as const,
+      args: {},
+      expected: /keyId is required/,
+    },
+  ])(
+    "$action without its required param is rejected",
+    async ({ action, args, expected }) => {
+      const r = await callRaw(h.client, "manage_ssh_keys", { action, ...args });
+      expect(r.isError).toBe(true);
+      expect(r.content[0].text).toMatch(expected);
+    },
+  );
 });

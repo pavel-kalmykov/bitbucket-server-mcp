@@ -2,20 +2,36 @@ import { z } from "zod";
 import { formatResponse, type ToolSuccessResult } from "../response/format.js";
 import { toolAnnotations } from "../response/annotations.js";
 import type { ToolContext } from "./shared.js";
-import type { HttpClients } from "../api/http/client.js";
-import type { Deployment } from "../generated/types.js";
 import { projectParam, repositoryParam } from "./params.js";
 import {
   curateResponse,
   DEFAULT_DEPLOYMENT_FIELDS,
 } from "../response/curate.js";
 
-const deploymentPath = (project: string, repo: string, commit: string) =>
-  `projects/${project}/repos/${repo}/commits/${commit}/deployments`;
+const actionParam = z
+  .enum(["get", "create", "delete"])
+  .describe("Operation to perform.");
+type DeploymentAction = z.infer<typeof actionParam>;
+
+const IDENTITY_PARAMS = [
+  "key",
+  "environmentKey",
+  "deploymentSequenceNumber",
+] as const;
+
+const CREATE_PARAMS = [
+  "deploymentSequenceNumber",
+  "description",
+  "displayName",
+  "key",
+  "environmentKey",
+  "environmentDisplayName",
+  "state",
+] as const;
 
 function requireParams(
   params: Record<string, unknown>,
-  names: string[],
+  names: readonly string[],
   action: string,
 ) {
   const missing = names.filter((n) => params[n] == null || params[n] === "");
@@ -24,139 +40,8 @@ function requireParams(
   }
 }
 
-interface DeploymentActionContext {
-  clients: HttpClients;
-  basePath: string;
-  key?: string;
-  environmentKey?: string;
-  deploymentSequenceNumber?: number;
-  description?: string;
-  displayName?: string;
-  environmentDisplayName?: string;
-  environmentType?: string;
-  state?: string;
-  url?: string;
-}
-
-const deploymentActions: Record<
-  string,
-  (ctx: DeploymentActionContext) => Promise<ToolSuccessResult>
-> = {
-  get: async ({
-    clients,
-    basePath,
-    key,
-    environmentKey,
-    deploymentSequenceNumber,
-  }) => {
-    requireParams(
-      { key, environmentKey, deploymentSequenceNumber },
-      ["key", "environmentKey", "deploymentSequenceNumber"],
-      "get",
-    );
-    const data = await clients.api
-      .get(basePath, {
-        searchParams: {
-          key: key!,
-          environmentKey: environmentKey!,
-          deploymentSequenceNumber: String(deploymentSequenceNumber!),
-        },
-      })
-      .json<Deployment>();
-    return formatResponse(curateResponse(data, DEFAULT_DEPLOYMENT_FIELDS));
-  },
-
-  create: async ({
-    clients,
-    basePath,
-    deploymentSequenceNumber,
-    description,
-    displayName,
-    key,
-    environmentKey,
-    environmentDisplayName,
-    environmentType,
-    state,
-    url,
-  }) => {
-    requireParams(
-      {
-        deploymentSequenceNumber,
-        description,
-        displayName,
-        key,
-        environmentKey,
-        environmentDisplayName,
-        state,
-      },
-      [
-        "deploymentSequenceNumber",
-        "description",
-        "displayName",
-        "key",
-        "environmentKey",
-        "environmentDisplayName",
-        "state",
-      ],
-      "create",
-    );
-
-    const environment: Record<string, unknown> = {
-      displayName: environmentDisplayName,
-      key: environmentKey,
-    };
-    if (environmentType) {
-      environment.type = environmentType;
-    }
-
-    const body: Record<string, unknown> = {
-      deploymentSequenceNumber,
-      description,
-      displayName,
-      environment,
-      key,
-      state,
-    };
-    if (url) {
-      body.url = url;
-    }
-
-    const data = await clients.api
-      .post(basePath, { json: body })
-      .json<Deployment>();
-    return formatResponse(curateResponse(data, DEFAULT_DEPLOYMENT_FIELDS));
-  },
-
-  delete: async ({
-    clients,
-    basePath,
-    key,
-    environmentKey,
-    deploymentSequenceNumber,
-  }) => {
-    requireParams(
-      { key, environmentKey, deploymentSequenceNumber },
-      ["key", "environmentKey", "deploymentSequenceNumber"],
-      "delete",
-    );
-    await clients.api.delete(basePath, {
-      searchParams: {
-        key: key!,
-        environmentKey: environmentKey!,
-        deploymentSequenceNumber: String(deploymentSequenceNumber!),
-      },
-    });
-    return formatResponse({
-      deleted: true,
-      key,
-      environmentKey,
-      deploymentSequenceNumber,
-    });
-  },
-};
-
 export function registerDeploymentTools(ctx: ToolContext) {
-  const { server, clients } = ctx;
+  const { server, bb } = ctx;
 
   server.registerTool(
     "manage_deployments",
@@ -168,9 +53,7 @@ export function registerDeploymentTools(ctx: ToolContext) {
         "DELETE requires key, environmentKey, and deploymentSequenceNumber.",
 
       inputSchema: {
-        action: z
-          .enum(["get", "create", "delete"])
-          .describe("Operation to perform."),
+        action: actionParam,
         project: projectParam(),
         repository: repositoryParam(),
         commitId: z.string().describe("Full commit hash."),
@@ -233,11 +116,50 @@ export function registerDeploymentTools(ctx: ToolContext) {
         idempotentHint: false,
       }),
     },
-    async ({ action, project, repository, commitId, ...rest }) => {
-      const resolvedProject = ctx.resolveProject(project);
-      const basePath = deploymentPath(resolvedProject, repository, commitId);
-      const handler = deploymentActions[action];
-      return handler({ clients, basePath, ...rest });
+    async ({ action, ...params }) => {
+      const identity = () => ({
+        project: params.project,
+        repository: params.repository,
+        commitId: params.commitId,
+        key: params.key!,
+        environmentKey: params.environmentKey!,
+        deploymentSequenceNumber: params.deploymentSequenceNumber!,
+      });
+
+      const run: Record<DeploymentAction, () => Promise<ToolSuccessResult>> = {
+        get: async () => {
+          requireParams(params, IDENTITY_PARAMS, "get");
+          return formatResponse(
+            curateResponse(
+              await bb.deployments.get(identity()),
+              DEFAULT_DEPLOYMENT_FIELDS,
+            ),
+          );
+        },
+        create: async () => {
+          requireParams(params, CREATE_PARAMS, "create");
+          return formatResponse(
+            curateResponse(
+              await bb.deployments.create({
+                ...identity(),
+                description: params.description!,
+                displayName: params.displayName!,
+                environmentDisplayName: params.environmentDisplayName!,
+                environmentType: params.environmentType,
+                state: params.state!,
+                url: params.url,
+              }),
+              DEFAULT_DEPLOYMENT_FIELDS,
+            ),
+          );
+        },
+        delete: async () => {
+          requireParams(params, IDENTITY_PARAMS, "delete");
+          return formatResponse(await bb.deployments.delete(identity()));
+        },
+      };
+
+      return run[action]();
     },
   );
 }

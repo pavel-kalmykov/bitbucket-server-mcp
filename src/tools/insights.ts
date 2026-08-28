@@ -2,12 +2,12 @@ import { z } from "zod";
 import { formatResponse } from "../response/format.js";
 import { toolAnnotations } from "../response/annotations.js";
 import type { ToolContext } from "./shared.js";
-import type { InsightReport } from "../generated/types.js";
 import { projectParam, repositoryParam, fieldsParam } from "./params.js";
 import { curateList, DEFAULT_INSIGHT_FIELDS } from "../response/curate.js";
 
 export function registerInsightTools(ctx: ToolContext) {
-  const { server, clients } = ctx;
+  const { server, bb } = ctx;
+
   server.registerTool(
     "get_code_insights",
     {
@@ -46,92 +46,20 @@ export function registerInsightTools(ctx: ToolContext) {
       },
       annotations: toolAnnotations(),
     },
-    async ({
-      project,
-      repository,
-      prId,
-      includeFileAnnotations,
-      fileStart,
-      fileLimit,
-      fields,
-    }) => {
-      const resolvedProject = ctx.resolveProject(project);
-      const basePath = `projects/${resolvedProject}/repos/${repository}/pull-requests/${prId}`;
+    async ({ fields, ...params }) => {
+      const { reports, annotations, files } = await bb.insights.get(params);
 
-      const reportsData = await clients.insights
-        .get(`${basePath}/reports`)
-        .json<{ values: InsightReport[] }>();
-
-      const reports = reportsData.values;
-
-      const [annotations, fileAnnotationsData] = await Promise.all([
-        Object.fromEntries(
-          await Promise.all(
-            reports
-              .filter((r): r is InsightReport & { key: string } => !!r.key)
-              .map(async (r) => {
-                const values = await clients.insights
-                  .get(`${basePath}/reports/${r.key}/annotations`)
-                  .json<{ values: unknown[] }>()
-                  .then((d) => d.values)
-                  .catch((): unknown[] => []);
-                return [r.key, values] as const;
-              }),
-          ),
-        ),
-        includeFileAnnotations
-          ? clients.api
-              .get(`${basePath}/changes`, {
-                searchParams: {
-                  start: fileStart ?? 0,
-                  limit: fileLimit ?? 50,
-                },
-              })
-              .json<{
-                values: Array<{ path: { toString: string } }>;
-                isLastPage?: boolean;
-                nextPageStart?: number;
-              }>()
-              .catch((): null => null)
-          : null,
-      ]);
-
-      const result: Record<string, unknown> = {
+      return formatResponse({
         reports: curateList(reports, fields ?? DEFAULT_INSIGHT_FIELDS),
         annotations,
-      };
-
-      if (fileAnnotationsData) {
-        const files = fileAnnotationsData.values.map((c) => ({
-          path: c.path.toString,
-        }));
-
-        const entries = await Promise.all(
-          files.map(async (f) => {
-            const anns = await clients.insights
-              .get(`${basePath}/annotations`, {
-                searchParams: {
-                  path: f.path,
-                  annotationLocation: "FILES",
-                },
-              })
-              .json<{ annotations: unknown[] }>()
-              .then((d) => d.annotations)
-              .catch((): unknown[] => []);
-            return [f.path, anns] as const;
+        ...(files && {
+          fileAnnotations: files.byPath,
+          fileAnnotationsIsLastPage: files.isLastPage,
+          ...(files.nextPageStart != null && {
+            fileAnnotationsNextPageStart: files.nextPageStart,
           }),
-        );
-
-        result.fileAnnotations = Object.fromEntries(entries);
-        result.fileAnnotationsIsLastPage =
-          fileAnnotationsData.isLastPage ?? true;
-        if (fileAnnotationsData.nextPageStart != null) {
-          result.fileAnnotationsNextPageStart =
-            fileAnnotationsData.nextPageStart;
-        }
-      }
-
-      return formatResponse(result);
+        }),
+      });
     },
   );
 
@@ -164,31 +92,6 @@ export function registerInsightTools(ctx: ToolContext) {
       },
       annotations: toolAnnotations(),
     },
-    async ({ project, repository, prId, commitId }) => {
-      let resolvedCommit = commitId;
-
-      if (prId) {
-        if (!repository) {
-          throw new Error("repository is required when using prId.");
-        }
-        const resolvedProject = ctx.resolveProject(project);
-        const pr = await clients.api
-          .get(
-            `projects/${resolvedProject}/repos/${repository}/pull-requests/${prId}`,
-          )
-          .json<{ fromRef: { latestCommit: string } }>();
-        resolvedCommit = pr.fromRef.latestCommit;
-      }
-
-      if (!resolvedCommit) {
-        throw new Error("Either commitId or prId is required.");
-      }
-
-      const data = await clients.buildStatus
-        .get(`commits/${resolvedCommit}`)
-        .json<{ values: unknown[] }>();
-
-      return formatResponse(data.values);
-    },
+    async (params) => formatResponse(await bb.buildStatus.get(params)),
   );
 }

@@ -9,7 +9,6 @@ import {
   DEFAULT_PROJECT_FIELDS,
   DEFAULT_REPOSITORY_FIELDS,
 } from "../response/curate.js";
-import { getPaginated } from "../api/http/client.js";
 import type { ToolContext } from "./shared.js";
 import {
   projectParam,
@@ -18,8 +17,11 @@ import {
   fieldsParam,
 } from "./params.js";
 
+const IMAGE_EXTENSIONS = /\.(png|jpe?g|gif|svg|webp|bmp|ico)$/i;
+
 export function registerRepositoryTools(ctx: ToolContext) {
-  const { server, clients } = ctx;
+  const { server, bb } = ctx;
+
   server.registerTool(
     "list_projects",
     {
@@ -35,10 +37,8 @@ export function registerRepositoryTools(ctx: ToolContext) {
       },
       annotations: toolAnnotations(),
     },
-    async ({ limit = 25, start = 0, fields }) => {
-      const data = await getPaginated(clients.api, "projects", {
-        searchParams: { limit, start },
-      });
+    async ({ fields, ...params }) => {
+      const data = await bb.projects.list(params);
 
       return formatResponse(
         buildPaginated(data, {
@@ -66,13 +66,8 @@ export function registerRepositoryTools(ctx: ToolContext) {
       },
       annotations: toolAnnotations(),
     },
-    async ({ project, limit = 25, start = 0, fields }) => {
-      const resolvedProject = ctx.resolveProject(project);
-      const data = await getPaginated(
-        clients.api,
-        `projects/${resolvedProject}/repos`,
-        { searchParams: { limit, start } },
-      );
+    async ({ fields, ...params }) => {
+      const data = await bb.repositories.list(params);
 
       return formatResponse(
         buildPaginated(data, {
@@ -108,18 +103,7 @@ export function registerRepositoryTools(ctx: ToolContext) {
       },
       annotations: toolAnnotations(),
     },
-    async ({ project, repository, path, branch, limit = 50 }) => {
-      const resolvedProject = ctx.resolveProject(project);
-      const endpoint = path
-        ? `projects/${resolvedProject}/repos/${repository}/browse/${path}`
-        : `projects/${resolvedProject}/repos/${repository}/browse`;
-
-      const searchParams: Record<string, string | number> = { limit };
-      if (branch) searchParams.at = branch;
-
-      const data = await clients.api.get(endpoint, { searchParams }).json();
-      return formatResponse(data);
-    },
+    async (params) => formatResponse(await bb.repositories.browse(params)),
   );
 
   server.registerTool(
@@ -146,27 +130,7 @@ export function registerRepositoryTools(ctx: ToolContext) {
       },
       annotations: toolAnnotations(),
     },
-    async ({
-      project,
-      repository,
-      filePath,
-      branch,
-      limit = 100,
-      start = 0,
-    }) => {
-      const resolvedProject = ctx.resolveProject(project);
-      const searchParams: Record<string, string | number> = { limit, start };
-      if (branch) searchParams.at = branch;
-
-      const data = await clients.api
-        .get(
-          `projects/${resolvedProject}/repos/${repository}/browse/${filePath}`,
-          { searchParams },
-        )
-        .json();
-
-      return formatResponse(data);
-    },
+    async (params) => formatResponse(await bb.repositories.getFile(params)),
   );
 
   server.registerTool(
@@ -187,33 +151,16 @@ export function registerRepositoryTools(ctx: ToolContext) {
       }),
     },
     async ({ project, repository, filePath }) => {
-      const resolvedProject = ctx.resolveProject(project);
-
-      const fileBuffer = await readFile(filePath);
       const fileName = basename(filePath);
-      const blob = new Blob([fileBuffer]);
-      const formData = new FormData();
-      formData.append("files", blob, fileName);
+      const attachment = await bb.repositories.uploadAttachment({
+        project,
+        repository,
+        fileName,
+        data: new Blob([await readFile(filePath)]),
+      });
 
-      const data = await clients.api
-        .post(`projects/${resolvedProject}/repos/${repository}/attachments`, {
-          body: formData,
-        })
-        .json<{
-          attachments: Array<{
-            id: number;
-            url: string;
-            links: {
-              self: { href: string };
-              attachment: { href: string };
-            };
-          }>;
-        }>();
-
-      const attachment = data.attachments[0];
       const ref = attachment.links.attachment.href;
-      const isImage = /\.(png|jpe?g|gif|svg|webp|bmp|ico)$/i.test(fileName);
-      const markdown = isImage
+      const markdown = IMAGE_EXTENSIONS.test(fileName)
         ? `![${fileName}](${ref})`
         : `[${fileName}](${ref})`;
 
@@ -254,34 +201,7 @@ export function registerRepositoryTools(ctx: ToolContext) {
         idempotentHint: false,
       }),
     },
-    async ({
-      project,
-      repository,
-      filePath,
-      branch,
-      content,
-      message,
-      sourceCommitId,
-      sourceBranch,
-    }) => {
-      const resolvedProject = ctx.resolveProject(project);
-
-      const formData = new FormData();
-      formData.append("branch", branch);
-      formData.append("content", content);
-      formData.append("message", message);
-      if (sourceCommitId) formData.append("sourceCommitId", sourceCommitId);
-      if (sourceBranch) formData.append("sourceBranch", sourceBranch);
-
-      const data = await clients.api
-        .put(
-          `projects/${resolvedProject}/repos/${repository}/browse/${filePath}`,
-          { body: formData },
-        )
-        .json();
-
-      return formatResponse(data);
-    },
+    async (params) => formatResponse(await bb.repositories.editFile(params)),
   );
 
   server.registerTool(
@@ -300,20 +220,7 @@ export function registerRepositoryTools(ctx: ToolContext) {
       },
       annotations: toolAnnotations(),
     },
-    async ({ project, repository, filePath, branch }) => {
-      const resolvedProject = ctx.resolveProject(project);
-      const searchParams: Record<string, string> = { blame: "" };
-      if (branch) searchParams.at = branch;
-
-      const data = await clients.api
-        .get(
-          `projects/${resolvedProject}/repos/${repository}/browse/${filePath}`,
-          { searchParams },
-        )
-        .json();
-
-      return formatResponse(data);
-    },
+    async (params) => formatResponse(await bb.repositories.getBlame(params)),
   );
 
   server.registerTool(
@@ -334,15 +241,8 @@ export function registerRepositoryTools(ctx: ToolContext) {
         idempotentHint: false,
       }),
     },
-    async ({ project, name, description, defaultBranch }) => {
-      const resolvedProject = ctx.resolveProject(project);
-      const body: Record<string, unknown> = { name };
-      if (description) body.description = description;
-      if (defaultBranch) body.defaultBranch = defaultBranch;
-
-      const data = await clients.api
-        .post(`projects/${resolvedProject}/repos`, { json: body })
-        .json<Record<string, unknown>>();
+    async (params) => {
+      const data = await bb.repositories.create(params);
 
       return formatResponse(curateResponse(data, DEFAULT_REPOSITORY_FIELDS));
     },
@@ -362,13 +262,6 @@ export function registerRepositoryTools(ctx: ToolContext) {
         idempotentHint: false,
       }),
     },
-    async ({ project, repository }) => {
-      const resolvedProject = ctx.resolveProject(project);
-      await clients.api.delete(
-        `projects/${resolvedProject}/repos/${repository}`,
-      );
-
-      return formatResponse({ deleted: true, repository });
-    },
+    async (params) => formatResponse(await bb.repositories.delete(params)),
   );
 }

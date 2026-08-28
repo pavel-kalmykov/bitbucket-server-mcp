@@ -6,7 +6,8 @@ import type { ToolContext } from "./shared.js";
 import { limitParam, startParam, fieldsParam } from "./params.js";
 
 export function registerSearchTools(ctx: ToolContext) {
-  const { server, clients } = ctx;
+  const { server, bb } = ctx;
+
   server.registerTool(
     "search",
     {
@@ -38,51 +39,17 @@ export function registerSearchTools(ctx: ToolContext) {
       },
       annotations: toolAnnotations({ openWorldHint: true }),
     },
-    async ({
-      query,
-      project,
-      repository,
-      type,
-      limit = 25,
-      start = 0,
-      fields,
-    }) => {
-      let effectiveQuery = query;
-
-      if (repository) {
-        const resolvedProject = ctx.resolveProject(project);
-        effectiveQuery = `repo:${resolvedProject}/${repository} ${effectiveQuery}`;
-      } else if (project) {
-        effectiveQuery = `project:${project} ${effectiveQuery}`;
-      }
-
-      if (type === "file") {
-        effectiveQuery = `"${effectiveQuery}"`;
-      }
-
-      const data = await clients.search
-        .post("search", {
-          json: {
-            query: effectiveQuery,
-            entities: {
-              code: { start, limit },
-            },
-          },
-        })
-        .json<{
-          code: {
-            values: Record<string, unknown>[];
-            isLastPage: boolean;
-            count?: number;
-            nextStart?: number;
-          };
-        }>();
+    async ({ fields, type, ...params }) => {
+      const data =
+        type === "file"
+          ? await bb.search.files(params)
+          : await bb.search.code(params);
 
       return formatResponse({
-        values: curateList(data.code.values, fields ?? DEFAULT_SEARCH_FIELDS),
-        isLastPage: data.code.isLastPage,
-        count: data.code.count,
-        nextStart: data.code.nextStart,
+        values: curateList(data.values, fields ?? DEFAULT_SEARCH_FIELDS),
+        isLastPage: data.isLastPage,
+        count: data.count,
+        nextStart: data.nextStart,
       });
     },
   );

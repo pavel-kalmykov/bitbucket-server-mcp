@@ -6,7 +6,44 @@ import {
 import { ApiCache } from "./http/cache.js";
 import type { ApiContext, ApiDefaults } from "./context.js";
 import { branchesApi, type BranchesApi } from "./branches.js";
+import { buildStatusApi, type BuildStatusApi } from "./build-status.js";
+import { commentsApi, type CommentsApi } from "./comments.js";
+import {
+  commitCommentsApi,
+  type CommitCommentsApi,
+} from "./commit-comments.js";
 import { commitsApi, type CommitsApi } from "./commits.js";
+import { deploymentsApi, type DeploymentsApi } from "./deployments.js";
+import {
+  defaultReviewersApi,
+  type DefaultReviewersApi,
+} from "./default-reviewers.js";
+import { emoticonsApi, type EmoticonsApi } from "./emoticons.js";
+import { forksApi, type ForksApi } from "./forks.js";
+import { hooksApi, type HooksApi } from "./hooks.js";
+import {
+  sshKeysApi,
+  gpgKeysApi,
+  type SshKeysApi,
+  type GpgKeysApi,
+} from "./keys.js";
+import { insightsApi, type InsightsApi } from "./insights.js";
+import { labelsApi, type LabelsApi } from "./labels.js";
+import { mergeChecksApi, type MergeChecksApi } from "./merge-checks.js";
+import {
+  reviewerGroupsApi,
+  type ReviewerGroupsApi,
+} from "./reviewer-groups.js";
+import { projectsApi, type ProjectsApi } from "./projects.js";
+import { pullRequestsApi, type PullRequestsApi } from "./pull-requests.js";
+import { repositoriesApi, type RepositoriesApi } from "./repositories.js";
+import { searchApi, type SearchApi } from "./search.js";
+import { webhooksApi, type WebhooksApi } from "./webhooks.js";
+import {
+  secretScanningApi,
+  type SecretScanningApi,
+} from "./secret-scanning.js";
+import { serverApi, type ServerApi } from "./server-info.js";
 import { tagsApi, type TagsApi } from "./tags.js";
 import { usersApi, type UsersApi } from "./users.js";
 
@@ -33,8 +70,29 @@ export interface BitbucketClient {
   readonly cache: ApiCache;
   readonly defaults: ApiDefaults;
   readonly branches: BranchesApi;
+  readonly buildStatus: BuildStatusApi;
+  readonly comments: CommentsApi;
+  readonly commitComments: CommitCommentsApi;
   readonly commits: CommitsApi;
+  readonly defaultReviewers: DefaultReviewersApi;
+  readonly deployments: DeploymentsApi;
+  readonly emoticons: EmoticonsApi;
+  readonly forks: ForksApi;
+  readonly gpgKeys: GpgKeysApi;
+  readonly hooks: HooksApi;
+  readonly insights: InsightsApi;
+  readonly labels: LabelsApi;
+  readonly mergeChecks: MergeChecksApi;
+  readonly projects: ProjectsApi;
+  readonly pullRequests: PullRequestsApi;
+  readonly repositories: RepositoriesApi;
+  readonly reviewerGroups: ReviewerGroupsApi;
+  readonly search: SearchApi;
+  readonly secretScanning: SecretScanningApi;
+  readonly server: ServerApi;
+  readonly sshKeys: SshKeysApi;
   readonly tags: TagsApi;
+  readonly webhooks: WebhooksApi;
   readonly users: UsersApi;
 }
 
@@ -56,8 +114,29 @@ export function createBitbucketClient(
     cache: context.cache,
     defaults: context.defaults,
     branches: branchesApi(context),
+    buildStatus: buildStatusApi(context),
+    comments: commentsApi(context),
+    commitComments: commitCommentsApi(context),
     commits: commitsApi(context),
+    deployments: deploymentsApi(context),
+    defaultReviewers: defaultReviewersApi(context),
+    emoticons: emoticonsApi(context),
+    forks: forksApi(context),
+    hooks: hooksApi(context),
+    gpgKeys: gpgKeysApi(context),
+    insights: insightsApi(context),
+    labels: labelsApi(context),
+    mergeChecks: mergeChecksApi(context),
+    projects: projectsApi(context),
+    pullRequests: pullRequestsApi(context),
+    repositories: repositoriesApi(context),
+    reviewerGroups: reviewerGroupsApi(context),
+    search: searchApi(context),
+    secretScanning: secretScanningApi(context),
+    server: serverApi(context),
+    sshKeys: sshKeysApi(context),
     tags: tagsApi(context),
+    webhooks: webhooksApi(context),
     users: usersApi(context),
   };
 }

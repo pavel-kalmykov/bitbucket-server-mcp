@@ -2,152 +2,16 @@ import { z } from "zod";
 import { formatResponse, type ToolSuccessResult } from "../response/format.js";
 import { toolAnnotations } from "../response/annotations.js";
 import type { ToolContext } from "./shared.js";
-import type { HttpClients } from "../api/http/client.js";
 import { projectParam, repositoryParam } from "./params.js";
 import { curateResponse, DEFAULT_COMMENT_FIELDS } from "../response/curate.js";
 
-interface CommentActionContext {
-  clients: HttpClients;
-  basePath: string;
-  resolvedProject: string;
-  repository: string;
-  prId: number;
-  text?: string;
-  commentId?: number;
-  version?: number;
-  parentId?: number;
-  state?: "OPEN" | "PENDING" | "RESOLVED";
-  severity?: "NORMAL" | "BLOCKER";
-  threadResolved?: boolean;
-  filePath?: string;
-  line?: number;
-  lineType?: "ADDED" | "REMOVED" | "CONTEXT";
-  diffType?: "EFFECTIVE" | "RANGE" | "COMMIT";
-  fileType?: "TO" | "FROM";
-  emoticon?: string;
-}
-
-interface CommentAnchor {
-  path: string;
-  lineType?: "ADDED" | "REMOVED" | "CONTEXT";
-  line?: number;
-  diffType: "EFFECTIVE" | "RANGE" | "COMMIT";
-  fileType: "TO" | "FROM";
-}
-
-interface CreateCommentBody {
-  text?: string;
-  parent?: { id: number };
-  state?: string;
-  severity?: string;
-  anchor?: CommentAnchor;
-}
-
-interface EditCommentBody {
-  text?: string;
-  version?: number;
-  severity?: string;
-  state?: string;
-  threadResolved?: boolean;
-}
-
-const commentActions: Record<
-  string,
-  (ctx: CommentActionContext) => Promise<ToolSuccessResult>
-> = {
-  create: async ({
-    clients,
-    basePath,
-    text,
-    parentId,
-    state,
-    severity,
-    filePath,
-    line,
-    lineType,
-    diffType,
-    fileType,
-  }) => {
-    const body: CreateCommentBody = {
-      text,
-      parent: parentId ? { id: parentId } : undefined,
-      ...(state && { state }),
-      ...(severity && { severity }),
-      ...(filePath && {
-        anchor: {
-          path: filePath,
-          lineType,
-          line,
-          diffType: diffType ?? "EFFECTIVE",
-          fileType: fileType ?? "TO",
-        },
-      }),
-    };
-    const data = await clients.api
-      .post(basePath, { json: body })
-      .json<Record<string, unknown>>();
-    return formatResponse(curateResponse(data, DEFAULT_COMMENT_FIELDS));
-  },
-
-  edit: async ({
-    clients,
-    basePath,
-    commentId,
-    text,
-    version,
-    severity,
-    state,
-    threadResolved,
-  }) => {
-    const body: EditCommentBody = {
-      text,
-      version,
-      ...(severity && { severity }),
-      ...(state && { state }),
-      ...(threadResolved !== undefined && { threadResolved }),
-    };
-    const data = await clients.api
-      .put(`${basePath}/${commentId}`, { json: body })
-      .json<Record<string, unknown>>();
-    return formatResponse(curateResponse(data, DEFAULT_COMMENT_FIELDS));
-  },
-
-  delete: async ({ clients, basePath, commentId, version }) => {
-    await clients.api.delete(`${basePath}/${commentId}`, {
-      searchParams: { version: version! },
-    });
-    return formatResponse({ deleted: true, commentId });
-  },
-
-  react: async ({
-    clients,
-    resolvedProject,
-    repository,
-    prId,
-    commentId,
-    emoticon,
-  }) => {
-    const reactionPath = `projects/${resolvedProject}/repos/${repository}/pull-requests/${prId}/comments/${commentId}/reactions/${emoticon}`;
-    await clients.commentLikes.put(reactionPath);
-    return formatResponse({ react: true, commentId, emoticon });
-  },
-
-  unreact: async ({
-    clients,
-    resolvedProject,
-    repository,
-    prId,
-    commentId,
-    emoticon,
-  }) => {
-    const reactionPath = `projects/${resolvedProject}/repos/${repository}/pull-requests/${prId}/comments/${commentId}/reactions/${emoticon}`;
-    await clients.commentLikes.delete(reactionPath);
-    return formatResponse({ unreact: true, commentId, emoticon });
-  },
-};
+const actionParam = z
+  .enum(["create", "edit", "delete", "react", "unreact"])
+  .describe("Operation to perform on the comment.");
+type CommentAction = z.infer<typeof actionParam>;
 
 export function registerCommentTools(ctx: ToolContext) {
-  const { server, clients } = ctx;
+  const { server, bb } = ctx;
 
   server.registerTool(
     "manage_comment",
@@ -155,9 +19,7 @@ export function registerCommentTools(ctx: ToolContext) {
       description:
         'Manage pull request comments. Actions: "create" (general, inline, threaded, or tasks), "edit" (update text/severity/state/threadResolved), "delete", "react" (add emoji reaction), "unreact" (remove reaction). `state: RESOLVED` toggles the task checkbox on a BLOCKER comment; `threadResolved: true` closes the conversation (the "Resolve" button in the UI). They are independent and can be passed together.',
       inputSchema: {
-        action: z
-          .enum(["create", "edit", "delete", "react", "unreact"])
-          .describe("Operation to perform on the comment."),
+        action: actionParam,
         project: projectParam(),
         repository: repositoryParam(),
         prId: z.coerce.number().describe("Pull request ID."),
@@ -235,16 +97,19 @@ export function registerCommentTools(ctx: ToolContext) {
         idempotentHint: false,
       }),
     },
-    async (params) => {
-      const resolvedProject = ctx.resolveProject(params.project);
-      const basePath = `projects/${resolvedProject}/repos/${params.repository}/pull-requests/${params.prId}/comments`;
-      const handler = commentActions[params.action];
-      return await handler({
-        clients,
-        basePath,
-        resolvedProject,
-        ...params,
-      });
+    async ({ action, ...params }) => {
+      const curated = async (data: Promise<Record<string, unknown>>) =>
+        formatResponse(curateResponse(await data, DEFAULT_COMMENT_FIELDS));
+
+      const run: Record<CommentAction, () => Promise<ToolSuccessResult>> = {
+        create: async () => curated(bb.comments.create(params)),
+        edit: async () => curated(bb.comments.update(params)),
+        delete: async () => formatResponse(await bb.comments.delete(params)),
+        react: async () => formatResponse(await bb.comments.react(params)),
+        unreact: async () => formatResponse(await bb.comments.unreact(params)),
+      };
+
+      return run[action]();
     },
   );
 
@@ -258,11 +123,10 @@ export function registerCommentTools(ctx: ToolContext) {
       },
       annotations: toolAnnotations(),
     },
-    async ({ query }) => {
-      const data = await clients.emoticons
-        .get("search", { searchParams: { query } })
-        .json<{ values: Array<{ shortcut: string }> }>();
-      return formatResponse(data.values.map((e) => e.shortcut));
+    async (params) => {
+      const emoticons = await bb.emoticons.search(params);
+
+      return formatResponse(emoticons.map((emoticon) => emoticon.shortcut));
     },
   );
 }

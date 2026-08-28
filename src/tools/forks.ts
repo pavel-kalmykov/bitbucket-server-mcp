@@ -1,16 +1,11 @@
 import { z } from "zod";
-import {
-  formatResponse,
-  buildPaginated,
-  type ToolSuccessResult,
-} from "../response/format.js";
+import { formatResponse, buildPaginated } from "../response/format.js";
 import { toolAnnotations } from "../response/annotations.js";
 import {
   curateList,
   curateResponse,
   DEFAULT_REPOSITORY_FIELDS,
 } from "../response/curate.js";
-import { getPaginated } from "../api/http/client.js";
 import type { ToolContext } from "./shared.js";
 import {
   projectParam,
@@ -18,41 +13,9 @@ import {
   startParam,
   fieldsParam,
 } from "./params.js";
-import type { HttpClients } from "../api/http/client.js";
-
-interface ForkActionContext {
-  clients: HttpClients;
-  resolvedProject: string;
-  repository: string;
-  name?: string;
-  target_project?: string;
-}
-
-const forkActions: Record<
-  string,
-  (ctx: ForkActionContext) => Promise<ToolSuccessResult>
-> = {
-  fork: async ({
-    clients,
-    resolvedProject,
-    repository,
-    name,
-    target_project,
-  }) => {
-    const body: Record<string, unknown> = {};
-    if (name) body.name = name;
-    if (target_project) {
-      body.project = { key: target_project };
-    }
-    const data = await clients.api
-      .post(`projects/${resolvedProject}/repos/${repository}`, { json: body })
-      .json<Record<string, unknown>>();
-    return formatResponse(curateResponse(data, DEFAULT_REPOSITORY_FIELDS));
-  },
-};
 
 export function registerForkTools(ctx: ToolContext) {
-  const { server, clients } = ctx;
+  const { server, bb } = ctx;
 
   server.registerTool(
     "list_forks",
@@ -71,13 +34,8 @@ export function registerForkTools(ctx: ToolContext) {
       },
       annotations: toolAnnotations(),
     },
-    async ({ project, repository, limit = 25, start = 0, fields }) => {
-      const resolvedProject = ctx.resolveProject(project);
-      const data = await getPaginated(
-        clients.api,
-        `projects/${resolvedProject}/repos/${repository}/forks`,
-        { searchParams: { limit, start } },
-      );
+    async ({ fields, ...params }) => {
+      const data = await bb.forks.list(params);
 
       return formatResponse(
         buildPaginated(data, {
@@ -118,16 +76,10 @@ export function registerForkTools(ctx: ToolContext) {
         idempotentHint: false,
       }),
     },
-    async ({ project, repository, name, target_project }) => {
-      const resolvedProject = ctx.resolveProject(project);
-      const handler = forkActions.fork;
-      return await handler({
-        clients,
-        resolvedProject,
-        repository,
-        name,
-        target_project,
-      });
+    async ({ target_project: targetProject, ...params }) => {
+      const data = await bb.forks.create({ ...params, targetProject });
+
+      return formatResponse(curateResponse(data, DEFAULT_REPOSITORY_FIELDS));
     },
   );
 }

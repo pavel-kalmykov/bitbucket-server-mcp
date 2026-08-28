@@ -5,7 +5,7 @@ import type { ToolContext } from "./shared.js";
 import { projectParam, repositoryParam } from "./params.js";
 
 export function registerMergeCheckTools(ctx: ToolContext) {
-  const { server, clients } = ctx;
+  const { server, bb } = ctx;
 
   server.registerTool(
     "list_merge_checks",
@@ -18,46 +18,7 @@ export function registerMergeCheckTools(ctx: ToolContext) {
       },
       annotations: toolAnnotations(),
     },
-    async ({ project, repository }) => {
-      const resolvedProject = ctx.resolveProject(project);
-      const hooks = await clients.api
-        .get(`projects/${resolvedProject}/repos/${repository}/settings/hooks`)
-        .json<{
-          values: Array<{
-            key: string;
-            enabled: boolean;
-            details?: {
-              name?: string;
-              description?: string;
-              type?: string;
-            };
-          }>;
-        }>();
-
-      const mergeCheckHooks = hooks.values.filter(
-        (h) => h.details?.type === "PRE_PULL_REQUEST_MERGE",
-      );
-
-      const checks = await Promise.all(
-        mergeCheckHooks.map(async (hook) => {
-          const settings = await clients.api
-            .get(
-              `projects/${resolvedProject}/repos/${repository}/settings/hooks/${hook.key}/settings`,
-            )
-            .json<Record<string, unknown>>()
-            .catch(() => ({}));
-          return {
-            key: hook.key,
-            name: hook.details?.name,
-            description: hook.details?.description,
-            enabled: hook.enabled,
-            settings,
-          };
-        }),
-      );
-
-      return formatResponse(checks);
-    },
+    async (params) => formatResponse(await bb.mergeChecks.list(params)),
   );
 
   server.registerTool(
@@ -77,16 +38,6 @@ export function registerMergeCheckTools(ctx: ToolContext) {
         idempotentHint: false,
       }),
     },
-    async ({ project, repository, hookKey, settings }) => {
-      const resolvedProject = ctx.resolveProject(project);
-      const data = await clients.api
-        .put(
-          `projects/${resolvedProject}/repos/${repository}/settings/hooks/${hookKey}/settings`,
-          { json: settings },
-        )
-        .json();
-
-      return formatResponse(data);
-    },
+    async (params) => formatResponse(await bb.mergeChecks.configure(params)),
   );
 }
