@@ -5,7 +5,7 @@ import { afterEach, beforeEach, expect } from "vitest";
 import type { MockProxy } from "vitest-mock-extended";
 import type { KyInstance } from "ky";
 import { ToolContext } from "../tools/shared.js";
-import { ApiCache } from "../core/http/cache.js";
+import { ApiCache } from "../api/http/cache.js";
 import { logger } from "../logging.js";
 import type { ToolSuccessResult } from "../response/format.js";
 import { type MockApiClients, createMockClients } from "./test-utils.js";
