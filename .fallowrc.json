@@ -2,8 +2,7 @@
   "$schema": "https://raw.githubusercontent.com/fallow-rs/fallow/main/schema.json",
   "entry": [
     "src/entry.ts",
-    "src/__tests__/e2e/setup-env.ts",
-    "src/api/index.ts"
+    "src/__tests__/e2e/setup-env.ts"
   ],
   "ignorePatterns": [
     "build/**",

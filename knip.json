@@ -13,8 +13,5 @@
     "@stryker-mutator/typescript-checker",
     "@stryker-mutator/vitest-runner",
     "@stryker-mutator/api"
-  ],
-  "entry": [
-    "src/api/index.ts"
   ]
 }
