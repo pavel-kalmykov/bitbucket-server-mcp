@@ -29,6 +29,7 @@ See `.claude/skills/add-tool` for the end-to-end checklist, and
 - Architecture, quickstart, how to add a tool -> `CONTRIBUTING.md`
 - Tools -> `src/tools/` (registry in `src/tools/index.ts`)
 - Response shaping -> `src/response/`
-- HTTP client -> `src/http/`
+- Bitbucket client -> `src/api/` (namespaces on `src/api/client.ts`), free of MCP and env-var vocabulary
+- HTTP client -> `src/api/http/`
 - E2E wiring -> `src/__tests__/e2e/mcp-harness.ts`
 - Roadmap -> `ROADMAP.md`
