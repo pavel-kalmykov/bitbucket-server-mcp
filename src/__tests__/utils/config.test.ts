@@ -16,6 +16,7 @@ describe("parseConfig", () => {
     delete process.env.BITBUCKET_CUSTOM_HEADERS;
     delete process.env.BITBUCKET_ENABLED_TOOLS;
     delete process.env.BITBUCKET_CACHE_TTL;
+    delete process.env.BITBUCKET_REQUEST_TIMEOUT;
     delete process.env.BITBUCKET_STARTUP_HEALTHCHECK;
   });
 
@@ -163,21 +164,70 @@ describe("parseConfig", () => {
 
     test.each([
       ["0", 0],
-      ["1", 1_000],
-      ["60", 60_000],
-      ["3600", 3_600_000],
-    ])("env '%s' seconds -> %d ms", (envValue, expected) => {
+      ["1s", 1_000],
+      ["1m", 60_000],
+      ["1h", 3_600_000],
+      ["2500ms", 2500],
+      ["0.5h", 1_800_000],
+    ])("env '%s' -> %d ms", (envValue, expected) => {
       process.env.BITBUCKET_CACHE_TTL = envValue;
       expect(parseConfig().cacheTtlMs).toBe(expected);
     });
 
+    test("a value without a unit is read as milliseconds", () => {
+      process.env.BITBUCKET_CACHE_TTL = "300";
+      expect(parseConfig().cacheTtlMs).toBe(300);
+    });
+
+    test("an unparseable value fails at startup naming the variable", () => {
+      process.env.BITBUCKET_CACHE_TTL = "5 fortnights";
+      expect(() => parseConfig()).toThrow(/^BITBUCKET_CACHE_TTL:/);
+    });
+
     test("options.cacheTtlMs overrides env", () => {
-      process.env.BITBUCKET_CACHE_TTL = "60";
+      process.env.BITBUCKET_CACHE_TTL = "1m";
       expect(parseConfig({ cacheTtlMs: 10_000 }).cacheTtlMs).toBe(10_000);
     });
 
     test("options.cacheTtlMs=0 is respected (disables cache)", () => {
       expect(parseConfig({ cacheTtlMs: 0 }).cacheTtlMs).toBe(0);
+    });
+  });
+
+  describe("requestTimeoutMs", () => {
+    beforeEach(() => {
+      process.env.BITBUCKET_URL = "https://git.example.com";
+      process.env.BITBUCKET_TOKEN = "t";
+    });
+
+    test("defaults to 30 seconds when neither env nor option", () => {
+      expect(parseConfig().requestTimeoutMs).toBe(30_000);
+    });
+
+    test.each([
+      ["30s", 30_000],
+      ["1m", 60_000],
+      ["2500ms", 2500],
+    ])("env '%s' -> %d ms", (envValue, expected) => {
+      process.env.BITBUCKET_REQUEST_TIMEOUT = envValue;
+      expect(parseConfig().requestTimeoutMs).toBe(expected);
+    });
+
+    test("a value without a unit is read as milliseconds", () => {
+      process.env.BITBUCKET_REQUEST_TIMEOUT = "30000";
+      expect(parseConfig().requestTimeoutMs).toBe(30_000);
+    });
+
+    test("an unparseable value fails at startup naming the variable", () => {
+      process.env.BITBUCKET_REQUEST_TIMEOUT = "soon";
+      expect(() => parseConfig()).toThrow(/^BITBUCKET_REQUEST_TIMEOUT:/);
+    });
+
+    test("options.requestTimeoutMs overrides env", () => {
+      process.env.BITBUCKET_REQUEST_TIMEOUT = "1m";
+      expect(parseConfig({ requestTimeoutMs: 5_000 }).requestTimeoutMs).toBe(
+        5_000,
+      );
     });
   });
 

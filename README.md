@@ -320,11 +320,26 @@ curation and response envelopes belong to the MCP layer. Failed calls throw
 | `BITBUCKET_READ_ONLY` | No | Set to `true` to disable all write operations |
 | `BITBUCKET_CUSTOM_HEADERS` | No | Extra headers for all requests (`Key=Value,Key2=Value2`). Useful for Zero Trust tokens. |
 | `BITBUCKET_DIFF_MAX_LINES_PER_FILE` | No | Max lines per file in diffs. Set to `0` for no limit. |
-| `BITBUCKET_CACHE_TTL` | No | Cache duration in seconds (default: 300). Set to `0` to disable caching. |
+| `BITBUCKET_CACHE_TTL` | No | How long cached reads stay fresh, as a duration (default: `5m`). Set to `0` to disable caching. |
+| `BITBUCKET_REQUEST_TIMEOUT` | No | Per-request timeout, as a duration (default: `30s`). |
 | `BITBUCKET_ENABLED_TOOLS` | No | Comma-separated list of tool names to enable. If not set, all tools are available. |
 | `BITBUCKET_STARTUP_HEALTHCHECK` | No | Set to `true` to run a connectivity check against Bitbucket on startup (default: `false`). |
 
 *Either `BITBUCKET_TOKEN` or both `BITBUCKET_USERNAME` and `BITBUCKET_PASSWORD` are required.
+
+### Durations
+
+Variables marked "as a duration" carry their unit in the value: `2500ms`,
+`30s`, `5m`, `0.5h`, `1w`. Compound values work too (`1h 30m`), and `0` needs
+no unit.
+
+**A value with no unit is read as milliseconds.** `BITBUCKET_CACHE_TTL=300`
+means 300 milliseconds, not 300 seconds; write `300s` or `5m` for that. Until
+v0.13.1, `BITBUCKET_CACHE_TTL` was in seconds and `BITBUCKET_REQUEST_TIMEOUT`
+in milliseconds, so check any value you already had set.
+
+An unparseable value fails at startup, naming the variable, rather than falling
+back to a default.
 
 ### Read-Only Mode
 
@@ -363,7 +378,7 @@ Read tools return compact responses by default, keeping only the fields an AI as
 
 The server caches frequently accessed data in memory (project lists, repository metadata, default reviewers) to reduce API calls. The cache uses LRU eviction (max 500 entries) so memory stays bounded, and write operations automatically invalidate related entries.
 
-By default, cached entries expire after 5 minutes. Configure with `BITBUCKET_CACHE_TTL` (in seconds), or set to `0` to disable caching entirely.
+By default, cached entries expire after 5 minutes. Configure with `BITBUCKET_CACHE_TTL` as a duration (`30s`, `5m`, `1h`), or set to `0` to disable caching entirely.
 
 ## Contributing
 
