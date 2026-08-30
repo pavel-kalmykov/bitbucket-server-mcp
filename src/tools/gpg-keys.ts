@@ -6,31 +6,14 @@ import {
 } from "../response/format.js";
 import { toolAnnotations } from "../response/annotations.js";
 import type { ToolContext } from "./shared.js";
-import type { ApiClients } from "../core/http/client.js";
 import { limitParam, startParam } from "./params.js";
 
-interface GpgKeyActionContext {
-  clients: ApiClients;
-  text: string;
-  keyId?: number;
-}
-
-const gpgKeyActions: Record<
-  string,
-  (ctx: GpgKeyActionContext) => Promise<ToolSuccessResult>
-> = {
-  add: async ({ clients, text }) => {
-    const data = await clients.gpg.post("keys", { json: { text } }).json();
-    return formatResponse(data);
-  },
-  delete: async ({ clients, keyId }) => {
-    await clients.gpg.delete(`keys/${keyId}`);
-    return formatResponse({ deleted: true, keyId });
-  },
-};
+const actionParam = z.enum(["add", "delete"]).describe("Operation to perform.");
+type KeyAction = z.infer<typeof actionParam>;
 
 export function registerGpgKeyTools(ctx: ToolContext) {
-  const { server, clients } = ctx;
+  const { server, bb } = ctx;
+  const keys = bb.gpgKeys;
 
   server.registerTool(
     "list_gpg_keys",
@@ -46,19 +29,10 @@ export function registerGpgKeyTools(ctx: ToolContext) {
       },
       annotations: toolAnnotations(),
     },
-    async ({ userSlug, limit = 25, start = 0 }) => {
-      const searchParams: Record<string, string | number> = { limit, start };
-      if (userSlug) searchParams.user = userSlug;
+    async (params) => {
+      const data = await keys.list(params);
 
-      const data = await clients.gpg
-        .get("keys", { searchParams })
-        .json<{ values: unknown[]; size: number; isLastPage: boolean }>();
-
-      return formatResponse(
-        buildPaginated(data, {
-          keys: data.values,
-        }),
-      );
+      return formatResponse(buildPaginated(data, { keys: data.values }));
     },
   );
 
@@ -68,7 +42,7 @@ export function registerGpgKeyTools(ctx: ToolContext) {
       description:
         'Manage GPG keys for the authenticated user. Actions: "add" (add a key), "delete" (remove a key).',
       inputSchema: {
-        action: z.enum(["add", "delete"]).describe("Operation to perform."),
+        action: actionParam,
         text: z
           .string()
           .optional()
@@ -81,8 +55,20 @@ export function registerGpgKeyTools(ctx: ToolContext) {
       }),
     },
     async ({ action, text, keyId }) => {
-      const handler = gpgKeyActions[action];
-      return await handler({ clients, text: text!, keyId });
+      const run: Record<KeyAction, () => Promise<ToolSuccessResult>> = {
+        add: async () => {
+          if (!text) throw new Error("text is required for the add action.");
+          return formatResponse(await keys.add({ text }));
+        },
+        delete: async () => {
+          if (keyId === undefined) {
+            throw new Error("keyId is required for the delete action.");
+          }
+          return formatResponse(await keys.delete({ keyId }));
+        },
+      };
+
+      return run[action]();
     },
   );
 }

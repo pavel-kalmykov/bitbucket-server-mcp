@@ -1,9 +1,20 @@
-import ky, { type KyInstance, type Options } from "ky";
-import type { BitbucketConfig } from "../../types.js";
+import ky, { HTTPError, type KyInstance, type Options } from "ky";
 import { logger } from "../../logging.js";
-import { validatePaginated, type Paginated } from "../../response/validate.js";
+import { BitbucketApiError } from "./errors.js";
+import { validatePaginated, type Paginated } from "./pagination.js";
 
-export interface ApiClients {
+const DEFAULT_TIMEOUT_MS = 30_000;
+
+export interface HttpClientOptions {
+  baseUrl: string;
+  token?: string;
+  username?: string;
+  password?: string;
+  headers?: Record<string, string>;
+  timeoutMs?: number;
+}
+
+export interface HttpClients {
   api: KyInstance;
   buildStatus: KyInstance;
   commentLikes: KyInstance;
@@ -23,11 +34,11 @@ export interface ApiClients {
 // Value-based redaction avoids false positives from key-name heuristics
 // (e.g. `auth=public` would not be redacted) and catches tokens passed under
 // non-standard parameter names.
-function buildRedactor(config: BitbucketConfig): (text: string) => string {
+function buildRedactor(options: HttpClientOptions): (text: string) => string {
   const secrets = [
-    config.token,
-    config.password,
-    ...Object.values(config.customHeaders ?? {}),
+    options.token,
+    options.password,
+    ...Object.values(options.headers ?? {}),
   ].filter((v): v is string => !!v && v.length > 0);
 
   if (secrets.length === 0) return (text) => text;
@@ -36,14 +47,14 @@ function buildRedactor(config: BitbucketConfig): (text: string) => string {
     secrets.reduce((acc, secret) => acc.replaceAll(secret, "[REDACTED]"), text);
 }
 
-export function createApiClients(config: BitbucketConfig): ApiClients {
+export function createHttpClients(options: HttpClientOptions): HttpClients {
   const authHeaders: Record<string, string> = {};
 
-  if (config.token) {
-    authHeaders["Authorization"] = `Bearer ${config.token}`;
-  } else if (config.username && config.password) {
+  if (options.token) {
+    authHeaders["Authorization"] = `Bearer ${options.token}`;
+  } else if (options.username && options.password) {
     const credentials = Buffer.from(
-      `${config.username}:${config.password}`,
+      `${options.username}:${options.password}`,
     ).toString("base64");
     authHeaders["Authorization"] = `Basic ${credentials}`;
   }
@@ -51,19 +62,19 @@ export function createApiClients(config: BitbucketConfig): ApiClients {
   // Accept is stated explicitly. Bitbucket Server's REST API already
   // returns JSON by default, but well-behaved proxies/gateways in front
   // of it can honor `Accept: application/json` instead of returning
-  // their own HTML error page. Proxies that ignore the Accept header
-  // are handled separately in `handleToolError` (raw-body cap at 500
-  // chars so an HTML login page cannot flood the MCP output).
+  // their own HTML error page. Proxies that ignore the Accept header are
+  // handled when building BitbucketApiError, whose message is capped so
+  // an HTML login page cannot flood it.
   const allHeaders: Record<string, string> = {
     Accept: "application/json",
     ...authHeaders,
-    ...config.customHeaders,
+    ...options.headers,
   };
 
-  const redact = buildRedactor(config);
+  const redact = buildRedactor(options);
 
   const commonOptions: Options = {
-    timeout: config.requestTimeoutMs ?? 30_000,
+    timeout: options.timeoutMs ?? DEFAULT_TIMEOUT_MS,
     retry: {
       limit: 2,
       methods: ["get"],
@@ -77,6 +88,10 @@ export function createApiClients(config: BitbucketConfig): ApiClients {
           }
           logger.debug(redact(`${request.method} ${request.url}`));
         },
+      ],
+      beforeError: [
+        ({ error }) =>
+          error instanceof HTTPError ? BitbucketApiError.from(error) : error,
       ],
       afterResponse: [
         ({ response }) => {
@@ -105,7 +120,7 @@ export function createApiClients(config: BitbucketConfig): ApiClients {
   const create = (path: string) =>
     ky.create({
       ...commonOptions,
-      prefix: `${config.baseUrl}${path}`,
+      prefix: `${options.baseUrl}${path}`,
     });
 
   return {

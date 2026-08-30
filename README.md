@@ -282,6 +282,30 @@ Or build locally: `docker build -t bitbucket-mcp .`
 |----------|-----|-------------|
 | `projects` | `bitbucket://projects` | Cached list of all accessible projects (5 min TTL). Useful as ambient context without explicit tool calls. |
 
+## Use it as a library
+
+The Bitbucket client the server runs on is published as a separate subpath
+with no MCP dependency, for scripts and integrations that want typed calls
+instead of tool round-trips:
+
+```ts
+import { createBitbucketClient } from "@pavel-kalmykov/bitbucket-server-mcp/api";
+
+const bb = createBitbucketClient({
+  baseUrl: "https://bitbucket.example.com",
+  token: process.env.BITBUCKET_TOKEN,
+  defaultProject: "PROJ",
+});
+
+const { branches } = await bb.branches.list({ repository: "my-repo" });
+```
+
+Only `baseUrl` is required. Operations are grouped into namespaces
+(`branches`, `pullRequests`, `comments`, `repositories`, and so on), take a
+single params object and answer with the Bitbucket payload unmodified: field
+curation and response envelopes belong to the MCP layer. Failed calls throw
+`BitbucketApiError`, carrying `status` and the server's own message.
+
 ## Configuration
 
 ### Environment Variables

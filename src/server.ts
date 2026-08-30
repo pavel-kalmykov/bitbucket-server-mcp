@@ -1,9 +1,8 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { parseConfig } from "./config.js";
-import { handleToolError } from "./core/http/errors.js";
-import { createApiClients } from "./core/http/client.js";
-import { ApiCache } from "./core/http/cache.js";
-import { runStartupHealthcheck } from "./core/http/healthcheck.js";
+import { handleToolError } from "./response/errors.js";
+import { createBitbucketClient } from "./api/client.js";
+import { runStartupHealthcheck } from "./healthcheck.js";
 import { TOOL_REGISTRARS } from "./tools/index.js";
 import { registerResources } from "./resources/index.js";
 import { registerPrompts } from "./prompts/index.js";
@@ -48,8 +47,16 @@ For the full list of available fields per entity, read the bitbucket://schema/fi
 
 export function createServer(options?: BitbucketServerOptions) {
   const config = parseConfig(options);
-  const clients = createApiClients(config);
-  const cache = new ApiCache({ defaultTtlMs: config.cacheTtlMs });
+  const bb = createBitbucketClient({
+    baseUrl: config.baseUrl,
+    token: config.token,
+    username: config.username,
+    password: config.password,
+    defaultProject: config.defaultProject,
+    headers: config.customHeaders,
+    timeoutMs: config.requestTimeoutMs,
+    cacheTtlMs: config.cacheTtlMs,
+  });
 
   const server = new McpServer(
     {
@@ -98,25 +105,21 @@ export function createServer(options?: BitbucketServerOptions) {
 
   const ctx = new ToolContext({
     server: filteredServer,
-    clients,
-    cache,
+    bb,
     logger: log,
-    defaultProject: config.defaultProject,
     maxLinesPerFile: config.maxLinesPerFile,
   });
 
   for (const register of TOOL_REGISTRARS) register(ctx);
 
-  registerResources(server, clients, cache);
+  registerResources(server, bb);
   registerPrompts(server);
 
   // The MCP logger only emits once the server has connected to a
   // transport, so we expose the healthcheck as a callable instead of
   // firing it here. entry.ts calls it after `server.connect()`.
   const maybeRunStartupHealthcheck = (): Promise<void> =>
-    config.startupHealthcheck
-      ? runStartupHealthcheck(clients)
-      : Promise.resolve();
+    config.startupHealthcheck ? runStartupHealthcheck(bb) : Promise.resolve();
 
   return { server, config, runStartupHealthcheck: maybeRunStartupHealthcheck };
 }

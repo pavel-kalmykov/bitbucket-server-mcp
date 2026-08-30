@@ -2,58 +2,19 @@ import { z } from "zod";
 import { formatResponse, type ToolSuccessResult } from "../response/format.js";
 import { toolAnnotations } from "../response/annotations.js";
 import type { ToolContext } from "./shared.js";
-import type { ApiClients } from "../core/http/client.js";
 import { projectParam, repositoryParam, fieldsParam } from "./params.js";
 import {
   curateList,
   DEFAULT_REVIEWER_GROUP_FIELDS,
 } from "../response/curate.js";
 
-interface ReviewerGroupActionContext {
-  clients: ApiClients;
-  resolvedProject: string;
-  repository: string;
-  name: string;
-  description?: string;
-  reviewers?: string[];
-}
-
-const reviewerGroupActions: Record<
-  string,
-  (ctx: ReviewerGroupActionContext) => Promise<ToolSuccessResult>
-> = {
-  create: async ({
-    clients,
-    resolvedProject,
-    repository,
-    name,
-    description,
-    reviewers,
-  }) => {
-    const data = await clients.api
-      .post(
-        `projects/${resolvedProject}/repos/${repository}/settings/reviewer-groups`,
-        {
-          json: {
-            name,
-            description,
-            reviewers: reviewers?.map((r) => ({ name: r })),
-          },
-        },
-      )
-      .json();
-    return formatResponse(data);
-  },
-  delete: async ({ clients, resolvedProject, repository, name }) => {
-    await clients.api.delete(
-      `projects/${resolvedProject}/repos/${repository}/settings/reviewer-groups/${name}`,
-    );
-    return formatResponse({ deleted: true, name });
-  },
-};
+const actionParam = z
+  .enum(["create", "delete"])
+  .describe("Operation to perform.");
+type ReviewerGroupAction = z.infer<typeof actionParam>;
 
 export function registerReviewerGroupTools(ctx: ToolContext) {
-  const { server, clients } = ctx;
+  const { server, bb } = ctx;
 
   server.registerTool(
     "list_reviewer_groups",
@@ -66,16 +27,11 @@ export function registerReviewerGroupTools(ctx: ToolContext) {
       },
       annotations: toolAnnotations(),
     },
-    async ({ project, repository, fields }) => {
-      const resolvedProject = ctx.resolveProject(project);
-      const data = await clients.api
-        .get(
-          `projects/${resolvedProject}/repos/${repository}/settings/reviewer-groups`,
-        )
-        .json<{ values: Record<string, unknown>[] }>();
+    async ({ fields, ...params }) => {
+      const groups = await bb.reviewerGroups.list(params);
 
       return formatResponse(
-        curateList(data.values, fields ?? DEFAULT_REVIEWER_GROUP_FIELDS),
+        curateList(groups, fields ?? DEFAULT_REVIEWER_GROUP_FIELDS),
       );
     },
   );
@@ -86,7 +42,7 @@ export function registerReviewerGroupTools(ctx: ToolContext) {
       description:
         'Manage reviewer groups for a repository. Actions: "create" (create a group), "delete" (remove a group).',
       inputSchema: {
-        action: z.enum(["create", "delete"]).describe("Operation to perform."),
+        action: actionParam,
         project: projectParam(),
         repository: repositoryParam(),
         name: z.string().describe("Reviewer group name."),
@@ -104,17 +60,16 @@ export function registerReviewerGroupTools(ctx: ToolContext) {
         idempotentHint: false,
       }),
     },
-    async ({ action, project, repository, name, description, reviewers }) => {
-      const resolvedProject = ctx.resolveProject(project);
-      const handler = reviewerGroupActions[action];
-      return await handler({
-        clients,
-        resolvedProject,
-        repository,
-        name,
-        description,
-        reviewers,
-      });
+    async ({ action, ...params }) => {
+      const run: Record<ReviewerGroupAction, () => Promise<ToolSuccessResult>> =
+        {
+          create: async () =>
+            formatResponse(await bb.reviewerGroups.create(params)),
+          delete: async () =>
+            formatResponse(await bb.reviewerGroups.delete(params)),
+        };
+
+      return run[action]();
     },
   );
 }

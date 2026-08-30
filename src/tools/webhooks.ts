@@ -5,9 +5,7 @@ import {
   type ToolSuccessResult,
 } from "../response/format.js";
 import { toolAnnotations } from "../response/annotations.js";
-import { getPaginated } from "../core/http/client.js";
 import type { ToolContext } from "./shared.js";
-import type { ApiClients } from "../core/http/client.js";
 import {
   projectParam,
   repositoryParam,
@@ -17,72 +15,13 @@ import {
 } from "./params.js";
 import { curateList, DEFAULT_WEBHOOK_FIELDS } from "../response/curate.js";
 
-interface WebhookActionContext {
-  clients: ApiClients;
-  resolvedProject: string;
-  repository: string;
-  name?: string;
-  url?: string;
-  events?: string[];
-  active?: boolean;
-  webhookId?: number;
-}
-
-const webhookActions: Record<
-  string,
-  (ctx: WebhookActionContext) => Promise<ToolSuccessResult>
-> = {
-  create: async ({
-    clients,
-    resolvedProject,
-    repository,
-    name,
-    url,
-    events,
-    active,
-  }) => {
-    const body: Record<string, unknown> = { name, url, events };
-    if (active !== undefined) body.active = active;
-    const data = await clients.api
-      .post(`projects/${resolvedProject}/repos/${repository}/webhooks`, {
-        json: body,
-      })
-      .json();
-    return formatResponse(data);
-  },
-  update: async ({
-    clients,
-    resolvedProject,
-    repository,
-    webhookId,
-    name,
-    url,
-    events,
-    active,
-  }) => {
-    const body: Record<string, unknown> = {};
-    if (name !== undefined) body.name = name;
-    if (url !== undefined) body.url = url;
-    if (events !== undefined) body.events = events;
-    if (active !== undefined) body.active = active;
-    const data = await clients.api
-      .put(
-        `projects/${resolvedProject}/repos/${repository}/webhooks/${webhookId}`,
-        { json: body },
-      )
-      .json();
-    return formatResponse(data);
-  },
-  delete: async ({ clients, resolvedProject, repository, webhookId }) => {
-    await clients.api.delete(
-      `projects/${resolvedProject}/repos/${repository}/webhooks/${webhookId}`,
-    );
-    return formatResponse({ deleted: true, webhookId });
-  },
-};
+const actionParam = z
+  .enum(["create", "update", "delete"])
+  .describe("Operation to perform.");
+type WebhookAction = z.infer<typeof actionParam>;
 
 export function registerWebhookTools(ctx: ToolContext) {
-  const { server, clients } = ctx;
+  const { server, bb } = ctx;
 
   server.registerTool(
     "list_webhooks",
@@ -97,13 +36,8 @@ export function registerWebhookTools(ctx: ToolContext) {
       },
       annotations: toolAnnotations(),
     },
-    async ({ project, repository, limit = 25, start = 0, fields }) => {
-      const resolvedProject = ctx.resolveProject(project);
-      const data = await getPaginated(
-        clients.api,
-        `projects/${resolvedProject}/repos/${repository}/webhooks`,
-        { searchParams: { limit, start } },
-      );
+    async ({ fields, ...params }) => {
+      const data = await bb.webhooks.list(params);
 
       return formatResponse(
         buildPaginated(data, {
@@ -119,9 +53,7 @@ export function registerWebhookTools(ctx: ToolContext) {
       description:
         'Manage repository webhooks. Actions: "create" (add a new webhook), "update" (modify an existing webhook), "delete" (remove a webhook).',
       inputSchema: {
-        action: z
-          .enum(["create", "update", "delete"])
-          .describe("Operation to perform."),
+        action: actionParam,
         project: projectParam(),
         repository: repositoryParam(),
         webhookId: z
@@ -152,28 +84,14 @@ export function registerWebhookTools(ctx: ToolContext) {
         idempotentHint: false,
       }),
     },
-    async ({
-      action,
-      project,
-      repository,
-      webhookId,
-      name,
-      url,
-      events,
-      active,
-    }) => {
-      const resolvedProject = ctx.resolveProject(project);
-      const handler = webhookActions[action];
-      return await handler({
-        clients,
-        resolvedProject,
-        repository,
-        webhookId,
-        name,
-        url,
-        events,
-        active,
-      });
+    async ({ action, ...params }) => {
+      const run: Record<WebhookAction, () => Promise<ToolSuccessResult>> = {
+        create: async () => formatResponse(await bb.webhooks.create(params)),
+        update: async () => formatResponse(await bb.webhooks.update(params)),
+        delete: async () => formatResponse(await bb.webhooks.delete(params)),
+      };
+
+      return run[action]();
     },
   );
 }

@@ -1,6 +1,6 @@
 import { test, fc } from "@fast-check/vitest";
 import { describe, expect } from "vitest";
-import { extractBitbucketMessage } from "../../core/http/errors.js";
+import { extractBitbucketMessage } from "../../api/http/errors.js";
 import type { components } from "../../generated/bitbucket-api.js";
 
 type RestErrorMessage = components["schemas"]["RestErrorMessage"];

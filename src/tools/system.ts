@@ -3,7 +3,7 @@ import { toolAnnotations } from "../response/annotations.js";
 import type { ToolContext } from "./shared.js";
 
 export function registerSystemTools(ctx: ToolContext) {
-  const { server, clients } = ctx;
+  const { server, bb } = ctx;
 
   server.registerTool(
     "get_server_info",
@@ -13,9 +13,6 @@ export function registerSystemTools(ctx: ToolContext) {
       inputSchema: {},
       annotations: toolAnnotations(),
     },
-    async () => {
-      const data = await clients.api.get("application-properties").json();
-      return formatResponse(data);
-    },
+    async () => formatResponse(await bb.server.info()),
   );
 }

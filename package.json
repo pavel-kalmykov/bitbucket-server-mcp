@@ -3,8 +3,18 @@
   "version": "0.13.1",
   "description": "MCP server for Bitbucket Server / Data Center with code review, cross-repo PRs, and CI insights",
   "type": "module",
-  "main": "build/entry.js",
-  "types": "build/entry.d.ts",
+  "main": "build/index.js",
+  "types": "build/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./build/index.d.ts",
+      "default": "./build/index.js"
+    },
+    "./api": {
+      "types": "./build/api/index.d.ts",
+      "default": "./build/api/index.js"
+    }
+  },
   "files": [
     "build",
     "!build/__tests__"

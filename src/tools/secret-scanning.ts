@@ -8,7 +8,7 @@ import {
 } from "../response/curate.js";
 
 export function registerSecretScanningTools(ctx: ToolContext) {
-  const { server, clients } = ctx;
+  const { server, bb } = ctx;
 
   server.registerTool(
     "list_secret_scanning_rules",
@@ -22,16 +22,11 @@ export function registerSecretScanningTools(ctx: ToolContext) {
       },
       annotations: toolAnnotations(),
     },
-    async ({ project, repository, fields }) => {
-      const resolvedProject = ctx.resolveProject(project);
-      const data = await clients.api
-        .get(
-          `projects/${resolvedProject}/repos/${repository}/secret-scanning/allowlist`,
-        )
-        .json<{ values: Record<string, unknown>[] }>();
+    async ({ fields, ...params }) => {
+      const rules = await bb.secretScanning.list(params);
 
       return formatResponse(
-        curateList(data.values, fields ?? DEFAULT_SECRET_SCANNING_FIELDS),
+        curateList(rules, fields ?? DEFAULT_SECRET_SCANNING_FIELDS),
       );
     },
   );

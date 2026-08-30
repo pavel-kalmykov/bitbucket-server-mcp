@@ -1,6 +1,5 @@
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
-import type { ApiClients } from "../core/http/client.js";
-import type { ApiCache } from "../core/http/cache.js";
+import type { BitbucketClient } from "../api/client.js";
 
 const FIELD_CATALOG: Record<string, string> = {
   pr: "id, version, title, description, state, open, closed, locked, createdDate, updatedDate, closedDate, fromRef.id, fromRef.displayId, fromRef.latestCommit, fromRef.repository.slug, fromRef.repository.project.key, toRef.id, toRef.displayId, toRef.latestCommit, toRef.repository.slug, toRef.repository.project.key, author.user.name, author.user.displayName, author.user.emailAddress, author.status, author.approved, reviewers[].user.name, reviewers[].user.displayName, reviewers[].status, reviewers[].approved, reviewers[].lastReviewedCommit, participants[].user.name, participants[].status, properties.commentCount, properties.openTaskCount, properties.resolvedTaskCount, properties.mergeResult.outcome, links.self[].href",
@@ -11,11 +10,9 @@ const FIELD_CATALOG: Record<string, string> = {
     "id, displayId, message, author.name, author.emailAddress, authorTimestamp, committerTimestamp, parents[].id",
 };
 
-export function registerResources(
-  server: McpServer,
-  clients: ApiClients,
-  cache: ApiCache,
-) {
+export function registerResources(server: McpServer, bb: BitbucketClient) {
+  const { cache } = bb;
+
   server.registerResource(
     "projects",
     "bitbucket://projects",
@@ -29,12 +26,8 @@ export function registerResources(
       let projects = cache.get<unknown[]>(cacheKey);
 
       if (!projects) {
-        const data = await clients.api
-          .get("projects", {
-            searchParams: { limit: 1000 },
-          })
-          .json<{ values: unknown[] }>();
-        projects = data.values;
+        const page = await bb.projects.list({ limit: 1000 });
+        projects = page.values;
         cache.set(cacheKey, projects, 5 * 60 * 1000);
       }
 

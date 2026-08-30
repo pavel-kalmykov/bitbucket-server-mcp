@@ -11,9 +11,9 @@ import { registerReviewTools } from "../../tools/pull-requests.js";
 import { registerSearchTools } from "../../tools/search.js";
 import { registerInsightTools } from "../../tools/insights.js";
 import { registerSystemTools } from "../../tools/system.js";
-import { createMockClients } from "../test-utils.js";
+import { createMockClients, createTestClient } from "../test-utils.js";
 import { ToolContext } from "../../tools/shared.js";
-import { ApiCache } from "../../core/http/cache.js";
+import { ApiCache } from "../../api/http/cache.js";
 import { logger } from "../../logging.js";
 
 describe("Tool annotations", () => {
@@ -28,10 +28,12 @@ describe("Tool annotations", () => {
 
     const ctx = new ToolContext({
       server,
-      clients: mockClients,
-      cache,
+      bb: createTestClient({
+        http: mockClients,
+        cache,
+        defaultProject: "DEFAULT",
+      }),
       logger,
-      defaultProject: "DEFAULT",
       maxLinesPerFile: 500,
     });
     registerRepositoryTools(ctx);

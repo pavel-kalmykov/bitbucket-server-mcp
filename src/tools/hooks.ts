@@ -5,9 +5,7 @@ import {
   type ToolSuccessResult,
 } from "../response/format.js";
 import { toolAnnotations } from "../response/annotations.js";
-import { getPaginated } from "../core/http/client.js";
 import type { ToolContext } from "./shared.js";
-import type { ApiClients } from "../core/http/client.js";
 import {
   projectParam,
   repositoryParam,
@@ -15,51 +13,13 @@ import {
   startParam,
 } from "./params.js";
 
-interface HookActionContext {
-  clients: ApiClients;
-  resolvedProject: string;
-  repository: string;
-  hookKey?: string;
-  settings?: Record<string, unknown>;
-}
-
-const hookActions: Record<
-  string,
-  (ctx: HookActionContext) => Promise<ToolSuccessResult>
-> = {
-  enable: async ({ clients, resolvedProject, repository, hookKey }) => {
-    await clients.api.put(
-      `projects/${resolvedProject}/repos/${repository}/settings/hooks/${hookKey}/settings`,
-      { json: {} },
-    );
-    return formatResponse({ enabled: true, hookKey });
-  },
-  disable: async ({ clients, resolvedProject, repository, hookKey }) => {
-    await clients.api.put(
-      `projects/${resolvedProject}/repos/${repository}/settings/hooks/${hookKey}/settings`,
-      { json: {} },
-    );
-    return formatResponse({ enabled: false, hookKey });
-  },
-  configure: async ({
-    clients,
-    resolvedProject,
-    repository,
-    hookKey,
-    settings,
-  }) => {
-    const data = await clients.api
-      .put(
-        `projects/${resolvedProject}/repos/${repository}/settings/hooks/${hookKey}/settings`,
-        { json: settings ?? {} },
-      )
-      .json();
-    return formatResponse(data);
-  },
-};
+const actionParam = z
+  .enum(["enable", "disable", "configure"])
+  .describe("Operation to perform.");
+type HookAction = z.infer<typeof actionParam>;
 
 export function registerHookTools(ctx: ToolContext) {
-  const { server, clients } = ctx;
+  const { server, bb } = ctx;
 
   server.registerTool(
     "list_repository_hooks",
@@ -73,19 +33,10 @@ export function registerHookTools(ctx: ToolContext) {
       },
       annotations: toolAnnotations(),
     },
-    async ({ project, repository, limit = 25, start = 0 }) => {
-      const resolvedProject = ctx.resolveProject(project);
-      const data = await getPaginated(
-        clients.api,
-        `projects/${resolvedProject}/repos/${repository}/settings/hooks`,
-        { searchParams: { limit, start } },
-      );
+    async (params) => {
+      const data = await bb.hooks.list(params);
 
-      return formatResponse(
-        buildPaginated(data, {
-          hooks: data.values,
-        }),
-      );
+      return formatResponse(buildPaginated(data, { hooks: data.values }));
     },
   );
 
@@ -95,9 +46,7 @@ export function registerHookTools(ctx: ToolContext) {
       description:
         'Manage repository hook settings. Actions: "enable" (enable a hook), "disable" (disable a hook), "configure" (set hook settings).',
       inputSchema: {
-        action: z
-          .enum(["enable", "disable", "configure"])
-          .describe("Operation to perform."),
+        action: actionParam,
         project: projectParam(),
         repository: repositoryParam(),
         hookKey: z
@@ -115,16 +64,21 @@ export function registerHookTools(ctx: ToolContext) {
         idempotentHint: false,
       }),
     },
-    async ({ action, project, repository, hookKey, settings }) => {
-      const resolvedProject = ctx.resolveProject(project);
-      const handler = hookActions[action];
-      return await handler({
-        clients,
-        resolvedProject,
-        repository,
-        hookKey,
-        settings,
-      });
+    async ({ action, settings, ...target }) => {
+      const run: Record<HookAction, () => Promise<ToolSuccessResult>> = {
+        enable: async () => {
+          await bb.hooks.configure(target);
+          return formatResponse({ enabled: true, hookKey: target.hookKey });
+        },
+        disable: async () => {
+          await bb.hooks.configure(target);
+          return formatResponse({ enabled: false, hookKey: target.hookKey });
+        },
+        configure: async () =>
+          formatResponse(await bb.hooks.configure({ ...target, settings })),
+      };
+
+      return run[action]();
     },
   );
 }

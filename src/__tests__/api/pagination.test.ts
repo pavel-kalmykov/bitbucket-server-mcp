@@ -1,5 +1,5 @@
 import { describe, test, expect, vi, beforeEach, afterEach } from "vitest";
-import { validatePaginated } from "../../response/validate.js";
+import { validatePaginated } from "../../api/http/pagination.js";
 import { logger } from "../../logging.js";
 
 describe("validatePaginated", () => {

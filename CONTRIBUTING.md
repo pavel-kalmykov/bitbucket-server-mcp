@@ -24,47 +24,126 @@ bun run src/entry.ts  # starts the server (no tsc needed)
 
 ```
 src/
-  entry.ts          # Entry point (STDIO transport)
-  server.ts         # McpServer setup, tool/resource/prompt registration
-  config.ts         # Environment variable parsing and validation
-  http/client.ts    # HTTP client factory (ky instances per API base URL)
-  http/cache.ts     # LRU cache with TTL
-  http/errors.ts    # Error serialization for MCP responses
-  tools/            # Tool implementations by domain
-  tools/index.ts    # Central tool registry (server.ts + E2E harness share this)
-  response/         # Response curation, formatting, and annotation helpers
-  resources/        # MCP Resources
-  prompts/          # MCP Prompts (e.g. review-pr)
+  entry.ts            # Entry point (STDIO transport)
+  server.ts           # McpServer setup, tool/resource/prompt registration
+  config.ts           # Environment variable parsing and validation
+  healthcheck.ts      # Opt-in startup connectivity diagnostic
+  api/                # Bitbucket client; never imports tools/, response/ or config.ts
+    client.ts         #   createBitbucketClient: binds credentials and defaults
+    context.ts        #   ApiContext + project resolution
+    <domain>.ts       #   one namespace factory per domain (branches, tags, ...)
+    http/client.ts    #   ky instances per API base URL
+    http/cache.ts     #   LRU cache with TTL
+    http/pagination.ts#   paginated response validation
+    http/errors.ts    #   BitbucketApiError + Bitbucket error-body parsing
+  tools/              # MCP adapters by domain
+  tools/index.ts      # Central tool registry (server.ts + E2E harness share this)
+  response/           # Curation, MCP formatting, annotations, error mapping
+  resources/          # MCP Resources
+  prompts/            # MCP Prompts (e.g. review-pr)
+```
+
+The api layer owns everything that talks to Bitbucket: endpoints, request
+bodies, multi-call orchestration and any filtering the server cannot do
+itself. It answers with Bitbucket data and throws `BitbucketApiError`.
+
+The MCP layer owns everything specific to the transport: the zod schema, the
+tool description and annotations, action bundling, field curation, trimming
+output to a context budget, and the `content` envelope. When a tool wants
+several api calls behind one flag, the adapter bundles them.
+
+That split lets a CLI or a plain Node consumer reuse the same
+client. Its options are flat and only `baseUrl` is required; the
+server-only switches (`readOnly`, `enabledTools`, `startupHealthcheck`)
+never reach it:
+
+```typescript
+const bb = createBitbucketClient({
+  baseUrl: "https://bitbucket.example.com",
+  token: process.env.BITBUCKET_TOKEN,
+  defaultProject: "PROJ",
+});
 ```
 
 ## Adding a new tool
 
-Each tool module in `src/tools/` exports a registration function that receives the McpServer instance, API clients, cache, and default config. To add a new tool:
+Each tool module in `src/tools/` exports a registration function that receives a `ToolContext` holding the McpServer, the Bitbucket client and the logger. To add a new tool:
 
 1. **Write the test first** in `src/__tests__/tools/yourmodule.test.ts`. Follow the pattern in any existing test file (mock ky, use InMemoryTransport, assert on response content and API calls).
 
-2. **Implement the tool** using `server.registerTool()`:
+2. **Add the operation** to the matching api namespace in `src/api/<domain>.ts`. It takes one params object and returns domain data:
 
 ```typescript
-server.registerTool('my_tool', {
+export interface GetWidgetParams {
+  project?: string;
+  repository: string;
+  widgetId: number;
+}
+
+export function widgetsApi(ctx: ApiContext) {
+  return {
+    async get({ project, repository, widgetId }: GetWidgetParams) {
+      return ctx.http.api
+        .get(
+          `projects/${resolveProject(ctx, project)}/repos/${repository}/widgets/${widgetId}`,
+        )
+        .json<Record<string, unknown>>();
+    },
+  };
+}
+```
+
+   Every namespace method is `async`, and
+   `@typescript-eslint/promise-function-async` enforces it over `src/api/**`.
+   Without it, a failure raised before the request is made (a missing project,
+   say) would leave the method by throwing rather than by rejecting, so a
+   caller's `.catch()` would miss it while the same caller's `.catch()` on the
+   next method worked. Module-level helpers are exempt: the rule only looks at
+   the methods of the returned object.
+
+   New namespaces go on `BitbucketClient` in `src/api/client.ts` and get re-exported from `src/api/index.ts`.
+
+3. **Add the adapter** in `src/tools/<domain>.ts`. Name the schema keys after the api params so the handler can forward its validated input wholesale:
+
+```typescript
+server.registerTool('get_widget', {
   description: 'What this tool does. Lead with a verb.',
   inputSchema: {
     project: projectParam(),
     repository: repositoryParam(),
+    widgetId: z.number().describe('Widget ID.'),
+    fields: fieldsParam(),
   },
   annotations: toolAnnotations(),
-}, async ({ project, repository }) => {
-  const resolvedProject = ctx.resolveProject(project);
-  const data = await clients.api
-    .get(`projects/${resolvedProject}/repos/${repository}/...`)
-    .json<Record<string, unknown>>();
-  return formatResponse(curateResponse(data, DEFAULT_REPO_FIELDS));
+}, async ({ fields, ...params }) => {
+  const data = await bb.widgets.get(params);
+  return formatResponse(curateResponse(data, fields ?? DEFAULT_WIDGET_FIELDS));
 });
 ```
 
-3. **Register it** by adding your registration function to the `TOOL_REGISTRARS` array in `src/tools/index.ts`. Both `src/server.ts` and the E2E harness read from this array, so there is no separate registration step.
+   When a tool bundles several operations behind an `action` param, dispatch through a table typed by the action union so TypeScript enforces that every action is covered:
 
-4. **Verify**: `npm test`, `npm run lint`, `npm run build`.
+```typescript
+const actionParam = z.enum(['create', 'delete']).describe('Operation to perform.');
+type WidgetAction = z.infer<typeof actionParam>;
+
+// inputSchema: { action: actionParam, ... }
+
+async ({ action, ...params }) => {
+  const run: Record<WidgetAction, () => Promise<ToolSuccessResult>> = {
+    create: async () => formatResponse(await bb.widgets.create(params)),
+    delete: async () => formatResponse(await bb.widgets.delete(params)),
+  };
+  return run[action]();
+}
+```
+
+Deriving the type from the schema keeps one source of truth: add an action to
+the `z.enum` and the `Record` stops compiling until it has a handler.
+
+4. **Register it** by adding your registration function to the `TOOL_REGISTRARS` array in `src/tools/index.ts`. Both `src/server.ts` and the E2E harness read from this array, so there is no separate registration step.
+
+5. **Verify**: `npm test`, `npm run lint`, `npm run build`.
 
 ## Response curation
 
@@ -96,47 +175,51 @@ Default field sets are defined in `src/response/curate.ts` (`DEFAULT_PR_FIELDS`,
 
 ## HTTP clients
 
-The server uses [ky](https://github.com/sindresorhus/ky) with pre-configured instances for each Bitbucket API base URL:
+The api layer uses [ky](https://github.com/sindresorhus/ky) with pre-configured instances for each Bitbucket API base URL, reachable as `ctx.http` inside a namespace and as `bb.http` from outside:
 
-- `clients.api`: `/rest/api/1.0` (main API)
-- `clients.insights`: `/rest/insights/latest` (Code Insights)
-- `clients.search`: `/rest/search/latest` (search)
-- `clients.branchUtils`: `/rest/branch-utils/1.0` (branch operations)
-- `clients.defaultReviewers`: `/rest/default-reviewers/1.0` (default reviewer queries)
+- `ctx.http.api`: `/rest/api/1.0` (main API)
+- `ctx.http.insights`: `/rest/insights/latest` (Code Insights)
+- `ctx.http.search`: `/rest/search/latest` (search)
+- `ctx.http.branchUtils`: `/rest/branch-utils/1.0` (branch operations)
+- `ctx.http.defaultReviewers`: `/rest/default-reviewers/1.0` (default reviewer queries)
 
 All instances share auth headers, custom headers, timeout (30s), and retry config (2 retries for GET on 408/429/5xx).
 
 ## Caching
 
-The `ApiCache` instance (from `src/http/cache.ts`) is passed to every tool registration function. It wraps an LRU cache with TTL (configurable via `BITBUCKET_CACHE_TTL`, default 5 minutes).
+The `ApiCache` instance (from `src/api/http/cache.ts`) lives on the client as `ctx.cache`. It wraps an LRU cache with TTL (configurable via `BITBUCKET_CACHE_TTL`, default 5 minutes).
 
 Use it for data that changes infrequently (repo metadata, project lists, default reviewers):
 
 ```typescript
 const cacheKey = `repos:${project}:${repository}`;
-let repoId = cache.get<number>(cacheKey);
+let repoId = ctx.cache.get<number>(cacheKey);
 if (repoId === undefined) {
-  const data = await clients.api.get(`projects/${project}/repos/${repository}`).json();
+  const data = await ctx.http.api.get(`projects/${project}/repos/${repository}`).json();
   repoId = data.id;
-  cache.set(cacheKey, repoId);
+  ctx.cache.set(cacheKey, repoId);
 }
 ```
 
 When a write operation changes state (e.g., creating a PR, merging), invalidate related entries:
 
 ```typescript
-cache.invalidateByPrefix(`repos:${project}`);
+ctx.cache.invalidateByPrefix(`repos:${project}`);
 ```
 
 Do not cache volatile data like PR details, comments, or activities.
 
 ## Error handling
 
-Tool handlers do not need try/catch blocks. `server.ts` wraps every handler in a Proxy that catches errors and returns `handleToolError(error)` from `src/http/errors.ts`. Handlers can throw or let promises reject naturally.
+Tool handlers do not need try/catch blocks. `server.ts` wraps every handler in a Proxy that catches errors and returns `handleToolError(error)` from `src/response/errors.ts`. Handlers can throw or let promises reject naturally, and so can api functions.
 
-For ky's `HTTPError`, `handleToolError` reads the pre-parsed body from `error.data` (ky v2 populates it before throwing). Detection uses `error instanceof HTTPError`, not a home-grown type guard.
+Every failed request arrives as `BitbucketApiError`: a `beforeError` hook on each ky instance converts ky's `HTTPError` before anyone sees it, so `message` already carries the server's own reason and `status`, `url` and the parsed `body` are on the error itself. Code inside `src/api/` branches on `error.status`, never on the HTTP library's types.
 
-**Do not duck-type on `error.response.data?.message` or similar hand-rolled predicates.** ky's `HTTPError` puts the parsed body on `error.data`; no real instance matches an axios-shaped `response.data.message`, so a predicate like that silently drops the body in production. The "duck-typed fake HTTPError does NOT match" test in `errors.test.ts` guards against slipping back.
+`src/response/errors.ts` maps that error to the MCP shape. The parsing of Bitbucket's error bodies lives in `src/api/http/errors.ts`, so the api layer builds its own messages without depending on the MCP format.
+
+Detection uses `error instanceof BitbucketApiError`, not a home-grown type guard.
+
+**Do not duck-type on `error.response.data?.message` or similar hand-rolled predicates.** No real instance matches an axios-shaped `response.data.message`, so a predicate like that silently drops the body in production. The "duck-typed fake error does NOT match" test in `errors.test.ts` guards against slipping back, and it drives the real transport so the error under test is the one production throws.
 
 ## Response formatting
 

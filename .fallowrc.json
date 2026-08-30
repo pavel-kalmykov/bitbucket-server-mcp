@@ -21,7 +21,9 @@
   "ignoreExports": [
     {
       "file": "src/__tests__/e2e/**",
-      "exports": ["*"]
+      "exports": [
+        "*"
+      ]
     }
   ],
   "rules": {
@@ -50,8 +52,8 @@
   "overrides": [
     {
       "files": [
-        "src/__tests__/utils/errors.test.ts",
-        "src/__tests__/utils/healthcheck.test.ts",
+        "src/__tests__/response/errors.test.ts",
+        "src/__tests__/healthcheck.test.ts",
         "src/__tests__/property/errors.prop.test.ts"
       ],
       "rules": {

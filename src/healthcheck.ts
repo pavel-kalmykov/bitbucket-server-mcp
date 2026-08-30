@@ -1,7 +1,6 @@
-import { HTTPError } from "ky";
-import type { ApiClients } from "./client.js";
-import { logger } from "../../logging.js";
-import { extractBitbucketMessage } from "./errors.js";
+import type { BitbucketClient } from "./api/client.js";
+import { BitbucketApiError } from "./api/http/errors.js";
+import { logger } from "./logging.js";
 
 /**
  * Run a best-effort connectivity check against Bitbucket Server's public
@@ -13,15 +12,14 @@ import { extractBitbucketMessage } from "./errors.js";
  * would otherwise print.
  */
 export async function runStartupHealthcheck(
-  clients: ApiClients,
+  bb: BitbucketClient,
 ): Promise<void> {
   try {
-    await clients.api.get("application-properties").json();
+    await bb.server.info();
     logger.info("Startup healthcheck: reachable.");
   } catch (error) {
-    if (error instanceof HTTPError) {
-      const status = error.response.status;
-      const serverMsg = extractBitbucketMessage(error.data) || error.message;
+    if (error instanceof BitbucketApiError) {
+      const { status, message: serverMsg } = error;
       if (status === 401) {
         logger.warn(
           `Startup healthcheck: HTTP 401. Verify BITBUCKET_TOKEN or BITBUCKET_USERNAME/BITBUCKET_PASSWORD, or BITBUCKET_CUSTOM_HEADERS if your environment needs extra auth headers. Server: ${serverMsg}`,

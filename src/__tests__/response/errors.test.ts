@@ -1,11 +1,8 @@
 import { describe, test, expect } from "vitest";
 import { http, HttpResponse } from "msw";
-import ky from "ky";
-import {
-  formatApiError,
-  extractBitbucketMessage,
-  handleToolError,
-} from "../../core/http/errors.js";
+import { formatApiError, handleToolError } from "../../response/errors.js";
+import { createHttpClients } from "../../api/http/client.js";
+import { extractBitbucketMessage } from "../../api/http/errors.js";
 import type { components } from "../../generated/bitbucket-api.js";
 import { setupHttpCapture } from "../http-test-utils.js";
 
@@ -484,13 +481,12 @@ describe("extractBitbucketMessage — reviewerErrors and validReviewers extracti
   });
 });
 
-// Tests drive real ky against msw so the HTTPError reaching
-// `handleToolError` has the same shape production sees. Hand-rolled
-// `{ response: { status, data: { ... } } }` objects are an axios shape
-// ky never produces, so asserting against them verifies a path the
-// library does not exercise.
-describe("handleToolError (real ky HTTPError via msw)", () => {
-  const client = ky.create({ prefix: "https://git.example.com/rest/api/1.0/" });
+// Tests drive the real transport against msw, so the error reaching
+// `handleToolError` is the BitbucketApiError production produces. Building
+// one by hand would let the assertions drift from what the beforeError hook
+// actually emits.
+describe("handleToolError (real transport via msw)", () => {
+  const client = createHttpClients({ baseUrl: "https://git.example.com" }).api;
 
   async function throwHttpError(path: string): Promise<unknown> {
     try {
@@ -683,7 +679,7 @@ describe("handleToolError (real ky HTTPError via msw)", () => {
     expect(result.content[0].text).toContain("custom failure");
   });
 
-  test("duck-typed fake HTTPError does NOT match the path (instanceof enforced)", () => {
+  test("duck-typed fake error does NOT match the path (instanceof enforced)", () => {
     // Regression guard: `instanceof HTTPError` rejects anything that is
     // not a real ky error, so an axios-shaped object routes through the
     // "Unexpected error" branch instead of the HTTP-error path.

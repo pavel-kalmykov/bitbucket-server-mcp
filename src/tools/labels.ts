@@ -5,9 +5,7 @@ import {
   type ToolSuccessResult,
 } from "../response/format.js";
 import { toolAnnotations } from "../response/annotations.js";
-import { getPaginated } from "../core/http/client.js";
 import type { ToolContext } from "./shared.js";
-import type { ApiClients } from "../core/http/client.js";
 import {
   projectParam,
   repositoryParam,
@@ -15,35 +13,11 @@ import {
   startParam,
 } from "./params.js";
 
-interface LabelActionContext {
-  clients: ApiClients;
-  resolvedProject: string;
-  repository: string;
-  name: string;
-}
-
-const labelActions: Record<
-  string,
-  (ctx: LabelActionContext) => Promise<ToolSuccessResult>
-> = {
-  add: async ({ clients, resolvedProject, repository, name }) => {
-    const data = await clients.api
-      .post(`projects/${resolvedProject}/repos/${repository}/labels`, {
-        json: { name },
-      })
-      .json();
-    return formatResponse(data);
-  },
-  remove: async ({ clients, resolvedProject, repository, name }) => {
-    await clients.api.delete(
-      `projects/${resolvedProject}/repos/${repository}/labels/${name}`,
-    );
-    return formatResponse({ deleted: true, label: name });
-  },
-};
+const actionParam = z.enum(["add", "remove"]).describe("Operation to perform.");
+type LabelAction = z.infer<typeof actionParam>;
 
 export function registerLabelTools(ctx: ToolContext) {
-  const { server, clients } = ctx;
+  const { server, bb } = ctx;
 
   server.registerTool(
     "list_labels",
@@ -57,19 +31,10 @@ export function registerLabelTools(ctx: ToolContext) {
       },
       annotations: toolAnnotations(),
     },
-    async ({ project, repository, limit = 25, start = 0 }) => {
-      const resolvedProject = ctx.resolveProject(project);
-      const data = await getPaginated(
-        clients.api,
-        `projects/${resolvedProject}/repos/${repository}/labels`,
-        { searchParams: { limit, start } },
-      );
+    async (params) => {
+      const data = await bb.labels.list(params);
 
-      return formatResponse(
-        buildPaginated(data, {
-          labels: data.values,
-        }),
-      );
+      return formatResponse(buildPaginated(data, { labels: data.values }));
     },
   );
 
@@ -79,7 +44,7 @@ export function registerLabelTools(ctx: ToolContext) {
       description:
         'Manage repository labels. Actions: "add" (create a new label), "remove" (delete a label).',
       inputSchema: {
-        action: z.enum(["add", "remove"]).describe("Operation to perform."),
+        action: actionParam,
         project: projectParam(),
         repository: repositoryParam(),
         name: z.string().describe("Label name."),
@@ -89,15 +54,13 @@ export function registerLabelTools(ctx: ToolContext) {
         idempotentHint: false,
       }),
     },
-    async ({ action, project, repository, name }) => {
-      const resolvedProject = ctx.resolveProject(project);
-      const handler = labelActions[action];
-      return await handler({
-        clients,
-        resolvedProject,
-        repository,
-        name,
-      });
+    async ({ action, ...params }) => {
+      const run: Record<LabelAction, () => Promise<ToolSuccessResult>> = {
+        add: async () => formatResponse(await bb.labels.add(params)),
+        remove: async () => formatResponse(await bb.labels.remove(params)),
+      };
+
+      return run[action]();
     },
   );
 }

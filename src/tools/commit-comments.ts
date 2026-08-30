@@ -5,9 +5,7 @@ import {
   type ToolSuccessResult,
 } from "../response/format.js";
 import { toolAnnotations } from "../response/annotations.js";
-import { getPaginated } from "../core/http/client.js";
 import type { ToolContext } from "./shared.js";
-import type { ApiClients } from "../core/http/client.js";
 import {
   projectParam,
   repositoryParam,
@@ -21,64 +19,13 @@ import {
   DEFAULT_COMMENT_FIELDS,
 } from "../response/curate.js";
 
-interface CommitCommentActionContext {
-  clients: ApiClients;
-  resolvedProject: string;
-  repository: string;
-  commitId: string;
-  text?: string;
-  commentId?: number;
-  version?: number;
-}
-
-const commitCommentActions: Record<
-  string,
-  (ctx: CommitCommentActionContext) => Promise<ToolSuccessResult>
-> = {
-  create: async ({ clients, resolvedProject, repository, commitId, text }) => {
-    const data = await clients.api
-      .post(
-        `projects/${resolvedProject}/repos/${repository}/commits/${commitId}/comments`,
-        { json: { text } },
-      )
-      .json<Record<string, unknown>>();
-    return formatResponse(curateResponse(data, DEFAULT_COMMENT_FIELDS));
-  },
-  edit: async ({
-    clients,
-    resolvedProject,
-    repository,
-    commitId,
-    commentId,
-    text,
-    version,
-  }) => {
-    const data = await clients.api
-      .put(
-        `projects/${resolvedProject}/repos/${repository}/commits/${commitId}/comments/${commentId}`,
-        { json: { text, version } },
-      )
-      .json<Record<string, unknown>>();
-    return formatResponse(curateResponse(data, DEFAULT_COMMENT_FIELDS));
-  },
-  delete: async ({
-    clients,
-    resolvedProject,
-    repository,
-    commitId,
-    commentId,
-    version,
-  }) => {
-    await clients.api.delete(
-      `projects/${resolvedProject}/repos/${repository}/commits/${commitId}/comments/${commentId}`,
-      { searchParams: { version: version! } },
-    );
-    return formatResponse({ deleted: true, commentId });
-  },
-};
+const actionParam = z
+  .enum(["create", "edit", "delete"])
+  .describe("Operation to perform.");
+type CommitCommentAction = z.infer<typeof actionParam>;
 
 export function registerCommitCommentTools(ctx: ToolContext) {
-  const { server, clients } = ctx;
+  const { server, bb } = ctx;
 
   server.registerTool(
     "list_commit_comments",
@@ -95,20 +42,8 @@ export function registerCommitCommentTools(ctx: ToolContext) {
       },
       annotations: toolAnnotations(),
     },
-    async ({
-      project,
-      repository,
-      commitId,
-      limit = 25,
-      start = 0,
-      fields,
-    }) => {
-      const resolvedProject = ctx.resolveProject(project);
-      const data = await getPaginated(
-        clients.api,
-        `projects/${resolvedProject}/repos/${repository}/commits/${commitId}/comments`,
-        { searchParams: { limit, start } },
-      );
+    async ({ fields, ...params }) => {
+      const data = await bb.commitComments.list(params);
 
       return formatResponse(
         buildPaginated(data, {
@@ -124,9 +59,7 @@ export function registerCommitCommentTools(ctx: ToolContext) {
       description:
         'Manage comments on a commit. Actions: "create" (add a new comment), "edit" (update an existing comment), "delete" (remove a comment).',
       inputSchema: {
-        action: z
-          .enum(["create", "edit", "delete"])
-          .describe("Operation to perform."),
+        action: actionParam,
         project: projectParam(),
         repository: repositoryParam(),
         commitId: z.string().describe("Full commit hash."),
@@ -150,26 +83,28 @@ export function registerCommitCommentTools(ctx: ToolContext) {
         idempotentHint: false,
       }),
     },
-    async ({
-      action,
-      project,
-      repository,
-      commitId,
-      text,
-      commentId,
-      version,
-    }) => {
-      const resolvedProject = ctx.resolveProject(project);
-      const handler = commitCommentActions[action];
-      return await handler({
-        clients,
-        resolvedProject,
-        repository,
-        commitId,
-        text,
-        commentId,
-        version,
-      });
+    async ({ action, ...params }) => {
+      const run: Record<CommitCommentAction, () => Promise<ToolSuccessResult>> =
+        {
+          create: async () =>
+            formatResponse(
+              curateResponse(
+                await bb.commitComments.create(params),
+                DEFAULT_COMMENT_FIELDS,
+              ),
+            ),
+          edit: async () =>
+            formatResponse(
+              curateResponse(
+                await bb.commitComments.update(params),
+                DEFAULT_COMMENT_FIELDS,
+              ),
+            ),
+          delete: async () =>
+            formatResponse(await bb.commitComments.delete(params)),
+        };
+
+      return run[action]();
     },
   );
 }

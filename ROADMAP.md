@@ -206,41 +206,25 @@ Each bullet is one PR. P1 first, then P2, then P3.
 - Formalize **metamorphic relations** on the curator and formatter
   (idempotence, subset-monotonicity, field-order independence).
 
-### B6. Longevity: decouple a reusable core (P2)
+### B6. Longevity: finish the reusable client (P2)
 
-Shift the center of gravity from "the product is the MCP server" to "a
-Bitbucket agent-integration core, with MCP as one surface." One package,
-internal layering, one tool-vertical per PR:
+`src/api/` is the MCP-free Bitbucket client, and the MCP layer consumes it as
+one surface among others. What is left is what makes it pleasant to consume
+from outside the server:
 
-```
-src/
-  index.ts          # public "." barrel, re-exports core
-  core/             # MCP-free; never imports mcp/ or cli/
-    client.ts       #   BitbucketClient (DI: config + http)
-    errors.ts       #   typed exceptions
-    http/  types.ts  resources/
-  mcp/              # thin adapter: schema, call core, format, error map
-    server.ts       #   bin "bitbucket-server-mcp"
-    tools/  response/   # curate.ts and format.ts live here (presentation)
-  cli/  main.ts     #   bin "bbs", thin consumer of core/
-skill/  SKILL.md     # consumer-facing skill, shipped via "files"
-```
+- **`bbs` CLI binary.** The second consumer, and the one that proves the client
+  is reusable. It needs a real argument parser and `--help`.
+- **Consumer-facing Agent Skill**, once the client surface settles.
+- **Typed domain returns.** Operations answer with `Record<string, unknown>`.
+  The generated OpenAPI types in `src/generated/` can narrow the high-traffic
+  ones: pull requests, repositories, branches, commits, comments.
+- **Iterable pagination.** A `list` answers with one page and the caller walks
+  it with `limit` and `start`. An async iterator, the way `octokit.paginate`
+  and Stripe's `autoPagingEach` work, is what a JS consumer expects.
+- **JSDoc across the public surface.** It is there on the client and on the
+  operations whose behaviour is not obvious, and missing on the rest.
 
-Migration, one PR per step:
-
-1. `git mv src/http -> src/core/http`; retarget imports; build green.
-2. Add `core/errors.ts` typed exceptions thrown by the http layer.
-3. Extract `users.ts` end-to-end as the proof vertical (typed core function,
-   thin adapter, split test). Repeat per vertical.
-4. Add `exports` subpaths (`.`, `./core`, `./mcp`) and the core barrel.
-5. Add the `bbs` CLI binary.
-6. Add the consumer-facing Agent Skill.
-
-Keep semantic-release as it is (one package, one version). Shaping rules so
-the core is both MCP-wrappable and agent-importable: return typed domain
-objects (not content blocks), throw typed errors (the adapter maps to
-`isError`), keep `fields` and curation in the adapter, and put JSDoc on every
-public function.
+Keep semantic-release as it is (one package, one version).
 
 ### B7. Security score and polish (P1-P3)
 

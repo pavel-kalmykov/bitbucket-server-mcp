@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { logger } from "../logging.js";
+import { logger } from "../../logging.js";
 
 const paginatedSchema = z.object({
   values: z.array(z.record(z.string(), z.unknown())),
@@ -24,7 +24,7 @@ export function validatePaginated(data: unknown, context: string): Paginated {
   if (!result.success) {
     logger.warn(
       `Unexpected paginated response in ${context}`,
-      result.error.flatten(),
+      z.flattenError(result.error),
     );
     if (
       data &&

@@ -1,5 +1,5 @@
 import { describe, test, expect } from "vitest";
-import { HTTPError } from "ky";
+import { BitbucketApiError } from "../../api/http/errors.js";
 import { registerBranchTools } from "../../tools/branches.js";
 import { mockError, mockJson } from "../test-utils.js";
 import { aBranch } from "../test-builders.js";
@@ -405,11 +405,15 @@ describe("Branch tools", () => {
     });
 
     test("returns empty list when API returns 404", async () => {
-      const error404 = Object.assign(Object.create(HTTPError.prototype), {
-        response: { status: 404 },
-        message: "Not Found",
-      });
-      mockError(h.mockClients.branchUtils.get, error404);
+      mockError(
+        h.mockClients.branchUtils.get,
+        new BitbucketApiError({
+          message: "Not Found",
+          status: 404,
+          url: "https://bitbucket.test/restrictions",
+          body: undefined,
+        }),
+      );
 
       const parsed = await callAndParse<{
         total: number;
