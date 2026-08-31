@@ -1,15 +1,15 @@
-import { test, expect } from "vitest";
-import { describeBitbucket } from "./e2e-suite.js";
+import { expect } from "vitest";
+import { test, describeBitbucket } from "./e2e-suite.js";
 import { callAndParse } from "../tool-test-utils.js";
 
-describeBitbucket("branches", ({ mcp, s }) => {
-  test("list_branches returns main and feature", async () => {
+describeBitbucket("branches", () => {
+  test("list_branches returns main and feature", async ({ mcp, scenario }) => {
     const parsed = await callAndParse<{
       total: number;
       branches: Array<{ displayId: string }>;
     }>(mcp.client, "list_branches", {
-      project: s.projectKey,
-      repository: s.repoSlug,
+      project: scenario.projectKey,
+      repository: scenario.repoSlug,
     });
 
     expect(parsed.total).toBeGreaterThanOrEqual(2);
@@ -18,33 +18,36 @@ describeBitbucket("branches", ({ mcp, s }) => {
     expect(ids).toContain("feature");
   });
 
-  test("manage_branches create creates a new branch", async () => {
+  test("manage_branches create creates a new branch", async ({
+    mcp,
+    scenario,
+  }) => {
     const parsed = await callAndParse<{ displayId: string }>(
       mcp.client,
       "manage_branches",
       {
         action: "create",
-        project: s.projectKey,
-        repository: s.repoSlug,
+        project: scenario.projectKey,
+        repository: scenario.repoSlug,
         branch: "e2e-branch",
-        startPoint: s.mainCommitId,
+        startPoint: scenario.mainCommitId,
       },
     );
 
     expect(parsed.displayId).toBe("e2e-branch");
   });
 
-  test("get_commit returns the main commit", async () => {
+  test("get_commit returns the main commit", async ({ mcp, scenario }) => {
     const parsed = await callAndParse<{ id: string; message: string }>(
       mcp.client,
       "get_commit",
       {
-        project: s.projectKey,
-        repository: s.repoSlug,
-        commitId: s.mainCommitId,
+        project: scenario.projectKey,
+        repository: scenario.repoSlug,
+        commitId: scenario.mainCommitId,
       },
     );
 
-    expect(parsed.id).toBe(s.mainCommitId);
+    expect(parsed.id).toBe(scenario.mainCommitId);
   });
 });

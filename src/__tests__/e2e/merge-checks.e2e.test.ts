@@ -1,9 +1,12 @@
-import { test, expect } from "vitest";
+import { expect } from "vitest";
 import { callRaw } from "../tool-test-utils.js";
-import { describeBitbucket } from "./e2e-suite.js";
+import { test, describeBitbucket } from "./e2e-suite.js";
 
-describeBitbucket("merge-checks", ({ mcp, s: scenario }) => {
-  test("manage_merge_checks returns an error for missing plugin", async () => {
+describeBitbucket("merge-checks", () => {
+  test("manage_merge_checks returns an error for missing plugin", async ({
+    mcp,
+    scenario,
+  }) => {
     const result = await callRaw(mcp.client, "manage_merge_checks", {
       project: scenario.projectKey,
       repository: scenario.repoSlug,

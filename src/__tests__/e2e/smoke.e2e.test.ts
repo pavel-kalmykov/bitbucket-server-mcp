@@ -1,6 +1,6 @@
-import { test, expect } from "vitest";
+import { expect } from "vitest";
 import ky from "ky";
-import { describeBitbucket } from "./e2e-suite.js";
+import { test, describeBitbucket } from "./e2e-suite.js";
 
 /**
  * Smoke tier: for every declared version, confirm the healthcheck
@@ -9,8 +9,10 @@ import { describeBitbucket } from "./e2e-suite.js";
  * surface server messages, and Atlassian has changed their
  * documentation around them more than once.
  */
-describeBitbucket("smoke", ({ bb }) => {
-  test("GET /application-properties returns a parseable version", async () => {
+describeBitbucket("smoke", () => {
+  test("GET /application-properties returns a parseable version", async ({
+    bb,
+  }) => {
     const res = await ky
       .get(`${bb.url}/rest/api/1.0/application-properties`, {
         headers: { Accept: "application/json" },
@@ -21,7 +23,9 @@ describeBitbucket("smoke", ({ bb }) => {
     expect(res.version.startsWith(bb.version)).toBe(true);
   });
 
-  test("unauthenticated call returns the Bitbucket error shape", async () => {
+  test("unauthenticated call returns the Bitbucket error shape", async ({
+    bb,
+  }) => {
     // `/dashboard/pull-requests` requires a user context (no anonymous
     // view), so without credentials it returns 401 with the canonical
     // `{errors:[{message,exceptionName}]}` body that `handleToolError`

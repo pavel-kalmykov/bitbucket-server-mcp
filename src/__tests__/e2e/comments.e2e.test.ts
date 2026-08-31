@@ -1,17 +1,17 @@
-import { test, expect } from "vitest";
+import { expect } from "vitest";
 import { callAndParse } from "../tool-test-utils.js";
-import { describeBitbucket } from "./e2e-suite.js";
+import { test, describeBitbucket } from "./e2e-suite.js";
 
-describeBitbucket("comments", ({ mcp, s }) => {
-  test("manage_comment create adds a comment", async () => {
+describeBitbucket("comments", () => {
+  test("manage_comment create adds a comment", async ({ mcp, scenario }) => {
     const parsed = await callAndParse<{
       id: number;
       text: string;
     }>(mcp.client, "manage_comment", {
       action: "create",
-      project: s.projectKey,
-      repository: s.repoSlug,
-      prId: s.prId,
+      project: scenario.projectKey,
+      repository: scenario.repoSlug,
+      prId: scenario.prId,
       text: "E2E smoke test comment",
     });
 
@@ -19,7 +19,7 @@ describeBitbucket("comments", ({ mcp, s }) => {
     expect(parsed.text).toBe("E2E smoke test comment");
   });
 
-  test("search_emoticons returns results", async () => {
+  test("search_emoticons returns results", async ({ mcp }) => {
     const parsed = await callAndParse<Array<{ shortcut: string }>>(
       mcp.client,
       "search_emoticons",

@@ -1,7 +1,7 @@
-import { test, expect } from "vitest";
-import { VERSIONS_WITH_LABELS, VERSIONS_WITHOUT_LABELS } from "./versions.js";
+import { expect } from "vitest";
+import { atLeast, LABELS_SINCE } from "./versions.js";
 import { callAndParse, callRaw } from "../tool-test-utils.js";
-import { describeBitbucket } from "./e2e-suite.js";
+import { test, describeBitbucket } from "./e2e-suite.js";
 
 interface LabelsResponse {
   total: number;
@@ -10,8 +10,11 @@ interface LabelsResponse {
 
 describeBitbucket(
   "labels supported",
-  ({ mcp, s: scenario }) => {
-    test("list_labels returns an empty list on a fresh repo", async () => {
+  () => {
+    test("list_labels returns an empty list on a fresh repo", async ({
+      mcp,
+      scenario,
+    }) => {
       const parsed = await callAndParse<LabelsResponse>(
         mcp.client,
         "list_labels",
@@ -25,7 +28,7 @@ describeBitbucket(
       expect(parsed.labels).toHaveLength(0);
     });
 
-    test("manage_labels add and remove works", async () => {
+    test("manage_labels add and remove works", async ({ mcp, scenario }) => {
       await callAndParse(mcp.client, "manage_labels", {
         action: "add",
         project: scenario.projectKey,
@@ -64,13 +67,16 @@ describeBitbucket(
       expect(afterRemove.total).toBe(0);
     });
   },
-  VERSIONS_WITH_LABELS,
+  atLeast(LABELS_SINCE),
 );
 
 describeBitbucket(
   "labels unsupported",
-  ({ mcp, s: scenario }) => {
-    test("list_labels returns an error on unsupported versions", async () => {
+  () => {
+    test("list_labels returns an error on unsupported versions", async ({
+      mcp,
+      scenario,
+    }) => {
       const result = await callRaw(mcp.client, "list_labels", {
         project: scenario.projectKey,
         repository: scenario.repoSlug,
@@ -79,5 +85,5 @@ describeBitbucket(
       expect(result.isError).toBe(true);
     });
   },
-  VERSIONS_WITHOUT_LABELS,
+  !atLeast(LABELS_SINCE),
 );
