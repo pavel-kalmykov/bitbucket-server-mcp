@@ -45,11 +45,12 @@ export const DEFAULT_SECRET_SCANNING_FIELDS = "id,name";
 
 export const DEFAULT_DEPLOYMENT_FIELDS =
   "key,state,displayName,description,url," +
+  "environment.key,environment.displayName,environment.type," +
   "deploymentSequenceNumber,lastUpdated";
 
 export const DEFAULT_COMMENT_FIELDS =
   "id,text,version,createdDate,updatedDate," +
-  "author.name,author.displayName,severity,state," +
+  "author.name,author.displayName,severity,state,threadResolved," +
   "anchor.path,anchor.line,anchor.lineType";
 
 export const DEFAULT_INSIGHT_FIELDS =

@@ -1,10 +1,13 @@
-import { test, expect } from "vitest";
+import { expect } from "vitest";
 import { callAndParse, callRaw } from "../tool-test-utils.js";
-import { describeBitbucket } from "./e2e-suite.js";
+import { test, describeBitbucket } from "./e2e-suite.js";
 import type { Deployment } from "../../generated/types.js";
 
-describeBitbucket("deployments", ({ mcp, s: scenario }) => {
-  test("create deployment returns the deployment", async () => {
+describeBitbucket("deployments", () => {
+  test("create deployment returns the deployment", async ({
+    mcp,
+    scenario,
+  }) => {
     const parsed = await callAndParse<Deployment>(
       mcp.client,
       "manage_deployments",
@@ -33,7 +36,10 @@ describeBitbucket("deployments", ({ mcp, s: scenario }) => {
     expect(parsed.environment?.type).toBe("TESTING");
   });
 
-  test("get deployment returns the created deployment", async () => {
+  test("get deployment returns the created deployment", async ({
+    mcp,
+    scenario,
+  }) => {
     const parsed = await callAndParse<Deployment>(
       mcp.client,
       "manage_deployments",
@@ -52,7 +58,7 @@ describeBitbucket("deployments", ({ mcp, s: scenario }) => {
     expect(parsed.state).toBe("IN_PROGRESS");
   });
 
-  test("delete deployment succeeds", async () => {
+  test("delete deployment succeeds", async ({ mcp, scenario }) => {
     const parsed = await callAndParse<{
       deleted: boolean;
       key: string;
@@ -70,7 +76,7 @@ describeBitbucket("deployments", ({ mcp, s: scenario }) => {
     expect(parsed.key).toBe("e2e-deploy-1");
   });
 
-  test("get after delete returns error", async () => {
+  test("get after delete returns error", async ({ mcp, scenario }) => {
     const result = await callRaw(mcp.client, "manage_deployments", {
       action: "get",
       project: scenario.projectKey,
@@ -84,7 +90,10 @@ describeBitbucket("deployments", ({ mcp, s: scenario }) => {
     expect(result.isError).toBe(true);
   });
 
-  test("create without required fields returns error", async () => {
+  test("create without required fields returns error", async ({
+    mcp,
+    scenario,
+  }) => {
     const result = await callRaw(mcp.client, "manage_deployments", {
       action: "create",
       project: scenario.projectKey,
@@ -95,7 +104,10 @@ describeBitbucket("deployments", ({ mcp, s: scenario }) => {
     expect(result.isError).toBe(true);
   });
 
-  test("get without required params returns error", async () => {
+  test("get without required params returns error", async ({
+    mcp,
+    scenario,
+  }) => {
     const result = await callRaw(mcp.client, "manage_deployments", {
       action: "get",
       project: scenario.projectKey,

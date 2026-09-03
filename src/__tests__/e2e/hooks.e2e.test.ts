@@ -1,9 +1,12 @@
-import { test, expect } from "vitest";
+import { expect } from "vitest";
 import { callAndParse } from "../tool-test-utils.js";
-import { describeBitbucket } from "./e2e-suite.js";
+import { test, describeBitbucket } from "./e2e-suite.js";
 
-describeBitbucket("hooks", ({ mcp, s: scenario }) => {
-  test("manage_repository_hooks enable flips a bundled hook", async () => {
+describeBitbucket("hooks", () => {
+  test("manage_repository_hooks enable flips a bundled hook", async ({
+    mcp,
+    scenario,
+  }) => {
     const parsed = await callAndParse<{ enabled: boolean; hookKey: string }>(
       mcp.client,
       "manage_repository_hooks",
@@ -19,7 +22,10 @@ describeBitbucket("hooks", ({ mcp, s: scenario }) => {
     expect(parsed.enabled).toBe(true);
   });
 
-  test("manage_repository_hooks disable flips it back", async () => {
+  test("manage_repository_hooks disable flips it back", async ({
+    mcp,
+    scenario,
+  }) => {
     const parsed = await callAndParse<{ enabled: boolean; hookKey: string }>(
       mcp.client,
       "manage_repository_hooks",

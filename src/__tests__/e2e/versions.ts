@@ -73,38 +73,36 @@ export function lt(v: VersionConfig, min: string): boolean {
 }
 
 /**
- * `E2E_VERSIONS` narrows the matrix to the listed rows (comma-separated,
- * e.g. `E2E_VERSIONS=8.9,9.4`). Each CI job sets it to its single
- * assigned version; locally you can pass a subset to iterate faster,
- * or leave it unset to run the full matrix (~16 min end-to-end on
- * ARM64, with 7.21 dominating due to amd64 emulation).
+ * One run exercises one version. Each vitest project in
+ * `vitest.config.e2e.ts` pins `E2E_VERSIONS` for its tests, so the value here
+ * is whatever project is running. CI narrows to its assigned version with
+ * `--project e2e-<version>`; a plain `npm run test:e2e` runs every project,
+ * one after another.
+ *
+ * Resolved lazily: importing this module (the config does, to build the
+ * projects) must not depend on the environment being set up yet.
  */
-function selected(): readonly VersionConfig[] {
-  const raw = process.env.E2E_VERSIONS;
-  if (!raw) return VERSIONS;
-  const requested = raw
-    .split(",")
-    .map((v) => v.trim())
-    .filter((v) => v.length > 0);
-  return VERSIONS.filter((v) => requested.includes(v.name));
+let cached: VersionConfig | undefined;
+
+export function activeVersion(): VersionConfig {
+  cached ??= VERSIONS.find((v) => v.name === process.env.E2E_VERSIONS?.trim());
+  return cached ?? VERSIONS[VERSIONS.length - 1];
 }
 
-export const SELECTED_VERSIONS = selected();
+/** Whether the version under test is at least `min`. */
+export function atLeast(min: string): boolean {
+  return gte(activeVersion(), min);
+}
 
 /** `threadResolved` on comments landed in 8.9 LTS. */
 export const THREAD_RESOLVED_SINCE = "8.9";
-export const VERSIONS_WITH_THREAD_RESOLVED = SELECTED_VERSIONS.filter((v) =>
-  gte(v, THREAD_RESOLVED_SINCE),
-);
-export const VERSIONS_WITHOUT_THREAD_RESOLVED = SELECTED_VERSIONS.filter((v) =>
-  lt(v, THREAD_RESOLVED_SINCE),
-);
+
+/**
+ * `properties.commentCount` on a pull request. 7.21 leaves it out of
+ * `properties` entirely while 8.5 reports it, so this is the oldest row in the
+ * matrix observed to carry it rather than the release that introduced it.
+ */
+export const PR_COMMENT_COUNT_SINCE = "8.5";
 
 /** Labels were introduced in Bitbucket Server 5.13, below our minimum of 7.21. */
 export const LABELS_SINCE = "7.21";
-export const VERSIONS_WITH_LABELS = SELECTED_VERSIONS.filter((v) =>
-  gte(v, LABELS_SINCE),
-);
-export const VERSIONS_WITHOUT_LABELS = SELECTED_VERSIONS.filter((v) =>
-  lt(v, LABELS_SINCE),
-);

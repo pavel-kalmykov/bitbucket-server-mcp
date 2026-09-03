@@ -1,11 +1,8 @@
-import { test, expect } from "vitest";
-import {
-  VERSIONS_WITH_THREAD_RESOLVED,
-  VERSIONS_WITHOUT_THREAD_RESOLVED,
-} from "./versions.js";
+import { expect } from "vitest";
+import { atLeast, THREAD_RESOLVED_SINCE } from "./versions.js";
 import { createComment } from "./bootstrap.js";
 import { callAndParse } from "../tool-test-utils.js";
-import { describeBitbucket } from "./e2e-suite.js";
+import { test, describeBitbucket } from "./e2e-suite.js";
 import type { RestComment } from "../../generated/types.js";
 
 type CommentPayload = Pick<
@@ -29,13 +26,20 @@ type CommentPayload = Pick<
  */
 describeBitbucket(
   "threadResolved supported",
-  ({ bb, mcp, s: scenario }) => {
-    test("fresh comment starts with threadResolved=false", async () => {
+  () => {
+    test("fresh comment starts with threadResolved=false", async ({
+      bb,
+      scenario,
+    }) => {
       const c = await createComment(bb.api, scenario, "needs review");
       expect(c.threadResolved).toBe(false);
     });
 
-    test("manage_comment edit {threadResolved:true} flips the flag without touching state/severity", async () => {
+    test("manage_comment edit {threadResolved:true} flips the flag without touching state/severity", async ({
+      bb,
+      mcp,
+      scenario,
+    }) => {
       const c = await createComment(bb.api, scenario, "please look");
       const updated = await callAndParse<CommentPayload>(
         mcp.client,
@@ -55,7 +59,11 @@ describeBitbucket(
       expect(updated.severity).toBe(c.severity);
     });
 
-    test("manage_comment edit {state:RESOLVED, threadResolved:true} updates both in one call", async () => {
+    test("manage_comment edit {state:RESOLVED, threadResolved:true} updates both in one call", async ({
+      bb,
+      mcp,
+      scenario,
+    }) => {
       const c = await createComment(bb.api, scenario, "fix this");
       // Promote to BLOCKER first so `state: RESOLVED` has something to
       // toggle; both steps go through the MCP tool.
@@ -90,18 +98,25 @@ describeBitbucket(
       expect(resolved.threadResolved).toBe(true);
     });
   },
-  VERSIONS_WITH_THREAD_RESOLVED,
+  atLeast(THREAD_RESOLVED_SINCE),
 );
 
 describeBitbucket(
   "threadResolved unsupported",
-  ({ bb, mcp, s: scenario }) => {
-    test("fresh comment omits the threadResolved field", async () => {
+  () => {
+    test("fresh comment omits the threadResolved field", async ({
+      bb,
+      scenario,
+    }) => {
       const c = await createComment(bb.api, scenario, "hey");
       expect(c.threadResolved).toBeUndefined();
     });
 
-    test("manage_comment edit {threadResolved:true} is silently ignored (server returns 200, field absent)", async () => {
+    test("manage_comment edit {threadResolved:true} is silently ignored (server returns 200, field absent)", async ({
+      bb,
+      mcp,
+      scenario,
+    }) => {
       const c = await createComment(bb.api, scenario, "check");
       const updated = await callAndParse<CommentPayload>(
         mcp.client,
@@ -119,5 +134,5 @@ describeBitbucket(
       expect(updated.threadResolved).toBeUndefined();
     });
   },
-  VERSIONS_WITHOUT_THREAD_RESOLVED,
+  !atLeast(THREAD_RESOLVED_SINCE),
 );
