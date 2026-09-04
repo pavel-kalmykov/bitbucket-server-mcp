@@ -1,4 +1,5 @@
 import type { BitbucketConfig, BitbucketServerOptions } from "./types.js";
+import { parseDurationMs } from "./duration.js";
 
 function parseCustomHeaders(raw?: string): Record<string, string> {
   if (!raw) return {};
@@ -59,10 +60,14 @@ export function parseConfig(options?: BitbucketServerOptions): BitbucketConfig {
         : undefined),
     cacheTtlMs:
       options?.cacheTtlMs ??
-      (cacheTtlRaw ? parseInt(cacheTtlRaw, 10) * 1000 : 5 * 60 * 1000),
+      (cacheTtlRaw
+        ? parseDurationMs(cacheTtlRaw, "BITBUCKET_CACHE_TTL")
+        : 5 * 60 * 1000),
     requestTimeoutMs:
       options?.requestTimeoutMs ??
-      (requestTimeoutRaw ? parseInt(requestTimeoutRaw, 10) : 30_000),
+      (requestTimeoutRaw
+        ? parseDurationMs(requestTimeoutRaw, "BITBUCKET_REQUEST_TIMEOUT")
+        : 30_000),
     startupHealthcheck:
       options?.startupHealthcheck ?? healthcheckRaw === "true",
   };
