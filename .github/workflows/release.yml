@@ -2,6 +2,11 @@ name: Release
 
 on:
   workflow_dispatch:
+    inputs:
+      resume:
+        description: "Finish a partial release, e.g. v0.14.1: npm is published and the assets PR is merged, but the GitHub Release / tarball / provenance / Docker tail is missing."
+        required: false
+        type: string
 
 permissions: {}
 
@@ -52,6 +57,7 @@ jobs:
       - run: npm run build
 
       - name: Release
+        if: ${{ !inputs.resume }}
         env:
           GITHUB_TOKEN: ${{ steps.app-token.outputs.token }}
         run: npx semantic-release
@@ -59,12 +65,22 @@ jobs:
       # A successful release leaves `package.json`, `package-lock.json`
       # and `CHANGELOG.md` bumped in the working tree; if none of them
       # changed, no release happened and downstream jobs are skipped.
-      # The git commit back to main is done in the next step via
-      # `createCommitOnBranch` so the commit is GitHub-signed and the
-      # ruleset can require signatures with zero bypass_actors.
       - name: Detect published release
         id: info
+        # A rerun after a partial release finds the tag already on main and
+        # reports "no release", skipping the whole tail. `resume` names the
+        # tag to finish instead: publish and the assets merge already
+        # happened, only the tail steps are missing.
         run: |
+          if [ -n "${{ inputs.resume }}" ]; then
+            tag="${{ inputs.resume }}"
+            printf 'published=true\n' >> "$GITHUB_OUTPUT"
+            printf 'mode=resume\n' >> "$GITHUB_OUTPUT"
+            printf 'version=%s\n' >> "$GITHUB_OUTPUT" "${tag#v}"
+            printf 'tag=%s\n' "$tag" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          printf 'mode=release\n' >> "$GITHUB_OUTPUT"
           if git diff --quiet -- package.json; then
             printf 'published=false\n' >> "$GITHUB_OUTPUT"
           else
@@ -74,21 +90,60 @@ jobs:
             printf 'tag=v%s\n' "$VERSION" >> "$GITHUB_OUTPUT"
           fi
 
-      # Commit the version bump and changelog back to main via the
-      # GraphQL `createCommitOnBranch` mutation. GitHub signs commits
-      # created through that endpoint with the App's identity, which
-      # satisfies the `required_signatures` rule on main without
-      # listing the App under `bypass_actors`.
+      # Land the version bump and changelog on main as a signed commit
+      # merged through a pull request, which satisfies the required
+      # status checks by actually running them. Commits created through
+      # the GraphQL `createCommitOnBranch` mutation are signed by GitHub
+      # with the App's identity, which is what lets main require
+      # signatures without exempting anyone (commit 21eda51); but that
+      # API path is evaluated against rulesets without honouring
+      # bypass_actors, and a release commit can never carry the required
+      # checks, so committing straight to main is always rejected
+      # (observed releasing v0.14.0, run 33893212111). An unprotected
+      # branch plus a PR keeps the signed commit and clears the rules
+      # the normal way, and once a release has gone through, the App's
+      # bypass_actors entry can be removed for good.
+      - name: Create release-assets branch
+        if: steps.info.outputs.published == 'true' && inputs.resume == ''
+        env:
+          APP_TOKEN: ${{ steps.app-token.outputs.token }}
+        run: |
+          set -euo pipefail
+          branch="release-assets/v${{ steps.info.outputs.version }}"
+          git fetch origin main
+          base=$(git rev-parse FETCH_HEAD)
+          git -c "http.https://github.com/.extraheader=Authorization: token $APP_TOKEN"             push origin "$base:refs/heads/$branch"
+
       - name: Commit release assets (signed)
-        if: steps.info.outputs.published == 'true'
+        if: steps.info.outputs.published == 'true' && inputs.resume == ''
         uses: planetscale/ghcommit-action@25309d8005ac7c3bcd61d3fe19b69e0fe47dbdde # v0.2.20
         with:
-          commit_message: "chore(release): ${{ steps.info.outputs.version }} [skip ci]"
+          commit_message: "chore(release): ${{ steps.info.outputs.version }}"
           repo: ${{ github.repository }}
-          branch: main
+          branch: release-assets/v${{ steps.info.outputs.version }}
           file_pattern: "package.json package-lock.json CHANGELOG.md"
         env:
           GITHUB_TOKEN: ${{ steps.app-token.outputs.token }}
+
+      - name: Merge release assets into main
+        if: steps.info.outputs.published == 'true' && inputs.resume == ''
+        env:
+          GH_TOKEN: ${{ steps.app-token.outputs.token }}
+        run: |
+          set -euo pipefail
+          version="${{ steps.info.outputs.version }}"
+          branch="release-assets/v$version"
+          url=$(gh pr create --head "$branch" --base main \
+            --title "chore(release): $version" \
+            --body "Release assets for v$version. Auto-merged by the release workflow; the commit is GitHub-signed by the App." \
+            --label released)
+          gh pr merge "$url" --merge --auto --delete-branch
+          for _ in $(seq 1 60); do
+            [ "$(gh pr view "$url" --json state --jq .state)" = "MERGED" ] && exit 0
+            sleep 30
+          done
+          echo "release PR $url did not merge within 30 minutes" >&2
+          exit 1
 
       # Create the GitHub Release with `--target main` so the tag lands
       # on the signed commit just pushed by ghcommit-action. Matches
@@ -98,10 +153,12 @@ jobs:
         env:
           GH_TOKEN: ${{ steps.app-token.outputs.token }}
         run: |
-          gh release create "${{ steps.info.outputs.tag }}" \
-            --target main \
-            --title "${{ steps.info.outputs.tag }}" \
-            --generate-notes
+          TAG="${{ steps.info.outputs.tag }}"
+          gh release view "$TAG" >/dev/null 2>&1 \
+            || gh release create "$TAG" \
+              --target main \
+              --title "$TAG" \
+              --generate-notes
 
       - name: Pack npm tarball
         if: steps.info.outputs.published == 'true'
