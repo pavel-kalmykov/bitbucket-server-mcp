@@ -112,7 +112,13 @@ jobs:
           branch="release-assets/v${{ steps.info.outputs.version }}"
           git fetch origin main
           base=$(git rev-parse FETCH_HEAD)
-          git -c "http.https://github.com/.extraheader=Authorization: token $APP_TOKEN"             push origin "$base:refs/heads/$branch"
+          # The App token authenticates git over HTTPS as x-access-token in
+          # the push URL, the same form semantic-release uses for its own
+          # pushes. An Authorization extraheader is sent but rejected on
+          # this path: the first 0.14.1 attempt failed with "could not read
+          # Username" (run 33973670197).
+          push_url="https://x-access-token:${APP_TOKEN}@github.com/${GITHUB_REPOSITORY}.git"
+          git push "$push_url" "$base:refs/heads/$branch"
 
       - name: Commit release assets (signed)
         if: steps.info.outputs.published == 'true' && inputs.resume == ''
