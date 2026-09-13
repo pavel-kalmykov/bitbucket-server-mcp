@@ -7,7 +7,7 @@ describeBitbucket("branch restrictions", () => {
     const r = await callAndParse<{ total: number; restrictions: unknown[] }>(
       mcp.client,
       "list_branch_restrictions",
-      { project: scenario.projectKey, repository: scenario.repoSlug },
+      { project: scenario.project.key, repository: scenario.project.repo.slug },
     );
     expect(typeof r.total).toBe("number");
     expect(Array.isArray(r.restrictions)).toBe(true);

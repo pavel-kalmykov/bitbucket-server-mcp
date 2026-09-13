@@ -8,8 +8,8 @@ describeBitbucket("tags", () => {
       total: number;
       tags: unknown[];
     }>(mcp.client, "list_tags", {
-      project: scenario.projectKey,
-      repository: scenario.repoSlug,
+      project: scenario.project.key,
+      repository: scenario.project.repo.slug,
     });
 
     expect(Array.isArray(parsed.tags)).toBe(true);
@@ -21,10 +21,10 @@ describeBitbucket("tags", () => {
       "manage_tags",
       {
         action: "create",
-        project: scenario.projectKey,
-        repository: scenario.repoSlug,
+        project: scenario.project.key,
+        repository: scenario.project.repo.slug,
         name: "e2e-tag",
-        startPoint: scenario.mainCommitId,
+        startPoint: await scenario.project.repo.branches.main.firstCommit.id,
       },
     );
 

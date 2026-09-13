@@ -13,9 +13,9 @@ describeBitbucket("deployments", () => {
       "manage_deployments",
       {
         action: "create",
-        project: scenario.projectKey,
-        repository: scenario.repoSlug,
-        commitId: scenario.mainCommitId,
+        project: scenario.project.key,
+        repository: scenario.project.repo.slug,
+        commitId: await scenario.project.repo.branches.main.firstCommit.id,
         deploymentSequenceNumber: 1,
         description: "E2E deploy",
         displayName: "Deploy 1",
@@ -45,9 +45,9 @@ describeBitbucket("deployments", () => {
       "manage_deployments",
       {
         action: "get",
-        project: scenario.projectKey,
-        repository: scenario.repoSlug,
-        commitId: scenario.mainCommitId,
+        project: scenario.project.key,
+        repository: scenario.project.repo.slug,
+        commitId: await scenario.project.repo.branches.main.firstCommit.id,
         key: "e2e-deploy-1",
         environmentKey: "e2e-env",
         deploymentSequenceNumber: 1,
@@ -64,9 +64,9 @@ describeBitbucket("deployments", () => {
       key: string;
     }>(mcp.client, "manage_deployments", {
       action: "delete",
-      project: scenario.projectKey,
-      repository: scenario.repoSlug,
-      commitId: scenario.mainCommitId,
+      project: scenario.project.key,
+      repository: scenario.project.repo.slug,
+      commitId: await scenario.project.repo.branches.main.firstCommit.id,
       key: "e2e-deploy-1",
       environmentKey: "e2e-env",
       deploymentSequenceNumber: 1,
@@ -79,9 +79,9 @@ describeBitbucket("deployments", () => {
   test("get after delete returns error", async ({ mcp, scenario }) => {
     const result = await callRaw(mcp.client, "manage_deployments", {
       action: "get",
-      project: scenario.projectKey,
-      repository: scenario.repoSlug,
-      commitId: scenario.mainCommitId,
+      project: scenario.project.key,
+      repository: scenario.project.repo.slug,
+      commitId: await scenario.project.repo.branches.main.firstCommit.id,
       key: "e2e-deploy-1",
       environmentKey: "e2e-env",
       deploymentSequenceNumber: 1,
@@ -96,9 +96,9 @@ describeBitbucket("deployments", () => {
   }) => {
     const result = await callRaw(mcp.client, "manage_deployments", {
       action: "create",
-      project: scenario.projectKey,
-      repository: scenario.repoSlug,
-      commitId: scenario.mainCommitId,
+      project: scenario.project.key,
+      repository: scenario.project.repo.slug,
+      commitId: await scenario.project.repo.branches.main.firstCommit.id,
     });
 
     expect(result.isError).toBe(true);
@@ -110,9 +110,9 @@ describeBitbucket("deployments", () => {
   }) => {
     const result = await callRaw(mcp.client, "manage_deployments", {
       action: "get",
-      project: scenario.projectKey,
-      repository: scenario.repoSlug,
-      commitId: scenario.mainCommitId,
+      project: scenario.project.key,
+      repository: scenario.project.repo.slug,
+      commitId: await scenario.project.repo.branches.main.firstCommit.id,
     });
 
     expect(result.isError).toBe(true);
