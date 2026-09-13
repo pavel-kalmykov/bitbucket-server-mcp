@@ -169,3 +169,24 @@ export async function startBitbucket(
     },
   };
 }
+
+/**
+ * Attach to a container that an orchestrator script already started
+ * (`scripts/e2e-up.ts`): readiness is asserted again, but the lifecycle
+ * is not ours, so `stop` is a no-op. This is what keeps a single
+ * container per version alive across all test files despite vitest
+ * re-running worker-scoped fixtures per file.
+ */
+export async function attachStartedBitbucket(
+  url: string,
+  version: string,
+): Promise<StartedBitbucket> {
+  const api = await waitForAuthenticatedApi(url, 240_000);
+  return {
+    url,
+    admin: ADMIN,
+    version,
+    api,
+    async stop() {},
+  };
+}
