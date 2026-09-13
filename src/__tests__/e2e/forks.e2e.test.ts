@@ -5,8 +5,8 @@ import { test, describeBitbucket } from "./e2e-suite.js";
 describeBitbucket("forks", () => {
   test("list_forks returns data", async ({ mcp, scenario }) => {
     const r = await callAndParse<{ total: number }>(mcp.client, "list_forks", {
-      project: scenario.projectKey,
-      repository: scenario.repoSlug,
+      project: scenario.project.key,
+      repository: scenario.project.repo.slug,
       limit: 1,
     });
     expect(typeof r.total).toBe("number");
@@ -18,8 +18,8 @@ describeBitbucket("forks", () => {
       mcp.client,
       "fork_repository",
       {
-        project: scenario.projectKey,
-        repository: scenario.repoSlug,
+        project: scenario.project.key,
+        repository: scenario.project.repo.slug,
         name: forkName,
       },
     );

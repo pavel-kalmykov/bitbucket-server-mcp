@@ -19,8 +19,8 @@ describeBitbucket(
         mcp.client,
         "list_labels",
         {
-          project: scenario.projectKey,
-          repository: scenario.repoSlug,
+          project: scenario.project.key,
+          repository: scenario.project.repo.slug,
         },
       );
 
@@ -31,8 +31,8 @@ describeBitbucket(
     test("manage_labels add and remove works", async ({ mcp, scenario }) => {
       await callAndParse(mcp.client, "manage_labels", {
         action: "add",
-        project: scenario.projectKey,
-        repository: scenario.repoSlug,
+        project: scenario.project.key,
+        repository: scenario.project.repo.slug,
         name: "e2e-test-label",
       });
 
@@ -40,8 +40,8 @@ describeBitbucket(
         mcp.client,
         "list_labels",
         {
-          project: scenario.projectKey,
-          repository: scenario.repoSlug,
+          project: scenario.project.key,
+          repository: scenario.project.repo.slug,
         },
       );
 
@@ -50,8 +50,8 @@ describeBitbucket(
 
       await callAndParse(mcp.client, "manage_labels", {
         action: "remove",
-        project: scenario.projectKey,
-        repository: scenario.repoSlug,
+        project: scenario.project.key,
+        repository: scenario.project.repo.slug,
         name: "e2e-test-label",
       });
 
@@ -59,8 +59,8 @@ describeBitbucket(
         mcp.client,
         "list_labels",
         {
-          project: scenario.projectKey,
-          repository: scenario.repoSlug,
+          project: scenario.project.key,
+          repository: scenario.project.repo.slug,
         },
       );
 
@@ -78,8 +78,8 @@ describeBitbucket(
       scenario,
     }) => {
       const result = await callRaw(mcp.client, "list_labels", {
-        project: scenario.projectKey,
-        repository: scenario.repoSlug,
+        project: scenario.project.key,
+        repository: scenario.project.repo.slug,
       });
 
       expect(result.isError).toBe(true);

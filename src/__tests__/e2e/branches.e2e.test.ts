@@ -4,12 +4,14 @@ import { callAndParse } from "../tool-test-utils.js";
 
 describeBitbucket("branches", () => {
   test("list_branches returns main and feature", async ({ mcp, scenario }) => {
+    // Awaiting pr lazily creates the feature branch this test asserts on.
+    await scenario.project.repo.pr;
     const parsed = await callAndParse<{
       total: number;
       branches: Array<{ displayId: string }>;
     }>(mcp.client, "list_branches", {
-      project: scenario.projectKey,
-      repository: scenario.repoSlug,
+      project: scenario.project.key,
+      repository: scenario.project.repo.slug,
     });
 
     expect(parsed.total).toBeGreaterThanOrEqual(2);
@@ -27,10 +29,10 @@ describeBitbucket("branches", () => {
       "manage_branches",
       {
         action: "create",
-        project: scenario.projectKey,
-        repository: scenario.repoSlug,
+        project: scenario.project.key,
+        repository: scenario.project.repo.slug,
         branch: "e2e-branch",
-        startPoint: scenario.mainCommitId,
+        startPoint: await scenario.project.repo.branches.main.firstCommit.id,
       },
     );
 
@@ -42,12 +44,14 @@ describeBitbucket("branches", () => {
       mcp.client,
       "get_commit",
       {
-        project: scenario.projectKey,
-        repository: scenario.repoSlug,
-        commitId: scenario.mainCommitId,
+        project: scenario.project.key,
+        repository: scenario.project.repo.slug,
+        commitId: await scenario.project.repo.branches.main.firstCommit.id,
       },
     );
 
-    expect(parsed.id).toBe(scenario.mainCommitId);
+    expect(parsed.id).toBe(
+      await scenario.project.repo.branches.main.firstCommit.id,
+    );
   });
 });

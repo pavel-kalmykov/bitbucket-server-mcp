@@ -11,14 +11,14 @@ describeBitbucket("repositories", () => {
     const create = await callAndParse<{ slug: string }>(
       mcp.client,
       "create_repository",
-      { project: scenario.projectKey, name: repoName },
+      { project: scenario.project.key, name: repoName },
     );
     expect(create.slug).toBe(repoName);
 
     const del = await callAndParse<{ deleted: boolean }>(
       mcp.client,
       "delete_repository",
-      { project: scenario.projectKey, repository: repoName },
+      { project: scenario.project.key, repository: repoName },
     );
     expect(del.deleted).toBe(true);
   });
