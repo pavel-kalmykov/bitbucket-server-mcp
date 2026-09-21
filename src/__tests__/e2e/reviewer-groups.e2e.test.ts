@@ -11,8 +11,8 @@ describeBitbucket("reviewer groups", () => {
       mcp.client,
       "list_reviewer_groups",
       {
-        project: scenario.projectKey,
-        repository: scenario.repoSlug,
+        project: scenario.project.key,
+        repository: scenario.project.repo.slug,
       },
     );
 

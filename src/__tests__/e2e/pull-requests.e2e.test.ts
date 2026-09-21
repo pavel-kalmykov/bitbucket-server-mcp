@@ -9,9 +9,9 @@ describeBitbucket("pull requests", () => {
       mcp.client,
       "get_pull_request_commits",
       {
-        project: scenario.projectKey,
-        repository: scenario.repoSlug,
-        prId: scenario.prId,
+        project: scenario.project.key,
+        repository: scenario.project.repo.slug,
+        prId: (await scenario.project.repo.pr).id,
         limit: 1,
       },
     );
@@ -28,22 +28,25 @@ describeBitbucket("pull requests", () => {
         properties?: { commentCount?: unknown };
       }>;
     }>(mcp.client, "list_pull_requests", {
-      project: scenario.projectKey,
-      repository: scenario.repoSlug,
+      project: scenario.project.key,
+      repository: scenario.project.repo.slug,
     });
-    const pr = r.pullRequests.find((p) => p.id === scenario.prId);
-    expect(pr).toBeDefined();
-    expect(pr!.properties).toBeDefined();
+    const prId = (await scenario.project.repo.pr).id;
+    const found = r.pullRequests.find((p) => p.id === prId);
+    expect(found).toBeDefined();
+    expect(found!.properties).toBeDefined();
   });
 
   test("create_pull_request with draft:true", async ({ bb, mcp, scenario }) => {
+    // Raw REST on purpose: arrange stays independent of the client under
+    // test (rationale in e2e-suite.ts, commitFile).
     const form = new FormData();
     form.append("content", "draft\n");
     form.append("message", "draft branch");
     form.append("branch", "draft-br");
     form.append("sourceBranch", "main");
     await bb.api.put(
-      `projects/${scenario.projectKey}/repos/${scenario.repoSlug}/browse/draft.md`,
+      `projects/${scenario.project.key}/repos/${scenario.project.repo.slug}/browse/draft.md`,
       { body: form },
     );
 
@@ -51,23 +54,23 @@ describeBitbucket("pull requests", () => {
       mcp.client,
       "create_pull_request",
       {
-        project: scenario.projectKey,
-        repository: scenario.repoSlug,
+        project: scenario.project.key,
+        repository: scenario.project.repo.slug,
         title: "Draft PR " + Date.now(),
         sourceBranch: "draft-br",
         targetBranch: "main",
         draft: true,
       },
     );
-    const pr = await bb.api
+    const created = await bb.api
       .get(
-        `projects/${scenario.projectKey}/repos/${scenario.repoSlug}/pull-requests/${r.id}`,
+        `projects/${scenario.project.key}/repos/${scenario.project.repo.slug}/pull-requests/${r.id}`,
       )
       .json<{ version: number }>();
     await bb.api
       .post(
-        `projects/${scenario.projectKey}/repos/${scenario.repoSlug}/pull-requests/${r.id}/decline`,
-        { json: { version: pr.version } },
+        `projects/${scenario.project.key}/repos/${scenario.project.repo.slug}/pull-requests/${r.id}/decline`,
+        { json: { version: created.version } },
       )
       .catch(() => {});
   });
@@ -86,11 +89,12 @@ describeBitbucket(
           properties?: { commentCount?: unknown };
         }>;
       }>(mcp.client, "list_pull_requests", {
-        project: scenario.projectKey,
-        repository: scenario.repoSlug,
+        project: scenario.project.key,
+        repository: scenario.project.repo.slug,
       });
-      const pr = r.pullRequests.find((p) => p.id === scenario.prId);
-      expect(typeof pr!.properties!.commentCount).toBe("number");
+      const prId = (await scenario.project.repo.pr).id;
+      const found = r.pullRequests.find((p) => p.id === prId);
+      expect(typeof found!.properties!.commentCount).toBe("number");
     });
   },
   atLeast(PR_COMMENT_COUNT_SINCE),

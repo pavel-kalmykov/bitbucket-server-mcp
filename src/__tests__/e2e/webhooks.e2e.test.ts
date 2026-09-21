@@ -7,7 +7,7 @@ describeBitbucket("webhooks", () => {
     const r = await callAndParse<{ total: number }>(
       mcp.client,
       "list_webhooks",
-      { project: scenario.projectKey, repository: scenario.repoSlug },
+      { project: scenario.project.key, repository: scenario.project.repo.slug },
     );
     expect(typeof r.total).toBe("number");
   });
@@ -21,8 +21,8 @@ describeBitbucket("webhooks", () => {
       "manage_webhooks",
       {
         action: "create",
-        project: scenario.projectKey,
-        repository: scenario.repoSlug,
+        project: scenario.project.key,
+        repository: scenario.project.repo.slug,
         name: "e2e-hook-" + Date.now(),
         url: "https://example.com/hook",
         events: ["repo:refs_changed"],
@@ -33,8 +33,8 @@ describeBitbucket("webhooks", () => {
       "manage_webhooks",
       {
         action: "delete",
-        project: scenario.projectKey,
-        repository: scenario.repoSlug,
+        project: scenario.project.key,
+        repository: scenario.project.repo.slug,
         webhookId: create.id,
       },
     );
