@@ -1,3 +1,11 @@
+## [0.14.2](https://github.com/pavel-kalmykov/bitbucket-server-mcp/compare/v0.14.1...v0.14.2) (2026-09-22)
+
+
+### Bug Fixes
+
+* resolve reviewer group members and deletions by id ([f5252a4](https://github.com/pavel-kalmykov/bitbucket-server-mcp/commit/f5252a4e677ba969a2f2f0f69d957188707dc5c9))
+* upload attachments to the unprefixed attachments endpoint ([55bb495](https://github.com/pavel-kalmykov/bitbucket-server-mcp/commit/55bb4954f97fa385879ac938643e56f8dd515dec))
+
 ## [0.14.0](https://github.com/pavel-kalmykov/bitbucket-server-mcp/compare/v0.13.1...v0.14.0) (2026-09-04)
 
 ### Bug Fixes
