@@ -8,8 +8,8 @@ describeBitbucket("merge-checks", () => {
     scenario,
   }) => {
     const result = await callRaw(mcp.client, "manage_merge_checks", {
-      project: scenario.projectKey,
-      repository: scenario.repoSlug,
+      project: scenario.project.key,
+      repository: scenario.project.repo.slug,
       hookKey:
         "com.atlassian.bitbucket.server.bitbucket-build:requiredBuildsMergeCheck",
       settings: { requiredBuilds: 1 },

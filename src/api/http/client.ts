@@ -15,6 +15,8 @@ export interface HttpClientOptions {
 }
 
 export interface HttpClients {
+  /** Unprefixed base: endpoints outside /rest (repository attachments). */
+  root: KyInstance;
   api: KyInstance;
   buildStatus: KyInstance;
   commentLikes: KyInstance;
@@ -71,60 +73,67 @@ export function createHttpClients(options: HttpClientOptions): HttpClients {
     ...options.headers,
   };
 
+  // The unprefixed client serves endpoints outside /rest (repository
+  // attachments). Bitbucket rejects their multipart POSTs with 405 when
+  // Accept: application/json is advertised (browsers never send it
+  // there), so only the /rest clients send it.
+  const rootHeaders: Record<string, string> = { ...allHeaders };
+  delete rootHeaders.Accept;
+
   const redact = buildRedactor(options);
 
-  const commonOptions: Options = {
-    timeout: options.timeoutMs ?? DEFAULT_TIMEOUT_MS,
-    retry: {
-      limit: 2,
-      methods: ["get"],
-      statusCodes: [408, 429, 500, 502, 503, 504],
-    },
-    hooks: {
-      beforeRequest: [
-        ({ request }) => {
-          for (const [key, value] of Object.entries(allHeaders)) {
-            request.headers.set(key, value);
-          }
-          logger.debug(redact(`${request.method} ${request.url}`));
-        },
-      ],
-      beforeError: [
-        ({ error }) =>
-          error instanceof HTTPError ? BitbucketApiError.from(error) : error,
-      ],
-      afterResponse: [
-        ({ response }) => {
-          if (!response.ok) {
-            if (response.status === 429) {
-              const reset = response.headers.get("X-RateLimit-Reset");
-              if (reset) {
-                const waitMs = Math.max(
-                  0,
-                  parseInt(reset, 10) * 1000 - Date.now(),
-                );
-                if (waitMs > 0) {
-                  logger.warn(
-                    `Rate limited (429); reset in ${waitMs}ms, retry handled by HTTP layer`,
+  const create = (
+    path: string,
+    requestHeaders: Record<string, string> = allHeaders,
+  ) =>
+    ky.create({
+      timeout: options.timeoutMs ?? DEFAULT_TIMEOUT_MS,
+      retry: {
+        limit: 2,
+        methods: ["get"],
+        statusCodes: [408, 429, 500, 502, 503, 504],
+      },
+      hooks: {
+        beforeRequest: [
+          ({ request }) => {
+            for (const [key, value] of Object.entries(requestHeaders)) {
+              request.headers.set(key, value);
+            }
+            logger.debug(redact(`${request.method} ${request.url}`));
+          },
+        ],
+        beforeError: [
+          ({ error }) =>
+            error instanceof HTTPError ? BitbucketApiError.from(error) : error,
+        ],
+        afterResponse: [
+          ({ response }) => {
+            if (!response.ok) {
+              if (response.status === 429) {
+                const reset = response.headers.get("X-RateLimit-Reset");
+                if (reset) {
+                  const waitMs = Math.max(
+                    0,
+                    parseInt(reset, 10) * 1000 - Date.now(),
                   );
+                  if (waitMs > 0) {
+                    logger.warn(
+                      `Rate limited (429); reset in ${waitMs}ms, retry handled by HTTP layer`,
+                    );
+                  }
                 }
               }
+              logger.warn(redact(`HTTP ${response.status} ${response.url}`));
             }
-            logger.warn(redact(`HTTP ${response.status} ${response.url}`));
-          }
-        },
-      ],
-    },
-  };
-
-  const create = (path: string) =>
-    ky.create({
-      ...commonOptions,
+          },
+        ],
+      },
       prefix: `${options.baseUrl}${path}`,
     });
 
   return {
-    api: create("/rest/api/1.0"),
+    root: create("/", rootHeaders),
+    api: create("/rest/api/1.0", allHeaders),
     buildStatus: create("/rest/build-status/1.0"),
     commentLikes: create("/rest/comment-likes/1.0"),
     emoticons: create("/rest/emoticons/latest"),

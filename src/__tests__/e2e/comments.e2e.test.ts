@@ -9,9 +9,9 @@ describeBitbucket("comments", () => {
       text: string;
     }>(mcp.client, "manage_comment", {
       action: "create",
-      project: scenario.projectKey,
-      repository: scenario.repoSlug,
-      prId: scenario.prId,
+      project: scenario.project.key,
+      repository: scenario.project.repo.slug,
+      prId: (await scenario.project.repo.pr).id,
       text: "E2E smoke test comment",
     });
 

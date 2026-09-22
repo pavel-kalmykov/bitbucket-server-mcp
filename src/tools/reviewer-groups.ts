@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { formatResponse, type ToolSuccessResult } from "../response/format.js";
+import { formatResponse } from "../response/format.js";
 import { toolAnnotations } from "../response/annotations.js";
 import type { ToolContext } from "./shared.js";
 import { projectParam, repositoryParam, fieldsParam } from "./params.js";
@@ -7,11 +7,6 @@ import {
   curateList,
   DEFAULT_REVIEWER_GROUP_FIELDS,
 } from "../response/curate.js";
-
-const actionParam = z
-  .enum(["create", "delete"])
-  .describe("Operation to perform.");
-type ReviewerGroupAction = z.infer<typeof actionParam>;
 
 export function registerReviewerGroupTools(ctx: ToolContext) {
   const { server, bb } = ctx;
@@ -37,39 +32,42 @@ export function registerReviewerGroupTools(ctx: ToolContext) {
   );
 
   server.registerTool(
-    "manage_reviewer_groups",
+    "create_reviewer_group",
     {
       description:
-        'Manage reviewer groups for a repository. Actions: "create" (create a group), "delete" (remove a group).',
+        "Create a reviewer group for a repository with one or more reviewers.",
       inputSchema: {
-        action: actionParam,
         project: projectParam(),
         repository: repositoryParam(),
         name: z.string().describe("Reviewer group name."),
-        description: z
-          .string()
-          .optional()
-          .describe("Group description (create only)."),
+        description: z.string().optional().describe("Group description."),
         reviewers: z
           .array(z.string())
-          .optional()
-          .describe("Usernames to include in the group (create only)."),
+          .min(1)
+          .describe("Usernames to include in the group (at least one)."),
       },
       annotations: toolAnnotations({
         readOnlyHint: false,
         idempotentHint: false,
       }),
     },
-    async ({ action, ...params }) => {
-      const run: Record<ReviewerGroupAction, () => Promise<ToolSuccessResult>> =
-        {
-          create: async () =>
-            formatResponse(await bb.reviewerGroups.create(params)),
-          delete: async () =>
-            formatResponse(await bb.reviewerGroups.delete(params)),
-        };
+    async (params) => formatResponse(await bb.reviewerGroups.create(params)),
+  );
 
-      return run[action]();
+  server.registerTool(
+    "delete_reviewer_group",
+    {
+      description: "Delete a reviewer group from a repository by name.",
+      inputSchema: {
+        project: projectParam(),
+        repository: repositoryParam(),
+        name: z.string().describe("Reviewer group name."),
+      },
+      annotations: toolAnnotations({
+        readOnlyHint: false,
+        idempotentHint: false,
+      }),
     },
+    async (params) => formatResponse(await bb.reviewerGroups.delete(params)),
   );
 }

@@ -145,8 +145,14 @@ export function repositoriesApi(ctx: ApiContext) {
       const body = new FormData();
       body.append("files", data, fileName);
 
-      const response = await ctx.http.api
-        .post(`${repoPath(project, repository)}/attachments`, { body })
+      const response = await ctx.http.root
+        // Bitbucket's non-REST attachments endpoint rejects the POST with
+        // 405 when accept: application/json is advertised (ky.json() sets
+        // it); the Bitbucket UI sends accept: */* instead.
+        .post(`${repoPath(project, repository)}/attachments`, {
+          body,
+          headers: { accept: "*/*" },
+        })
         .json<{ attachments: Attachment[] }>();
 
       return response.attachments[0];
