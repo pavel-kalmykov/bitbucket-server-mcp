@@ -13,6 +13,7 @@
 import type { components } from "./bitbucket-api.js";
 
 // Core entities
+export type RestReviewerGroup = components["schemas"]["RestReviewerGroup"];
 export type PullRequest = components["schemas"]["RestPullRequest"];
 export type Commit = components["schemas"]["RestCommit"];
 export type PullRequestActivity =

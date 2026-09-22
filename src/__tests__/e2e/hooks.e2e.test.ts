@@ -12,8 +12,8 @@ describeBitbucket("hooks", () => {
       "manage_repository_hooks",
       {
         action: "enable",
-        project: scenario.projectKey,
-        repository: scenario.repoSlug,
+        project: scenario.project.key,
+        repository: scenario.project.repo.slug,
         hookKey:
           "com.atlassian.bitbucket.server.bitbucket-bundled-hooks:force-push-hook",
       },
@@ -31,8 +31,8 @@ describeBitbucket("hooks", () => {
       "manage_repository_hooks",
       {
         action: "disable",
-        project: scenario.projectKey,
-        repository: scenario.repoSlug,
+        project: scenario.project.key,
+        repository: scenario.project.repo.slug,
         hookKey:
           "com.atlassian.bitbucket.server.bitbucket-bundled-hooks:force-push-hook",
       },
