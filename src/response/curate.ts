@@ -39,7 +39,7 @@ export const DEFAULT_USER_FIELDS =
 
 export const DEFAULT_WEBHOOK_FIELDS = "name,url,events,active";
 
-export const DEFAULT_REVIEWER_GROUP_FIELDS = "id,name";
+export const DEFAULT_REVIEWER_GROUP_FIELDS = "id,name,description,users.name";
 
 export const DEFAULT_SECRET_SCANNING_FIELDS = "id,name";
 
