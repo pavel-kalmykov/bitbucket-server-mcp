@@ -16,8 +16,8 @@ describeBitbucket(
         mcp.client,
         "list_secret_scanning_rules",
         {
-          project: scenario.projectKey,
-          repository: scenario.repoSlug,
+          project: scenario.project.key,
+          repository: scenario.project.repo.slug,
         },
       );
 
@@ -35,8 +35,8 @@ describeBitbucket(
       scenario,
     }) => {
       const result = await callRaw(mcp.client, "list_secret_scanning_rules", {
-        project: scenario.projectKey,
-        repository: scenario.repoSlug,
+        project: scenario.project.key,
+        repository: scenario.project.repo.slug,
       });
 
       expect(result.isError).toBe(true);

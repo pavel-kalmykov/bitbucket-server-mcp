@@ -12,9 +12,9 @@ describeBitbucket("commit comments", () => {
       "manage_commit_comments",
       {
         action: "create",
-        project: scenario.projectKey,
-        repository: scenario.repoSlug,
-        commitId: scenario.mainCommitId,
+        project: scenario.project.key,
+        repository: scenario.project.repo.slug,
+        commitId: await scenario.project.repo.branches.main.firstCommit.id,
         text: "E2E commit comment",
       },
     );

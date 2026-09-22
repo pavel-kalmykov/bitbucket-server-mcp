@@ -97,9 +97,7 @@ describe("Tool schema contract: descriptions", () => {
     { name: "manage_repository_hooks", contains: "hook settings" },
     { name: "list_merge_checks", contains: "merge check" },
     { name: "manage_merge_checks", contains: "merge check" },
-    { name: "list_reviewer_groups", contains: "reviewer groups" },
-    { name: "manage_reviewer_groups", contains: "reviewer groups" },
-    { name: "list_secret_scanning_rules", contains: "secret scanning" },
+    { name: "create_reviewer_group", contains: "reviewer group" },
     { name: "manage_deployments", contains: "Actions" },
     { name: "list_ssh_keys", contains: "SSH" },
     { name: "manage_ssh_keys", contains: "SSH" },
@@ -176,10 +174,10 @@ describe("Tool schema contract: required fields", () => {
     },
     { name: "list_reviewer_groups", required: ["repository"] },
     {
-      name: "manage_reviewer_groups",
-      required: ["action", "repository", "name"],
+      name: "create_reviewer_group",
+      required: ["repository", "name", "reviewers"],
     },
-    { name: "list_secret_scanning_rules", required: ["repository"] },
+    { name: "delete_reviewer_group", required: ["repository", "name"] },
   ])("$name requires $required", ({ name, required }) => {
     const tool = getTool(name);
     expect(tool.inputSchema.required).toEqual(expect.arrayContaining(required));
@@ -516,10 +514,13 @@ describe("Tool schema contract: annotations", () => {
     },
     { name: "list_reviewer_groups", expected: { readOnlyHint: true } },
     {
-      name: "manage_reviewer_groups",
+      name: "delete_reviewer_group",
       expected: { readOnlyHint: false, idempotentHint: false },
     },
-    { name: "list_secret_scanning_rules", expected: { readOnlyHint: true } },
+    {
+      name: "create_reviewer_group",
+      expected: { readOnlyHint: false, idempotentHint: false },
+    },
     {
       name: "manage_deployments",
       expected: { readOnlyHint: false, idempotentHint: false },
@@ -729,7 +730,8 @@ describe("Tool schema contract: all expected tools are registered", () => {
       "list_merge_checks",
       "manage_merge_checks",
       "list_reviewer_groups",
-      "manage_reviewer_groups",
+      "create_reviewer_group",
+      "delete_reviewer_group",
       "list_secret_scanning_rules",
       "list_ssh_keys",
       "manage_ssh_keys",

@@ -10,7 +10,7 @@ describeBitbucket("default reviewers", () => {
     const r = await callAndParse<unknown[]>(
       mcp.client,
       "list_default_reviewer_conditions",
-      { project: scenario.projectKey, repository: scenario.repoSlug },
+      { project: scenario.project.key, repository: scenario.project.repo.slug },
     );
     expect(Array.isArray(r)).toBe(true);
   });

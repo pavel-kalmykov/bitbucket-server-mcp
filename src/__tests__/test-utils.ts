@@ -12,6 +12,7 @@ export type MockHttpClients = {
 
 export function createMockClients(): MockHttpClients {
   return {
+    root: mock<KyInstance>(),
     api: mock<KyInstance>(),
     buildStatus: mock<KyInstance>(),
     commentLikes: mock<KyInstance>(),
