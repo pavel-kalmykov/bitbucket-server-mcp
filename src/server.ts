@@ -27,6 +27,7 @@ Workflow tips:
 - When reviewing PRs: use get_diff with stat=true first to see which files changed, then get the full diff or read files locally for context.
 - get_build_status accepts either a commitId or a prId (resolves the latest commit automatically). Use it to check CI status before approving.
 - upload_attachment uploads a local file and returns a markdown reference to embed in PR comments (images: ![name](ref), files: [name](ref)).
+- download_attachment fetches an attachment's content by id (UTF-8 text; use the url from the upload response for exact binary bytes), and delete_attachment removes it (needs attachment-management permission).
 - get_user_profile fetches a user's public profile by username/slug.
 - list_forks and fork_repository manage repository forks. list_fork shows forks of a repo; fork_repository creates a fork.
 - list_labels and manage_labels manage repository labels.

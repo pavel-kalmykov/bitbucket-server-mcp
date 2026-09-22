@@ -1,85 +1,147 @@
 import { expect } from "vitest";
-import { mkdtemp, rm, writeFile } from "node:fs/promises";
+import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { callAndParse } from "../tool-test-utils.js";
+import { callAndParse, callRaw } from "../tool-test-utils.js";
+import type { Attachment } from "../../api/repositories.js";
+import { setupMcpAgainst } from "./mcp-harness.js";
 import { test, describeBitbucket } from "./e2e-suite.js";
 
-// 1x1 transparent PNG; enough for upload_attachment to pick the image
-// markdown shape and for Bitbucket to store the file.
-const PNG_BYTES = Uint8Array.from([
-  0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0x00, 0x00, 0x00, 0x0d, 0x49,
-  0x48, 0x44, 0x52, 0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x01, 0x08, 0x06,
-  0x00, 0x00, 0x00, 0x1f, 0x15, 0xc4, 0x89, 0x00, 0x00, 0x00, 0x0a, 0x49, 0x44,
-  0x41, 0x54, 0x78, 0x9c, 0x63, 0x00, 0x01, 0x00, 0x00, 0x05, 0x00, 0x01, 0x0d,
-  0x0a, 0x2d, 0xb4, 0x00, 0x00, 0x00, 0x00, 0x49, 0x45, 0x4e, 0x44, 0xae, 0x42,
-  0x60, 0x82,
-]);
+// Canonical 1x1 transparent PNG (valid CRCs); a real binary exercises
+// byte-exact round-trips.
+const PNG_BYTES = Buffer.from(
+  "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==",
+  "base64",
+);
 
 describeBitbucket("attachments", () => {
-  test("upload_attachment posts to the unprefixed attachments endpoint", async ({
+  test("upload, download, and delete round-trip with exact bytes", async ({
     mcp,
     scenario,
-    bb,
   }) => {
     const dir = await mkdtemp(join(tmpdir(), "e2e-attach-"));
     try {
-      const textPath = join(dir, "notes.txt");
-      await writeFile(textPath, "e2e attachment content\n");
+      const imagePath = join(dir, "dot.png");
+      await writeFile(imagePath, PNG_BYTES);
 
-      const uploaded = await callAndParse<{
-        id: number;
-        url: string;
-        ref: string;
-        markdown: string;
-      }>(mcp.client, "upload_attachment", {
+      const uploaded = await callAndParse<Attachment>(
+        mcp.client,
+        "upload_attachment",
+        {
+          project: scenario.project.key,
+          repository: scenario.project.repo.slug,
+          filePath: imagePath,
+        },
+      );
+
+      expect(uploaded.id).toMatch(/^\d+$/);
+      expect(uploaded.links.attachment.href).toMatch(/^attachment:\d+\/\d+$/);
+
+      const download = await callAndParse<{
+        attachmentId: string;
+        contentType: string;
+        size: number;
+        savedTo: string;
+      }>(mcp.client, "download_attachment", {
         project: scenario.project.key,
         repository: scenario.project.repo.slug,
-        filePath: textPath,
+        attachmentId: uploaded.id,
+        filePath: join(dir, "downloaded.png"),
       });
+      expect(download.contentType).toBe("image/png");
+      expect(download.size).toBe(PNG_BYTES.byteLength);
+      expect(await readFile(download.savedTo)).toEqual(PNG_BYTES);
 
-      expect(uploaded.ref).toMatch(/^attachment:\d+\/\d+$/);
-      expect(uploaded.markdown).toBe(`[notes.txt](${uploaded.ref})`);
+      const deleted = await callAndParse<{ deleted: boolean }>(
+        mcp.client,
+        "delete_attachment",
+        {
+          project: scenario.project.key,
+          repository: scenario.project.repo.slug,
+          attachmentId: uploaded.id,
+        },
+      );
+      expect(deleted.deleted).toBe(true);
 
-      // The upload must be readable server-side, content included.
-      const content = await bb.api
-        .get(
-          `projects/${scenario.project.key}/repos/${scenario.project.repo.slug}/attachments/${uploaded.id}`,
-        )
-        .text();
-      expect(content).toBe("e2e attachment content\n");
+      // After deletion the content must be gone server-side, and a second
+      // delete must surface the server's NoSuchObjectException as-is.
+      const gone = await callRaw(mcp.client, "download_attachment", {
+        project: scenario.project.key,
+        repository: scenario.project.repo.slug,
+        attachmentId: uploaded.id,
+      });
+      expect(gone.isError).toBe(true);
 
-      await bb.api.delete(
-        `projects/${scenario.project.key}/repos/${scenario.project.repo.slug}/attachments/${uploaded.id}`,
+      const redel = await callRaw(mcp.client, "delete_attachment", {
+        project: scenario.project.key,
+        repository: scenario.project.repo.slug,
+        attachmentId: uploaded.id,
+      });
+      expect(redel.isError).toBe(true);
+      expect((redel.content[0] as { text: string }).text).toContain(
+        "does not exist",
       );
     } finally {
       await rm(dir, { recursive: true, force: true });
     }
   });
 
-  test("image uploads get inline markdown", async ({ mcp, scenario, bb }) => {
-    const dir = await mkdtemp(join(tmpdir(), "e2e-attach-"));
+  test("delete_attachment without management permission surfaces the server error", async ({
+    bb,
+    mcp,
+    scenario,
+  }) => {
+    // A user with no permissions on the repo cannot delete its attachments;
+    // Bitbucket masks the repo as nonexistent for them.
+    await bb.api.post("admin/users", {
+      searchParams: {
+        name: "limited-user",
+        password: "limited-password",
+        displayName: "Limited User",
+        emailAddress: "limited@example.com",
+      },
+    });
+
+    const limited = await setupMcpAgainst(bb, {
+      username: "limited-user",
+      password: "limited-password",
+    });
     try {
-      const imagePath = join(dir, "dot.png");
-      await writeFile(imagePath, PNG_BYTES);
+      const dir = await mkdtemp(join(tmpdir(), "e2e-attach-"));
+      try {
+        const textPath = join(dir, "notes.txt");
+        await writeFile(textPath, "e2e attachment content\n");
+        const uploaded = await callAndParse<{ id: string }>(
+          mcp.client,
+          "upload_attachment",
+          {
+            project: scenario.project.key,
+            repository: scenario.project.repo.slug,
+            filePath: textPath,
+          },
+        );
 
-      const uploaded = await callAndParse<{
-        id: number;
-        ref: string;
-        markdown: string;
-      }>(mcp.client, "upload_attachment", {
-        project: scenario.project.key,
-        repository: scenario.project.repo.slug,
-        filePath: imagePath,
-      });
+        const denied = await callRaw(limited.client, "delete_attachment", {
+          project: scenario.project.key,
+          repository: scenario.project.repo.slug,
+          attachmentId: uploaded.id,
+        });
+        expect(denied.isError).toBe(true);
+        expect(
+          (denied.content[0] as { text: string }).text.length,
+        ).toBeGreaterThan(0);
 
-      expect(uploaded.markdown).toBe(`![dot.png](${uploaded.ref})`);
-
-      await bb.api.delete(
-        `projects/${scenario.project.key}/repos/${scenario.project.repo.slug}/attachments/${uploaded.id}`,
-      );
+        // The admin cleans the attachment up afterwards.
+        await callAndParse(mcp.client, "delete_attachment", {
+          project: scenario.project.key,
+          repository: scenario.project.repo.slug,
+          attachmentId: uploaded.id,
+        });
+      } finally {
+        await rm(dir, { recursive: true, force: true });
+      }
     } finally {
-      await rm(dir, { recursive: true, force: true });
+      await limited.close();
     }
   });
 });

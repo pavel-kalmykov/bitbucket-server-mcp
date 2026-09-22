@@ -15,11 +15,12 @@ export interface McpAgainstBitbucket {
 
 export async function setupMcpAgainst(
   container: StartedBitbucket,
+  auth?: { username: string; password: string },
 ): Promise<McpAgainstBitbucket> {
   const config: BitbucketConfig = {
     baseUrl: container.url,
-    username: container.admin.username,
-    password: container.admin.password,
+    username: auth?.username ?? container.admin.username,
+    password: auth?.password ?? container.admin.password,
     readOnly: false,
     customHeaders: { "X-Atlassian-Token": "no-check" },
     cacheTtlMs: 100,

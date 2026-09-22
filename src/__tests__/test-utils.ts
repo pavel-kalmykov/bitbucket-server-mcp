@@ -54,15 +54,28 @@ export function createTestClient(
 function fakeResponse<T>(overrides: {
   json?: () => Promise<T>;
   text?: () => Promise<string>;
+  arrayBuffer?: () => Promise<ArrayBuffer>;
+  headers?: Record<string, string>;
 }): ResponsePromise<T> {
   const noop = () => Promise.resolve();
-  return Object.assign(Promise.resolve(new Response() as KyResponse<T>), {
-    json: overrides.json ?? (noop as () => Promise<T>),
-    text: overrides.text ?? (() => Promise.resolve("")),
-    arrayBuffer: () => Promise.resolve(new ArrayBuffer(0)),
-    blob: () => Promise.resolve(new Blob()),
-    formData: () => Promise.resolve(new FormData()),
-    bytes: () => Promise.resolve(new Uint8Array()),
+  // The resolved response carries the overrides too, so handlers that
+  // await the response before reading the body still see the stubs.
+  const response = Object.assign(
+    new Response(null, { headers: overrides.headers ?? {} }) as KyResponse<T>,
+    {
+      json: overrides.json ?? (noop as () => Promise<T>),
+      text: overrides.text ?? (() => Promise.resolve("")),
+      arrayBuffer:
+        overrides.arrayBuffer ?? (() => Promise.resolve(new ArrayBuffer(0))),
+    },
+  );
+  return Object.assign(Promise.resolve(response), {
+    json: () => response.json(),
+    text: () => response.text(),
+    arrayBuffer: () => response.arrayBuffer(),
+    blob: () => response.blob(),
+    formData: () => response.formData(),
+    bytes: () => response.bytes(),
   }) as ResponsePromise<T>;
 }
 
@@ -74,6 +87,22 @@ export function mockJson<T>(fn: MockProxy<KyInstance>["get"], response: T) {
 
 export function mockText(fn: MockProxy<KyInstance>["get"], text: string) {
   fn.mockReturnValueOnce(fakeResponse({ text: () => Promise.resolve(text) }));
+}
+
+export function mockBytes(
+  fn: MockProxy<KyInstance>["get"],
+  bytes: Uint8Array,
+  contentType: string,
+) {
+  fn.mockReturnValueOnce(
+    fakeResponse({
+      arrayBuffer: () => Promise.resolve(bytes.buffer as ArrayBuffer),
+      headers: {
+        "content-type": contentType,
+        "content-length": String(bytes.byteLength),
+      },
+    }),
+  );
 }
 
 export function mockVoid(fn: MockProxy<KyInstance>["delete"]) {
