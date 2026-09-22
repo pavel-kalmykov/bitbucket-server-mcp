@@ -46,13 +46,11 @@ the swagger plus the un-documented endpoints catches anything missed.
 
 **Bugs to fix first:**
 
-- **Attachments flow is broken.** `upload_attachment` targets the REST path,
-  which only supports get and delete. The real upload is a non-REST endpoint,
-  `POST /projects/{project}/repos/{repo}/attachments` (multipart, `files`
-  field, no `/rest/api` prefix), confirmed via a captured `.har`; it returns an
-  `attachment:{repoId}/{id}` ref that the comment markdown references. Fix the
-  upload to hit that endpoint and return the ref. Add `download_attachment`
-  and `list_attachments` (the REST get/delete path) to close the symmetry.
+- **Attachments symmetry.** `upload_attachment` works (non-REST
+  `POST /projects/{project}/repos/{repo}/attachments`, multipart `files`
+  field, returning the `attachment:{repoId}/{id}` ref). Missing the read
+  side: `list_attachments` and `download_attachment` on the REST
+  get/delete path, plus `delete_attachment`.
 
 **Gaps confirmed in the swagger:**
 
