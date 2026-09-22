@@ -131,6 +131,11 @@ Each bullet is one PR. P1 first, then P2, then P3.
   pointer in the instructions.
 - Cap `limit` with `.max(100)` on list tools, and add a global diff line/byte
   cap next to the per-file truncation.
+- Document the admin boundary of merge-checks tools in their descriptions:
+  `list_merge_checks` and `manage_merge_checks` hit `/settings/hooks`, which
+  requires repository Admin (non-admins get a raw `AuthorisationException`);
+  per-PR merge status needs no admin via `get_pull_request` with
+  `includeMergeVetoes`. Surface server errors as-is, no hardcoded hints.
 
 ### B3. AI harness (P0-P2)
 
