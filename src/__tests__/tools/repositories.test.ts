@@ -11,7 +11,7 @@ import {
   expectCalledWith,
   expectCalledWithSearchParams,
   setupToolHarness,
-  } from "../tool-test-utils.js";
+} from "../tool-test-utils.js";
 
 async function tempDir() {
   const path = await mkdtemp(join(tmpdir(), "bitbucket-mcp-test-"));
@@ -142,7 +142,10 @@ describe("Repository tools", () => {
         },
       });
 
-      const result = await callRaw(h.client, "browse_repository", { project: "TEST", repository: "my-repo" });
+      const result = await callRaw(h.client, "browse_repository", {
+        project: "TEST",
+        repository: "my-repo",
+      });
 
       const content = result.content;
       expect(content[0].type).toBe("text");
@@ -264,7 +267,7 @@ describe("Repository tools", () => {
         ],
       };
 
-      mockJson(h.mockClients.api.post, mockResponse);
+      mockJson(h.mockClients.root.post, mockResponse);
 
       const { result, parsed } = await callAndParseFull<{
         id: number;
@@ -280,7 +283,7 @@ describe("Repository tools", () => {
       expect(parsed.id).toBe(3);
       expect(parsed.markdown).toBe("![screenshot.png](attachment:1/3)");
       expectCalledWith(
-        h.mockClients.api.post,
+        h.mockClients.root.post,
         "projects/TEST/repos/my-repo/attachments",
         { body: expect.any(FormData) },
       );
@@ -303,7 +306,7 @@ describe("Repository tools", () => {
         ],
       };
 
-      mockJson(h.mockClients.api.post, mockResponse);
+      mockJson(h.mockClients.root.post, mockResponse);
 
       const parsed = await callAndParse<{ markdown: string }>(
         h.client,
@@ -340,7 +343,7 @@ describe("Repository tools", () => {
           await using tmp = await tempDir();
           const fileName = `photo.${ext}`;
           await writeFile(join(tmp.path, fileName), "img");
-          mockJson(h.mockClients.api.post, attachmentResponse(1));
+          mockJson(h.mockClients.root.post, attachmentResponse(1));
 
           const parsed = await callAndParse<{ markdown: string }>(
             h.client,
@@ -361,7 +364,7 @@ describe("Repository tools", () => {
           await using tmp = await tempDir();
           const fileName = `file.${ext}`;
           await writeFile(join(tmp.path, fileName), "data");
-          mockJson(h.mockClients.api.post, attachmentResponse(2));
+          mockJson(h.mockClients.root.post, attachmentResponse(2));
 
           const parsed = await callAndParse<{ markdown: string }>(
             h.client,
@@ -380,7 +383,7 @@ describe("Repository tools", () => {
       test("filename without extension (no dot) produces link markdown", async () => {
         await using tmp = await tempDir();
         await writeFile(join(tmp.path, "Makefile"), "all:");
-        mockJson(h.mockClients.api.post, attachmentResponse(10));
+        mockJson(h.mockClients.root.post, attachmentResponse(10));
 
         const parsed = await callAndParse<{ markdown: string }>(
           h.client,
@@ -398,7 +401,7 @@ describe("Repository tools", () => {
       test("filename ending with .pngX (not a real image ext) produces link markdown", async () => {
         await using tmp = await tempDir();
         await writeFile(join(tmp.path, "fake.pngx"), "data");
-        mockJson(h.mockClients.api.post, attachmentResponse(11));
+        mockJson(h.mockClients.root.post, attachmentResponse(11));
 
         const parsed = await callAndParse<{ markdown: string }>(
           h.client,
@@ -749,10 +752,10 @@ describe("Repository tools", () => {
       });
 
       const result = await callRaw(h.client, "get_file_content", {
-          project: "TEST",
-          repository: "my-repo",
-          filePath: "README.md",
-        });
+        project: "TEST",
+        repository: "my-repo",
+        filePath: "README.md",
+      });
 
       const content = result.content;
       expect(content[0].type).toBe("text");

@@ -46,13 +46,11 @@ the swagger plus the un-documented endpoints catches anything missed.
 
 **Bugs to fix first:**
 
-- **Attachments flow is broken.** `upload_attachment` targets the REST path,
-  which only supports get and delete. The real upload is a non-REST endpoint,
-  `POST /projects/{project}/repos/{repo}/attachments` (multipart, `files`
-  field, no `/rest/api` prefix), confirmed via a captured `.har`; it returns an
-  `attachment:{repoId}/{id}` ref that the comment markdown references. Fix the
-  upload to hit that endpoint and return the ref. Add `download_attachment`
-  and `list_attachments` (the REST get/delete path) to close the symmetry.
+- **Attachments symmetry.** `upload_attachment` works (non-REST
+  `POST /projects/{project}/repos/{repo}/attachments`, multipart `files`
+  field, returning the `attachment:{repoId}/{id}` ref). Missing the read
+  side: `list_attachments` and `download_attachment` on the REST
+  get/delete path, plus `delete_attachment`.
 
 **Gaps confirmed in the swagger:**
 
@@ -133,6 +131,11 @@ Each bullet is one PR. P1 first, then P2, then P3.
   pointer in the instructions.
 - Cap `limit` with `.max(100)` on list tools, and add a global diff line/byte
   cap next to the per-file truncation.
+- Document the admin boundary of merge-checks tools in their descriptions:
+  `list_merge_checks` and `manage_merge_checks` hit `/settings/hooks`, which
+  requires repository Admin (non-admins get a raw `AuthorisationException`);
+  per-PR merge status needs no admin via `get_pull_request` with
+  `includeMergeVetoes`. Surface server errors as-is, no hardcoded hints.
 
 ### B3. AI harness (P0-P2)
 
