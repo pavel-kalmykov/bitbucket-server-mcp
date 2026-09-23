@@ -40,8 +40,20 @@ export interface UploadAttachmentParams {
   data: Blob;
 }
 
+export interface AttachmentRefParams {
+  project?: string;
+  repository: string;
+  attachmentId: string;
+}
+
+export interface AttachmentDownload {
+  data: Buffer;
+  contentType: string;
+  size: number;
+}
+
 export interface Attachment {
-  id: number;
+  id: string;
   url: string;
   links: { self: { href: string }; attachment: { href: string } };
 }
@@ -154,8 +166,34 @@ export function repositoriesApi(ctx: ApiContext) {
           headers: { accept: "*/*" },
         })
         .json<{ attachments: Attachment[] }>();
-
       return response.attachments[0];
+    },
+
+    async downloadAttachment({
+      project,
+      repository,
+      attachmentId,
+    }: AttachmentRefParams): Promise<AttachmentDownload> {
+      const response = await ctx.http.api.get(
+        `${repoPath(project, repository)}/attachments/${attachmentId}`,
+      );
+      return {
+        data: Buffer.from(await response.arrayBuffer()),
+        contentType: response.headers.get("content-type") ?? "",
+        size: Number(response.headers.get("content-length") ?? 0),
+      };
+    },
+
+    async deleteAttachment({
+      project,
+      repository,
+      attachmentId,
+    }: AttachmentRefParams): Promise<{ deleted: true; attachmentId: string }> {
+      await ctx.http.api.delete(
+        `${repoPath(project, repository)}/attachments/${attachmentId}`,
+      );
+      // The API answers 204 with no body; the echo identifies the deletion.
+      return { deleted: true, attachmentId };
     },
 
     async editFile({

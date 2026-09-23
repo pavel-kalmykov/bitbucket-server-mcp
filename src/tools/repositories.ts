@@ -1,4 +1,4 @@
-import { readFile } from "node:fs/promises";
+import { readFile, writeFile } from "node:fs/promises";
 import { basename } from "node:path";
 import { z } from "zod";
 import { formatResponse, buildPaginated } from "../response/format.js";
@@ -16,8 +16,6 @@ import {
   startParam,
   fieldsParam,
 } from "./params.js";
-
-const IMAGE_EXTENSIONS = /\.(png|jpe?g|gif|svg|webp|bmp|ico)$/i;
 
 export function registerRepositoryTools(ctx: ToolContext) {
   const { server, bb } = ctx;
@@ -159,18 +157,70 @@ export function registerRepositoryTools(ctx: ToolContext) {
         data: new Blob([await readFile(filePath)]),
       });
 
-      const ref = attachment.links.attachment.href;
-      const markdown = IMAGE_EXTENSIONS.test(fileName)
-        ? `![${fileName}](${ref})`
-        : `[${fileName}](${ref})`;
+      return formatResponse(attachment);
+    },
+  );
 
+  server.registerTool(
+    "download_attachment",
+    {
+      description:
+        "Download a repository attachment by id and write its content to a local file.",
+      inputSchema: {
+        project: projectParam(),
+        repository: repositoryParam(),
+        attachmentId: z
+          .string()
+          .describe("Attachment ID, as returned by upload_attachment."),
+        filePath: z
+          .string()
+          .describe("Local path to write the attachment content to."),
+      },
+      annotations: toolAnnotations(),
+    },
+    async ({ project, repository, attachmentId, filePath }) => {
+      const { data, contentType, size } =
+        await bb.repositories.downloadAttachment({
+          project,
+          repository,
+          attachmentId,
+        });
+      await writeFile(filePath, data);
       return formatResponse({
-        id: attachment.id,
-        url: attachment.url,
-        ref,
-        markdown,
+        attachmentId,
+        contentType,
+        size,
+        savedTo: filePath,
       });
     },
+  );
+
+  server.registerTool(
+    "delete_attachment",
+    {
+      description:
+        "Delete a repository attachment by id. Requires permission to manage the repository's attachments.",
+      inputSchema: {
+        project: projectParam(),
+        repository: repositoryParam(),
+        attachmentId: z
+          .string()
+          .describe("Attachment ID, as returned by upload_attachment."),
+      },
+      annotations: toolAnnotations({
+        readOnlyHint: false,
+        destructiveHint: true,
+        idempotentHint: true,
+      }),
+    },
+    async ({ project, repository, attachmentId }) =>
+      formatResponse(
+        await bb.repositories.deleteAttachment({
+          project,
+          repository,
+          attachmentId,
+        }),
+      ),
   );
 
   server.registerTool(

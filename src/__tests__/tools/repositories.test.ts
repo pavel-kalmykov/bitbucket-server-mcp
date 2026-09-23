@@ -1,9 +1,17 @@
 import { writeFile, mkdtemp, rm } from "node:fs/promises";
+import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
 import { describe, test, expect } from "vitest";
 import { registerRepositoryTools } from "../../tools/repositories.js";
-import { mockError, mockJson, mockReject } from "../test-utils.js";
+import type { Attachment } from "../../api/repositories.js";
+import {
+  mockBytes,
+  mockError,
+  mockJson,
+  mockVoid,
+  mockReject,
+} from "../test-utils.js";
 import {
   callAndParse,
   callAndParseFull,
@@ -247,15 +255,86 @@ describe("Repository tools", () => {
     });
   });
 
-  describe("upload_attachment", () => {
-    test("should upload a local file and return image markdown reference", async () => {
+  describe("download_attachment", () => {
+    test("should write the attachment bytes to the local path", async () => {
       await using tmp = await tempDir();
-      await writeFile(join(tmp.path, "screenshot.png"), "fake-png-content");
+      const target = join(tmp.path, "out.bin");
+      const bytes = new Uint8Array([1, 2, 3]);
+
+      mockBytes(h.mockClients.api.get, bytes, "application/octet-stream");
+
+      const { result, parsed } = await callAndParseFull<{
+        attachmentId: string;
+        contentType: string;
+        size: number;
+        savedTo: string;
+      }>(h.client, "download_attachment", {
+        project: "TEST",
+        repository: "my-repo",
+        attachmentId: "7",
+        filePath: target,
+      });
+
+      expect(result.isError).toBeFalsy();
+      expect(parsed.savedTo).toBe(target);
+      expect(readFileSync(target)).toEqual(Buffer.from(bytes));
+      expectCalledWith(
+        h.mockClients.api.get,
+        "projects/TEST/repos/my-repo/attachments/7",
+      );
+    });
+
+    test("should default to the configured project", async () => {
+      await using tmp = await tempDir();
+      const target = join(tmp.path, "out.bin");
+      const bytes = new Uint8Array([9]);
+
+      mockBytes(h.mockClients.api.get, bytes, "application/octet-stream");
+
+      await callAndParseFull(h.client, "download_attachment", {
+        repository: "my-repo",
+        attachmentId: "7",
+        filePath: target,
+      });
+
+      expectCalledWith(
+        h.mockClients.api.get,
+        "projects/DEFAULT/repos/my-repo/attachments/7",
+      );
+    });
+  });
+
+  describe("delete_attachment", () => {
+    test("should delete and report it", async () => {
+      mockVoid(h.mockClients.api.delete);
+
+      const { result, parsed } = await callAndParseFull<{
+        deleted: boolean;
+        attachmentId: string;
+      }>(h.client, "delete_attachment", {
+        project: "TEST",
+        repository: "my-repo",
+        attachmentId: "7",
+      });
+
+      expect(result.isError).toBeFalsy();
+      expect(parsed).toEqual({ deleted: true, attachmentId: "7" });
+      expectCalledWith(
+        h.mockClients.api.delete,
+        "projects/TEST/repos/my-repo/attachments/7",
+      );
+    });
+  });
+
+  describe("upload_attachment", () => {
+    test("should upload a local file and return the raw attachment object", async () => {
+      await using tmp = await tempDir();
+      await writeFile(join(tmp.path, "notes.txt"), "content");
 
       const mockResponse = {
         attachments: [
           {
-            id: 3,
+            id: "3",
             url: "http://bitbucket.example.com/projects/TEST/repos/my-repo/attachments/3",
             links: {
               self: {
@@ -269,152 +348,24 @@ describe("Repository tools", () => {
 
       mockJson(h.mockClients.root.post, mockResponse);
 
-      const { result, parsed } = await callAndParseFull<{
-        id: number;
-        markdown: string;
-      }>(h.client, "upload_attachment", {
-        project: "TEST",
-        repository: "my-repo",
-        filePath: join(tmp.path, "screenshot.png"),
-      });
-
-      expect(result.isError).toBeFalsy();
-
-      expect(parsed.id).toBe(3);
-      expect(parsed.markdown).toBe("![screenshot.png](attachment:1/3)");
-      expectCalledWith(
-        h.mockClients.root.post,
-        "projects/TEST/repos/my-repo/attachments",
-        { body: expect.any(FormData) },
-      );
-    });
-
-    test("should use link markdown for non-image files", async () => {
-      await using tmp = await tempDir();
-      await writeFile(join(tmp.path, "report.pdf"), "fake-pdf-content");
-
-      const mockResponse = {
-        attachments: [
-          {
-            id: 5,
-            url: "http://bitbucket.example.com/attachments/5",
-            links: {
-              self: { href: "http://bitbucket.example.com/attachments/5" },
-              attachment: { href: "attachment:1/5" },
-            },
-          },
-        ],
-      };
-
-      mockJson(h.mockClients.root.post, mockResponse);
-
-      const parsed = await callAndParse<{ markdown: string }>(
+      const { result, parsed } = await callAndParseFull<Attachment>(
         h.client,
         "upload_attachment",
         {
           project: "TEST",
           repository: "my-repo",
-          filePath: join(tmp.path, "report.pdf"),
-        },
-      );
-      expect(parsed.markdown).toBe("[report.pdf](attachment:1/5)");
-    });
-
-    describe("image extension equivalence classes", () => {
-      const imageExts = ["jpg", "jpeg", "gif", "svg", "webp", "bmp", "ico"];
-      const nonImageExts = ["txt", "zip", "tar", "doc", "xls"];
-
-      const attachmentResponse = (id: number) => ({
-        attachments: [
-          {
-            id,
-            url: `http://bb.example.com/att/${id}`,
-            links: {
-              self: { href: `http://bb.example.com/att/${id}` },
-              attachment: { href: `attachment:1/${id}` },
-            },
-          },
-        ],
-      });
-
-      test.each(imageExts)(
-        ".%s produces image markdown ![...](...)",
-        async (ext) => {
-          await using tmp = await tempDir();
-          const fileName = `photo.${ext}`;
-          await writeFile(join(tmp.path, fileName), "img");
-          mockJson(h.mockClients.root.post, attachmentResponse(1));
-
-          const parsed = await callAndParse<{ markdown: string }>(
-            h.client,
-            "upload_attachment",
-            {
-              project: "TEST",
-              repository: "my-repo",
-              filePath: join(tmp.path, fileName),
-            },
-          );
-          expect(parsed.markdown).toMatch(/^!\[/);
+          filePath: join(tmp.path, "notes.txt"),
         },
       );
 
-      test.each(nonImageExts)(
-        ".%s produces link markdown [...](...)",
-        async (ext) => {
-          await using tmp = await tempDir();
-          const fileName = `file.${ext}`;
-          await writeFile(join(tmp.path, fileName), "data");
-          mockJson(h.mockClients.root.post, attachmentResponse(2));
-
-          const parsed = await callAndParse<{ markdown: string }>(
-            h.client,
-            "upload_attachment",
-            {
-              project: "TEST",
-              repository: "my-repo",
-              filePath: join(tmp.path, fileName),
-            },
-          );
-          expect(parsed.markdown).toMatch(/^\[/);
-          expect(parsed.markdown).not.toMatch(/^!\[/);
-        },
+      expect(result.isError).toBeFalsy();
+      expect(parsed.id).toBe("3");
+      expect(parsed.links.attachment.href).toBe("attachment:1/3");
+      expectCalledWith(
+        h.mockClients.root.post,
+        "projects/TEST/repos/my-repo/attachments",
+        { body: expect.any(FormData) },
       );
-
-      test("filename without extension (no dot) produces link markdown", async () => {
-        await using tmp = await tempDir();
-        await writeFile(join(tmp.path, "Makefile"), "all:");
-        mockJson(h.mockClients.root.post, attachmentResponse(10));
-
-        const parsed = await callAndParse<{ markdown: string }>(
-          h.client,
-          "upload_attachment",
-          {
-            project: "TEST",
-            repository: "my-repo",
-            filePath: join(tmp.path, "Makefile"),
-          },
-        );
-        expect(parsed.markdown).toMatch(/^\[/);
-        expect(parsed.markdown).not.toMatch(/^!\[/);
-      });
-
-      test("filename ending with .pngX (not a real image ext) produces link markdown", async () => {
-        await using tmp = await tempDir();
-        await writeFile(join(tmp.path, "fake.pngx"), "data");
-        mockJson(h.mockClients.root.post, attachmentResponse(11));
-
-        const parsed = await callAndParse<{ markdown: string }>(
-          h.client,
-          "upload_attachment",
-          {
-            project: "TEST",
-            repository: "my-repo",
-            filePath: join(tmp.path, "fake.pngx"),
-          },
-        );
-        expect(parsed.markdown).toMatch(/^\[/);
-        expect(parsed.markdown).not.toMatch(/^!\[/);
-      });
     });
   });
 

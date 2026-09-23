@@ -60,6 +60,11 @@ describe("Tool schema contract: descriptions", () => {
     { name: "browse_repository", contains: "project structure" },
     { name: "get_file_content", contains: "pagination" },
     { name: "upload_attachment", contains: "markdown reference" },
+    {
+      name: "download_attachment",
+      contains: "write its content to a local file",
+    },
+    { name: "delete_attachment", contains: "permission to manage" },
     { name: "edit_file", contains: "committing" },
     { name: "get_server_info", contains: "version" },
     { name: "list_branches", contains: "default branch" },
@@ -125,6 +130,11 @@ describe("Tool schema contract: required fields", () => {
     { name: "browse_repository", required: ["repository"] },
     { name: "get_file_content", required: ["repository", "filePath"] },
     { name: "upload_attachment", required: ["repository", "filePath"] },
+    {
+      name: "download_attachment",
+      required: ["repository", "attachmentId"],
+    },
+    { name: "delete_attachment", required: ["repository", "attachmentId"] },
     {
       name: "edit_file",
       required: ["repository", "filePath", "branch", "content", "message"],
@@ -457,6 +467,18 @@ describe("Tool schema contract: annotations", () => {
       expected: { readOnlyHint: false, idempotentHint: false },
     },
     {
+      name: "download_attachment",
+      expected: { readOnlyHint: true },
+    },
+    {
+      name: "delete_attachment",
+      expected: {
+        readOnlyHint: false,
+        destructiveHint: true,
+        idempotentHint: true,
+      },
+    },
+    {
       name: "edit_file",
       expected: { readOnlyHint: false, idempotentHint: false },
     },
@@ -613,6 +635,8 @@ describe("Tool schema contract: server instructions", () => {
       "manage_comment",
       "manage_review",
       "upload_attachment",
+      "download_attachment",
+      "delete_attachment",
       "create_pull_request",
     ];
     const missing = mentioned.filter((t) => !instructions!.includes(t));
@@ -683,6 +707,8 @@ describe("Tool schema contract: all expected tools are registered", () => {
       "browse_repository",
       "get_file_content",
       "upload_attachment",
+      "download_attachment",
+      "delete_attachment",
       "edit_file",
       "get_server_info",
       "list_branches",
