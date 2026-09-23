@@ -62,11 +62,13 @@ the swagger plus the un-documented endpoints catches anything missed.
   `list_default_reviewer_conditions`).
 - `manage_secret_scanning`: add and remove allowlist rules (today only
   `list_secret_scanning_rules`).
-- ~~`list_inbox`~~ Redundant: the endpoint is the same data as
-  `dashboard/pull-requests`, already exposed via
+- ~~`list_inbox`~~ Redundant as an MCP tool: the endpoint is the same
+  data as `dashboard/pull-requests`, already exposed via
   `list_dashboard_pull_requests` with `role` + `participantStatus`
   filters (verified live: `role=REVIEWER&participantStatus=UNAPPROVED`
-  returns the waiting-for-review queue).
+  returns the waiting-for-review queue). The reusable client exposes
+  the endpoint as `bb.inbox` for JS/CLI consumers; no MCP tool is
+  planned to avoid a duplicate agent surface.
 - `get_default_branch` and `set_default_branch`.
 - `list_groups` and user permission lookups (`/admin/groups`, repo and project
   permissions).

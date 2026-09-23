@@ -1,11 +1,12 @@
 import { getPaginated } from "./http/client.js";
 import type { Paginated } from "./http/pagination.js";
+import type { PullRequest } from "../generated/types.js";
 import type { ApiContext } from "./context.js";
 
 export interface InboxApi {
   listPullRequests(
     params?: InboxPullRequestsParams,
-  ): Promise<Paginated<Record<string, unknown>>>;
+  ): Promise<Paginated<PullRequest>>;
   count(): Promise<InboxCount>;
 }
 
@@ -24,7 +25,7 @@ export function inboxApi(ctx: ApiContext) {
   return {
     async listPullRequests(
       params: InboxPullRequestsParams = {},
-    ): Promise<Paginated<Record<string, unknown>>> {
+    ): Promise<Paginated<PullRequest>> {
       const searchParams: Record<string, string | number> = {};
       if (params.role) searchParams.role = params.role;
       if (params.participantStatus) {
