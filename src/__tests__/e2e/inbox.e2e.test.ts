@@ -1,4 +1,5 @@
 import { expect } from "vitest";
+import { randomUUID } from "node:crypto";
 import {
   createBitbucketClient,
   type BitbucketClient,
@@ -7,7 +8,7 @@ import type { StartedBitbucket } from "./bitbucket-container.js";
 import { test, describeBitbucket } from "./e2e-suite.js";
 
 const LIMITED = {
-  name: "limited-user",
+  name: `limited-${randomUUID().slice(0, 8)}`,
   password: "Limited-2026!review",
 } as const;
 
