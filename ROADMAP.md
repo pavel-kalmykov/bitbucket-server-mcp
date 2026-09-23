@@ -62,9 +62,11 @@ the swagger plus the un-documented endpoints catches anything missed.
   `list_default_reviewer_conditions`).
 - `manage_secret_scanning`: add and remove allowlist rules (today only
   `list_secret_scanning_rules`).
-- `list_inbox`: pull requests assigned to the current user for review
-  (`/api/latest/inbox/pull-requests`). The single most useful addition for a
-  review-driven agent.
+- ~~`list_inbox`~~ Redundant: the endpoint is the same data as
+  `dashboard/pull-requests`, already exposed via
+  `list_dashboard_pull_requests` with `role` + `participantStatus`
+  filters (verified live: `role=REVIEWER&participantStatus=UNAPPROVED`
+  returns the waiting-for-review queue).
 - `get_default_branch` and `set_default_branch`.
 - `list_groups` and user permission lookups (`/admin/groups`, repo and project
   permissions).
@@ -167,7 +169,7 @@ Each bullet is one PR. P1 first, then P2, then P3.
 ### B4. Maintainability refactors (P2)
 
 - Make `curate` and `curateList` generic. Removes the `as Record<string,
-  unknown>` double-casts at every call-site.
+unknown>` double-casts at every call-site.
 - Extract reusable zod fragments into **`src/tools/params.ts`** (not a
   `shared.ts` grab-bag): `projectParam`, `repositoryParam`, `prIdParam`,
   `paginationParams`, `fieldsParam`. Replaces ~49 duplicated `project` fields,
@@ -269,14 +271,14 @@ Keep semantic-release as it is (one package, one version).
 Every tool is tested against at least two Bitbucket versions: the minimum that
 supports it and the latest. Target versions:
 
-| Version | Image |
-|---------|-------|
-| 7.21 | `atlassian/bitbucket:7.21` |
-| 8.5 | `atlassian/bitbucket:8.5` |
-| 8.9 | `atlassian/bitbucket:8.9` |
-| 8.19 | `atlassian/bitbucket:8.19` |
-| 9.4 | `atlassian/bitbucket:9.4` |
-| 10.2 | `atlassian/bitbucket:10.2` |
+| Version | Image                      |
+| ------- | -------------------------- |
+| 7.21    | `atlassian/bitbucket:7.21` |
+| 8.5     | `atlassian/bitbucket:8.5`  |
+| 8.9     | `atlassian/bitbucket:8.9`  |
+| 8.19    | `atlassian/bitbucket:8.19` |
+| 9.4     | `atlassian/bitbucket:9.4`  |
+| 10.2    | `atlassian/bitbucket:10.2` |
 
 Features unavailable on a given version degrade gracefully: a 404 becomes a
 clear message, no crash. E2E tests use ephemeral Bitbucket containers via
@@ -289,16 +291,16 @@ daemon.
 
 Corrected against the Atlassian REST references (labels API since 5.13, etc.):
 
-| Feature | 7.21 | 8.5 | 8.9 | 9.4 | 10.2 |
-|---------|------|-----|-----|-----|------|
-| PR, repo, branch, commit, tag, search | Y | Y | Y | Y | Y |
-| Build status, code insights | Y | Y | Y | Y | Y |
-| Labels (since 5.13) | Y | Y | Y | Y | Y |
-| Draft PRs | - | Y | Y | Y | Y |
-| `threadResolved` on comments | - | - | Y | Y | Y |
-| Secret scanning | - | Y | Y | Y | Y |
-| Comment reactions (since 7.7) | Y | Y | Y | Y | Y |
-| Diff stats summary (since 9.1) | - | - | - | Y | Y |
+| Feature                               | 7.21 | 8.5 | 8.9 | 9.4 | 10.2 |
+| ------------------------------------- | ---- | --- | --- | --- | ---- |
+| PR, repo, branch, commit, tag, search | Y    | Y   | Y   | Y   | Y    |
+| Build status, code insights           | Y    | Y   | Y   | Y   | Y    |
+| Labels (since 5.13)                   | Y    | Y   | Y   | Y   | Y    |
+| Draft PRs                             | -    | Y   | Y   | Y   | Y    |
+| `threadResolved` on comments          | -    | -   | Y   | Y   | Y    |
+| Secret scanning                       | -    | Y   | Y   | Y   | Y    |
+| Comment reactions (since 7.7)         | Y    | Y   | Y   | Y   | Y    |
+| Diff stats summary (since 9.1)        | -    | -   | -   | Y   | Y    |
 
 ---
 
