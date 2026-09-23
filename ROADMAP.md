@@ -46,11 +46,13 @@ the swagger plus the un-documented endpoints catches anything missed.
 
 **Bugs to fix first:**
 
-- **Attachments symmetry.** `upload_attachment` works (non-REST
-  `POST /projects/{project}/repos/{repo}/attachments`, multipart `files`
-  field, returning the `attachment:{repoId}/{id}` ref). Missing the read
-  side: `list_attachments` and `download_attachment` on the REST
-  get/delete path, plus `delete_attachment`.
+- ~~**Attachments symmetry.**~~ Done: `upload_attachment`,
+  `download_attachment`, and `delete_attachment` are live (non-REST
+  `POST /projects/{project}/repos/{repo}/attachments` for upload, REST
+  get/delete by id for the rest). `list_attachments` does not exist
+  server-side: the collection GET answers 405 and attachment ids only
+  surface in upload responses and comment refs. Per-attachment metadata
+  reads empty until someone PUTs it, so it is not modeled.
 
 **Gaps confirmed in the swagger:**
 
