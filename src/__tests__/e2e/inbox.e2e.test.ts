@@ -89,13 +89,29 @@ describeBitbucket("inbox", () => {
     );
 
     // Before the review is requested, the limited user has no relation to
-    // the pr and their reviewer inbox must not list it.
-    const before = await limited.inbox.listPullRequests({
-      role: "REVIEWER",
-      participantStatus: "UNAPPROVED",
-      limit: 50,
-    });
-    expect(before.values.map((pr) => pr.id)).not.toContain(pr.id);
+    // the pr and their reviewer inbox must not list it. The first login of
+    // a freshly provisioned user occasionally 401s on CI runners; retry
+    // briefly before failing.
+    type InboxPage = Awaited<
+      ReturnType<BitbucketClient["inbox"]["listPullRequests"]>
+    >;
+    let before: InboxPage | undefined;
+    for (let attempt = 0; attempt < 3; attempt++) {
+      const page = await limited.inbox
+        .listPullRequests({
+          role: "REVIEWER",
+          participantStatus: "UNAPPROVED",
+          limit: 50,
+        })
+        .catch((error: unknown): InboxPage | Error => error as Error);
+      if (!(page instanceof Error)) {
+        before = page;
+        break;
+      }
+      await new Promise((resolve) => setTimeout(resolve, 300));
+    }
+    expect(before).toBeDefined();
+    expect(before?.values.map((pr) => pr.id)).not.toContain(pr.id);
 
     // Requesting the review adds them as a reviewer; the same filtered
     // inbox must now list it.
