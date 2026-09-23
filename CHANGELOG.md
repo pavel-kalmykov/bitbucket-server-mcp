@@ -1,3 +1,10 @@
+# [0.15.0](https://github.com/pavel-kalmykov/bitbucket-server-mcp/compare/v0.14.2...v0.15.0) (2026-09-23)
+
+
+### Features
+
+* add download_attachment and delete_attachment tools ([bdcc18d](https://github.com/pavel-kalmykov/bitbucket-server-mcp/commit/bdcc18d3d6a2b15a2a00a2f1412e7c51a3794195))
+
 ## [0.14.2](https://github.com/pavel-kalmykov/bitbucket-server-mcp/compare/v0.14.1...v0.14.2) (2026-09-22)
 
 
