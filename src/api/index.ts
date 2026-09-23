@@ -17,7 +17,6 @@ export type * from "./deployments.js";
 export type * from "./emoticons.js";
 export type * from "./forks.js";
 export type * from "./hooks.js";
-export type * from "./inbox.js";
 export type * from "./insights.js";
 export type * from "./keys.js";
 export type * from "./labels.js";
