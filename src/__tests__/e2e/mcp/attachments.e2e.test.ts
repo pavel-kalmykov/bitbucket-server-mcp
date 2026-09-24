@@ -15,13 +15,6 @@ const PNG_BYTES = Buffer.from(
   "base64",
 );
 
-function limitedUser(): { name: string; password: string } {
-  return {
-    name: `limited-${randomUUID().slice(0, 8)}`,
-    password: "limited-password",
-  };
-}
-
 describeBitbucket("attachments", () => {
   test("upload, download, and delete round-trip with exact bytes", async ({
     mcp,
@@ -106,27 +99,36 @@ describeBitbucket("attachments", () => {
     const dir = await mkdtemp(join(tmpdir(), "e2e-attach-"));
     let proxy: http.Server | undefined;
     try {
-      const server = http.createServer(async (req, res) => {
+      const server = http.createServer((req, res) => {
         const headers: Record<string, string> = {};
         for (const [k, v] of Object.entries(req.headers)) {
           if (k !== "host" && k !== "connection" && typeof v === "string") {
             headers[k] = v;
+          } else if (Array.isArray(v)) {
+            headers[k] = v.join(", ");
           }
         }
-        const chunks: Buffer[] = [];
-        for await (const chunk of req) chunks.push(chunk as Buffer);
-        const body = chunks.length > 0 ? Buffer.concat(chunks) : undefined;
-        const upstream = await fetch(`${bb.url}${req.url}`, {
-          method: req.method,
-          headers,
-          body,
+        const upstream = http.request(
+          `${bb.url}${req.url}`,
+          { method: req.method, headers },
+          (upstreamRes) => {
+            // content-length and transfer-encoding are hop-by-hop: the
+            // proxy must let node re-frame the body.
+            const resHeaders: Record<string, string> = {};
+            for (const [k, v] of Object.entries(upstreamRes.headers)) {
+              if (k !== "content-length" && k !== "transfer-encoding") {
+                resHeaders[k] = Array.isArray(v) ? v.join(", ") : (v ?? "");
+              }
+            }
+            res.writeHead(upstreamRes.statusCode ?? 502, resHeaders);
+            upstreamRes.pipe(res);
+          },
+        );
+        upstream.on("error", () => {
+          if (!res.headersSent) res.writeHead(502);
+          res.end();
         });
-        const resHeaders: Record<string, string> = {};
-        upstream.headers.forEach((v, k) => {
-          if (k !== "content-length") resHeaders[k] = v;
-        });
-        res.writeHead(upstream.status, resHeaders);
-        res.end(Buffer.from(await upstream.arrayBuffer()));
+        req.pipe(upstream);
       });
       await new Promise<void>((resolve) => {
         server.listen(0, "127.0.0.1", resolve);
@@ -181,7 +183,10 @@ describeBitbucket("attachments", () => {
   }) => {
     // A user with no permissions on the repo cannot delete its attachments;
     // Bitbucket masks the repo as nonexistent for them.
-    const limited = limitedUser();
+    const limited = {
+      name: `limited-${randomUUID().slice(0, 8)}`,
+      password: "limited-password",
+    };
     await bb.api.post("admin/users", {
       searchParams: {
         name: limited.name,
