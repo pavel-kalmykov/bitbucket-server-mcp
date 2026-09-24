@@ -51,9 +51,9 @@
   "overrides": [
     {
       "files": [
-        "src/__tests__/response/errors.test.ts",
-        "src/__tests__/healthcheck.test.ts",
-        "src/__tests__/property/errors.prop.test.ts"
+        "src/__tests__/unit/response/errors.test.ts",
+        "src/__tests__/unit/healthcheck.test.ts",
+        "src/__tests__/unit/property/errors.prop.test.ts"
       ],
       "rules": {
         "unresolved-imports": "off"
