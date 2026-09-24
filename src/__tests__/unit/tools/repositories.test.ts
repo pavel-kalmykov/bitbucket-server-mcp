@@ -1,0 +1,946 @@
+import { writeFile, mkdtemp, rm } from "node:fs/promises";
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
+import { tmpdir } from "node:os";
+import { describe, test, expect } from "vitest";
+import { registerRepositoryTools } from "../../../tools/repositories.js";
+import type { Attachment } from "../../../api/repositories.js";
+import {
+  mockBytes,
+  mockError,
+  mockJson,
+  mockVoid,
+  mockReject,
+} from "../../fixtures/test-utils.js";
+import {
+  callAndParse,
+  callAndParseFull,
+  callRaw,
+  expectCalledWith,
+  expectCalledWithSearchParams,
+  setupToolHarness,
+} from "../../fixtures/tool-test-utils.js";
+
+async function tempDir() {
+  const path = await mkdtemp(join(tmpdir(), "bitbucket-mcp-test-"));
+  return {
+    path,
+    async [Symbol.asyncDispose]() {
+      await rm(path, { recursive: true, force: true });
+    },
+  };
+}
+
+describe("Repository tools", () => {
+  const h = setupToolHarness({
+    register: registerRepositoryTools,
+    defaultProject: "DEFAULT",
+  });
+
+  describe("list_projects", () => {
+    test("should list projects with pagination", async () => {
+      const mockResponse = {
+        values: [
+          {
+            key: "PROJ",
+            name: "Project",
+            description: "Test",
+            public: false,
+            type: "NORMAL",
+          },
+        ],
+        size: 1,
+        isLastPage: true,
+      };
+
+      mockJson(h.mockClients.api.get, mockResponse);
+
+      const parsed = await callAndParse<{
+        total: number;
+        projects: Array<{ key: string }>;
+      }>(h.client, "list_projects", { limit: 10 });
+
+      expect(parsed.total).toBe(1);
+      expect(parsed.projects).toHaveLength(1);
+      expect(parsed.projects[0].key).toBe("PROJ");
+    });
+
+    test("should return curated output with default fields", async () => {
+      const mockResponse = {
+        values: [
+          {
+            key: "PROJ",
+            id: 1,
+            name: "Project",
+            description: "Test",
+            public: false,
+            type: "NORMAL",
+            links: { self: [{ href: "http://example.com" }] },
+            extraField: "should be removed",
+          },
+        ],
+        size: 1,
+        isLastPage: true,
+      };
+
+      mockJson(h.mockClients.api.get, mockResponse);
+
+      const parsed = await callAndParse<{
+        projects: Array<Record<string, unknown>>;
+      }>(h.client, "list_projects", {});
+
+      const project = parsed.projects[0];
+      expect(project.key).toBe("PROJ");
+      expect(project.name).toBe("Project");
+      expect(project).not.toHaveProperty("links");
+      expect(project).not.toHaveProperty("extraField");
+    });
+  });
+
+  describe("list_repositories", () => {
+    test("should list repositories for a project", async () => {
+      const mockResponse = {
+        values: [
+          {
+            slug: "my-repo",
+            name: "My Repo",
+            project: { key: "TEST" },
+            state: "AVAILABLE",
+          },
+        ],
+        size: 1,
+        isLastPage: true,
+      };
+
+      mockJson(h.mockClients.api.get, mockResponse);
+
+      const parsed = await callAndParse<{
+        repositories: Array<{ slug: string }>;
+      }>(h.client, "list_repositories", { project: "TEST" });
+
+      expect(parsed.repositories).toHaveLength(1);
+      expect(parsed.repositories[0].slug).toBe("my-repo");
+    });
+
+    test("should use default project when not provided", async () => {
+      mockJson(h.mockClients.api.get, {
+        values: [],
+        size: 0,
+        isLastPage: true,
+      });
+
+      await callAndParse(h.client, "list_repositories", {});
+
+      expect(h.mockClients.api.get).toHaveBeenCalledWith(
+        "projects/DEFAULT/repos",
+        expect.anything(),
+      );
+    });
+  });
+
+  describe("browse_repository", () => {
+    test("should browse root directory", async () => {
+      mockJson(h.mockClients.api.get, {
+        children: {
+          values: [
+            { path: { toString: "src" }, type: "DIRECTORY" },
+            { path: { toString: "README.md" }, type: "FILE" },
+          ],
+          size: 2,
+        },
+      });
+
+      const result = await callRaw(h.client, "browse_repository", {
+        project: "TEST",
+        repository: "my-repo",
+      });
+
+      const content = result.content;
+      expect(content[0].type).toBe("text");
+    });
+
+    test("should browse a specific path", async () => {
+      mockJson(h.mockClients.api.get, {
+        children: {
+          values: [{ path: { toString: "index.ts" }, type: "FILE" }],
+          size: 1,
+        },
+      });
+
+      await h.client.callTool({
+        name: "browse_repository",
+        arguments: { project: "TEST", repository: "my-repo", path: "src" },
+      });
+
+      expect(h.mockClients.api.get).toHaveBeenCalledWith(
+        "projects/TEST/repos/my-repo/browse/src",
+        expect.anything(),
+      );
+    });
+
+    test("should pass branch as 'at' search param", async () => {
+      mockJson(h.mockClients.api.get, {
+        children: { values: [], size: 0 },
+      });
+
+      await h.client.callTool({
+        name: "browse_repository",
+        arguments: {
+          project: "TEST",
+          repository: "my-repo",
+          branch: "develop",
+        },
+      });
+
+      expectCalledWithSearchParams(
+        h.mockClients.api.get,
+        "projects/TEST/repos/my-repo/browse",
+        { at: "develop" },
+      );
+    });
+
+    test("should use default project when not provided", async () => {
+      mockJson(h.mockClients.api.get, { children: { values: [], size: 0 } });
+
+      await h.client.callTool({
+        name: "browse_repository",
+        arguments: { repository: "my-repo" },
+      });
+
+      expect(h.mockClients.api.get).toHaveBeenCalledWith(
+        "projects/DEFAULT/repos/my-repo/browse",
+        expect.anything(),
+      );
+    });
+
+    test("should handle errors gracefully", async () => {
+      mockError(h.mockClients.api.get, new Error("Not Found"));
+
+      const result = await callRaw(h.client, "browse_repository", {
+        project: "TEST",
+        repository: "nonexistent",
+      });
+
+      expect(result.isError).toBe(true);
+    });
+
+    test("should pass custom limit as searchParam", async () => {
+      mockJson(h.mockClients.api.get, { children: { values: [], size: 0 } });
+
+      await h.client.callTool({
+        name: "browse_repository",
+        arguments: { project: "TEST", repository: "r", limit: 200 },
+      });
+
+      expectCalledWithSearchParams(
+        h.mockClients.api.get,
+        "projects/TEST/repos/r/browse",
+        { limit: 200 },
+      );
+    });
+
+    test("should not include 'at' when branch is omitted", async () => {
+      mockJson(h.mockClients.api.get, { children: { values: [], size: 0 } });
+
+      await h.client.callTool({
+        name: "browse_repository",
+        arguments: { project: "TEST", repository: "r" },
+      });
+
+      const [, opts] = h.mockClients.api.get.mock.calls[0] as [
+        string,
+        Record<string, unknown>,
+      ];
+      expect(opts.searchParams).not.toHaveProperty("at");
+    });
+  });
+
+  describe("download_attachment", () => {
+    test("should write the attachment bytes to the local path", async () => {
+      await using tmp = await tempDir();
+      const target = join(tmp.path, "out.bin");
+      const bytes = new Uint8Array([1, 2, 3]);
+
+      mockBytes(h.mockClients.api.get, bytes, "application/octet-stream");
+
+      const { result, parsed } = await callAndParseFull<{
+        attachmentId: string;
+        contentType: string;
+        size: number;
+        savedTo: string;
+      }>(h.client, "download_attachment", {
+        project: "TEST",
+        repository: "my-repo",
+        attachmentId: "7",
+        filePath: target,
+      });
+
+      expect(result.isError).toBeFalsy();
+      expect(parsed.savedTo).toBe(target);
+      expect(readFileSync(target)).toEqual(Buffer.from(bytes));
+      expectCalledWith(
+        h.mockClients.api.get,
+        "projects/TEST/repos/my-repo/attachments/7",
+      );
+    });
+
+    test("should default to the configured project", async () => {
+      await using tmp = await tempDir();
+      const target = join(tmp.path, "out.bin");
+      const bytes = new Uint8Array([9]);
+
+      mockBytes(h.mockClients.api.get, bytes, "application/octet-stream");
+
+      await callAndParseFull(h.client, "download_attachment", {
+        repository: "my-repo",
+        attachmentId: "7",
+        filePath: target,
+      });
+
+      expectCalledWith(
+        h.mockClients.api.get,
+        "projects/DEFAULT/repos/my-repo/attachments/7",
+      );
+    });
+  });
+
+  describe("delete_attachment", () => {
+    test("should delete and report it", async () => {
+      mockVoid(h.mockClients.api.delete);
+
+      const { result, parsed } = await callAndParseFull<{
+        deleted: boolean;
+        attachmentId: string;
+      }>(h.client, "delete_attachment", {
+        project: "TEST",
+        repository: "my-repo",
+        attachmentId: "7",
+      });
+
+      expect(result.isError).toBeFalsy();
+      expect(parsed).toEqual({ deleted: true, attachmentId: "7" });
+      expectCalledWith(
+        h.mockClients.api.delete,
+        "projects/TEST/repos/my-repo/attachments/7",
+      );
+    });
+  });
+
+  describe("upload_attachment", () => {
+    test("should upload a local file and return the raw attachment object", async () => {
+      await using tmp = await tempDir();
+      await writeFile(join(tmp.path, "notes.txt"), "content");
+
+      const mockResponse = {
+        attachments: [
+          {
+            id: "3",
+            url: "http://bitbucket.example.com/projects/TEST/repos/my-repo/attachments/3",
+            links: {
+              self: {
+                href: "http://bitbucket.example.com/projects/TEST/repos/my-repo/attachments/3",
+              },
+              attachment: { href: "attachment:1/3" },
+            },
+          },
+        ],
+      };
+
+      mockJson(h.mockClients.root.post, mockResponse);
+
+      const { result, parsed } = await callAndParseFull<Attachment>(
+        h.client,
+        "upload_attachment",
+        {
+          project: "TEST",
+          repository: "my-repo",
+          filePath: join(tmp.path, "notes.txt"),
+        },
+      );
+
+      expect(result.isError).toBeFalsy();
+      expect(parsed.id).toBe("3");
+      expect(parsed.links.attachment.href).toBe("attachment:1/3");
+      expectCalledWith(
+        h.mockClients.root.post,
+        "projects/TEST/repos/my-repo/attachments",
+        { body: expect.any(FormData) },
+      );
+    });
+  });
+
+  describe("edit_file", () => {
+    const commitResponse = {
+      id: "abc123def456",
+      displayId: "abc123d",
+      message: "Edit README.md",
+      author: { name: "admin", emailAddress: "admin@example.com" },
+      committer: { name: "admin", emailAddress: "admin@example.com" },
+      authorTimestamp: 1680000000000,
+      committerTimestamp: 1680000000000,
+      parents: [{ id: "parent123", displayId: "parent12" }],
+    };
+
+    test("should edit a file with all required params", async () => {
+      mockJson(h.mockClients.api.put, commitResponse);
+
+      const parsed = await callAndParse<{ id: string; displayId: string }>(
+        h.client,
+        "edit_file",
+        {
+          project: "TEST",
+          repository: "my-repo",
+          filePath: "README.md",
+          branch: "main",
+          content: "new content",
+          message: "Edit README.md",
+        },
+      );
+
+      expect(parsed.id).toBe("abc123def456");
+      expect(parsed.displayId).toBe("abc123d");
+
+      const [url, opts] = h.mockClients.api.put.mock.calls[0] as [
+        string,
+        { body: FormData },
+      ];
+      expect(url).toBe("projects/TEST/repos/my-repo/browse/README.md");
+      const fd = opts.body;
+      const entries: Record<string, unknown> = {};
+      fd.forEach((value, key) => {
+        entries[key] = value;
+      });
+      expect(entries.branch).toBe("main");
+      expect(entries.content).toBe("new content");
+      expect(entries.message).toBe("Edit README.md");
+      expect(entries).not.toHaveProperty("sourceCommitId");
+      expect(entries).not.toHaveProperty("sourceBranch");
+    });
+
+    test("should use default project when not provided", async () => {
+      mockJson(h.mockClients.api.put, commitResponse);
+
+      await h.client.callTool({
+        name: "edit_file",
+        arguments: {
+          repository: "my-repo",
+          filePath: "file.txt",
+          branch: "main",
+          content: "data",
+          message: "msg",
+        },
+      });
+
+      const [url] = h.mockClients.api.put.mock.calls[0] as [string, unknown];
+      expect(url).toBe("projects/DEFAULT/repos/my-repo/browse/file.txt");
+    });
+
+    describe("sourceCommitId x sourceBranch decision table", () => {
+      test("both omitted: only required fields in FormData", async () => {
+        mockJson(h.mockClients.api.put, commitResponse);
+
+        await h.client.callTool({
+          name: "edit_file",
+          arguments: {
+            project: "TEST",
+            repository: "r",
+            filePath: "f.txt",
+            branch: "b",
+            content: "c",
+            message: "m",
+          },
+        });
+
+        const [, opts] = h.mockClients.api.put.mock.calls[0] as [
+          string,
+          { body: FormData },
+        ];
+        const keys = new Set<string>();
+        opts.body.forEach((_, key) => keys.add(key));
+        expect(keys.has("sourceCommitId")).toBe(false);
+        expect(keys.has("sourceBranch")).toBe(false);
+        expect(keys.has("branch")).toBe(true);
+        expect(keys.has("content")).toBe(true);
+        expect(keys.has("message")).toBe(true);
+      });
+
+      test("sourceCommitId provided: included in FormData", async () => {
+        mockJson(h.mockClients.api.put, commitResponse);
+
+        await h.client.callTool({
+          name: "edit_file",
+          arguments: {
+            project: "TEST",
+            repository: "r",
+            filePath: "f.txt",
+            branch: "b",
+            content: "c",
+            message: "m",
+            sourceCommitId: "abc123",
+          },
+        });
+
+        const [, opts] = h.mockClients.api.put.mock.calls[0] as [
+          string,
+          { body: FormData },
+        ];
+        const entries: Record<string, unknown> = {};
+        opts.body.forEach((value, key) => {
+          entries[key] = value;
+        });
+        expect(entries.sourceCommitId).toBe("abc123");
+        expect(entries).not.toHaveProperty("sourceBranch");
+      });
+
+      test("sourceBranch provided: included in FormData", async () => {
+        mockJson(h.mockClients.api.put, commitResponse);
+
+        await h.client.callTool({
+          name: "edit_file",
+          arguments: {
+            project: "TEST",
+            repository: "r",
+            filePath: "f.txt",
+            branch: "b",
+            content: "c",
+            message: "m",
+            sourceBranch: "develop",
+          },
+        });
+
+        const [, opts] = h.mockClients.api.put.mock.calls[0] as [
+          string,
+          { body: FormData },
+        ];
+        const entries: Record<string, unknown> = {};
+        opts.body.forEach((value, key) => {
+          entries[key] = value;
+        });
+        expect(entries.sourceBranch).toBe("develop");
+        expect(entries).not.toHaveProperty("sourceCommitId");
+      });
+
+      test("both provided: both in FormData", async () => {
+        mockJson(h.mockClients.api.put, commitResponse);
+
+        await h.client.callTool({
+          name: "edit_file",
+          arguments: {
+            project: "TEST",
+            repository: "r",
+            filePath: "f.txt",
+            branch: "b",
+            content: "c",
+            message: "m",
+            sourceCommitId: "abc123",
+            sourceBranch: "develop",
+          },
+        });
+
+        const [, opts] = h.mockClients.api.put.mock.calls[0] as [
+          string,
+          { body: FormData },
+        ];
+        const entries: Record<string, unknown> = {};
+        opts.body.forEach((value, key) => {
+          entries[key] = value;
+        });
+        expect(entries.sourceCommitId).toBe("abc123");
+        expect(entries.sourceBranch).toBe("develop");
+      });
+    });
+
+    describe("content partitions", () => {
+      test("empty content is sent as empty string", async () => {
+        mockJson(h.mockClients.api.put, commitResponse);
+
+        await h.client.callTool({
+          name: "edit_file",
+          arguments: {
+            project: "TEST",
+            repository: "r",
+            filePath: "f.txt",
+            branch: "b",
+            content: "",
+            message: "clear",
+          },
+        });
+
+        const [, opts] = h.mockClients.api.put.mock.calls[0] as [
+          string,
+          { body: FormData },
+        ];
+        const entries: Record<string, unknown> = {};
+        opts.body.forEach((value, key) => {
+          entries[key] = value;
+        });
+        expect(entries.content).toBe("");
+      });
+
+      test("unicode and emoji content is preserved", async () => {
+        mockJson(h.mockClients.api.put, commitResponse);
+        const content = "line1\nline2\n\tindented\n⭐";
+
+        await h.client.callTool({
+          name: "edit_file",
+          arguments: {
+            project: "TEST",
+            repository: "r",
+            filePath: "f.txt",
+            branch: "b",
+            content,
+            message: "unicode",
+          },
+        });
+
+        const [, opts] = h.mockClients.api.put.mock.calls[0] as [
+          string,
+          { body: FormData },
+        ];
+        const entries: Record<string, unknown> = {};
+        opts.body.forEach((value, key) => {
+          entries[key] = value;
+        });
+        expect(entries.content).toBe(content);
+      });
+    });
+
+    describe("filePath partitions", () => {
+      test.each([
+        { label: "root-level", path: "README.md" },
+        { label: "nested", path: "src/lib/utils.ts" },
+        { label: "with spaces", path: "my documents/notes.txt" },
+        { label: "deeply nested", path: "a/b/c/d/e/f/g/file.txt" },
+      ])("$label path is URL-embedded correctly", async ({ path }) => {
+        mockJson(h.mockClients.api.put, commitResponse);
+
+        await h.client.callTool({
+          name: "edit_file",
+          arguments: {
+            project: "TEST",
+            repository: "r",
+            filePath: path,
+            branch: "b",
+            content: "c",
+            message: "m",
+          },
+        });
+
+        const [url] = h.mockClients.api.put.mock.calls[0] as [string, unknown];
+        expect(url).toBe(`projects/TEST/repos/r/browse/${path}`);
+      });
+    });
+
+    describe("message partitions", () => {
+      test("multiline message with body is preserved", async () => {
+        mockJson(h.mockClients.api.put, commitResponse);
+        const message = "feat: add feature\n\nDetailed description.";
+
+        await h.client.callTool({
+          name: "edit_file",
+          arguments: {
+            project: "TEST",
+            repository: "r",
+            filePath: "f.txt",
+            branch: "b",
+            content: "c",
+            message,
+          },
+        });
+
+        const [, opts] = h.mockClients.api.put.mock.calls[0] as [
+          string,
+          { body: FormData },
+        ];
+        const entries: Record<string, unknown> = {};
+        opts.body.forEach((value, key) => {
+          entries[key] = value;
+        });
+        expect(entries.message).toBe(message);
+      });
+    });
+
+    describe("error handling", () => {
+      test("returns error on HTTP 404", async () => {
+        mockReject(h.mockClients.api.put, new Error("Not Found"));
+
+        const result = await callRaw(h.client, "edit_file", {
+          project: "TEST",
+          repository: "nonexistent",
+          filePath: "f.txt",
+          branch: "main",
+          content: "c",
+          message: "m",
+        });
+
+        expect(result.isError).toBe(true);
+      });
+
+      test("returns error on HTTP 409 conflict", async () => {
+        mockReject(h.mockClients.api.put, new Error("Conflict"));
+
+        const result = await callRaw(h.client, "edit_file", {
+          project: "TEST",
+          repository: "my-repo",
+          filePath: "f.txt",
+          branch: "main",
+          content: "c",
+          message: "m",
+          sourceCommitId: "stale-commit",
+        });
+
+        expect(result.isError).toBe(true);
+      });
+    });
+  });
+
+  describe("get_file_content", () => {
+    test("should read file content", async () => {
+      mockJson(h.mockClients.api.get, {
+        lines: [{ text: "line 1" }, { text: "line 2" }],
+        size: 2,
+        isLastPage: true,
+      });
+
+      const result = await callRaw(h.client, "get_file_content", {
+        project: "TEST",
+        repository: "my-repo",
+        filePath: "README.md",
+      });
+
+      const content = result.content;
+      expect(content[0].type).toBe("text");
+    });
+
+    test("should pass branch as 'at' search param", async () => {
+      mockJson(h.mockClients.api.get, {
+        lines: [{ text: "content" }],
+        size: 1,
+        isLastPage: true,
+      });
+
+      await h.client.callTool({
+        name: "get_file_content",
+        arguments: {
+          project: "TEST",
+          repository: "my-repo",
+          filePath: "src/index.ts",
+          branch: "feature-branch",
+        },
+      });
+
+      expectCalledWithSearchParams(
+        h.mockClients.api.get,
+        "projects/TEST/repos/my-repo/browse/src/index.ts",
+        { at: "feature-branch" },
+      );
+    });
+
+    test("should pass limit and start for pagination", async () => {
+      mockJson(h.mockClients.api.get, {
+        lines: [{ text: "line 50" }],
+        size: 1,
+        isLastPage: false,
+      });
+
+      await h.client.callTool({
+        name: "get_file_content",
+        arguments: {
+          project: "TEST",
+          repository: "my-repo",
+          filePath: "big-file.ts",
+          limit: 50,
+          start: 100,
+        },
+      });
+
+      expectCalledWithSearchParams(
+        h.mockClients.api.get,
+        "projects/TEST/repos/my-repo/browse/big-file.ts",
+        { limit: 50, start: 100 },
+      );
+    });
+
+    test("should use default project when not provided", async () => {
+      mockJson(h.mockClients.api.get, { lines: [], size: 0, isLastPage: true });
+
+      await h.client.callTool({
+        name: "get_file_content",
+        arguments: { repository: "my-repo", filePath: "README.md" },
+      });
+
+      expect(h.mockClients.api.get).toHaveBeenCalledWith(
+        "projects/DEFAULT/repos/my-repo/browse/README.md",
+        expect.anything(),
+      );
+    });
+
+    test("should handle errors gracefully", async () => {
+      mockError(h.mockClients.api.get, new Error("File not found"));
+
+      const result = await callRaw(h.client, "get_file_content", {
+        project: "TEST",
+        repository: "my-repo",
+        filePath: "missing.ts",
+      });
+
+      expect(result.isError).toBe(true);
+    });
+  });
+
+  describe("list_projects", () => {
+    test("should pass fields='*all' to bypass curation", async () => {
+      const mockResponse = {
+        values: [
+          {
+            key: "PROJ",
+            name: "Project",
+            links: { self: [{ href: "https://example.com" }] },
+            extra: "data",
+          },
+        ],
+        size: 1,
+        isLastPage: true,
+      };
+
+      mockJson(h.mockClients.api.get, mockResponse);
+
+      const parsed = await callAndParse<{
+        projects: Array<Record<string, unknown>>;
+      }>(h.client, "list_projects", { fields: "*all" });
+      expect(parsed.projects[0]).toHaveProperty("links");
+      expect(parsed.projects[0]).toHaveProperty("extra");
+    });
+
+    test("should curate to only requested fields with custom fields param", async () => {
+      mockJson(h.mockClients.api.get, {
+        values: [
+          { key: "P", name: "Proj", description: "D", type: "N", extra: "x" },
+        ],
+        size: 1,
+        isLastPage: true,
+      });
+
+      const parsed = await callAndParse<{
+        projects: Array<Record<string, unknown>>;
+      }>(h.client, "list_projects", { fields: "key,name" });
+
+      expect(Object.keys(parsed.projects[0]).sort()).toEqual(["key", "name"]);
+    });
+
+    test("should handle errors gracefully", async () => {
+      mockError(h.mockClients.api.get, new Error("Server error"));
+
+      const result = await callRaw(h.client, "list_projects", {});
+
+      expect(result.isError).toBe(true);
+    });
+  });
+
+  describe("list_repositories", () => {
+    test("should pass fields='*all' to bypass curation", async () => {
+      const mockResponse = {
+        values: [
+          { slug: "repo", name: "Repo", links: { clone: [] }, extra: "data" },
+        ],
+        size: 1,
+        isLastPage: true,
+      };
+
+      mockJson(h.mockClients.api.get, mockResponse);
+
+      const parsed = await callAndParse<{
+        repositories: Array<Record<string, unknown>>;
+      }>(h.client, "list_repositories", { project: "TEST", fields: "*all" });
+      expect(parsed.repositories[0]).toHaveProperty("links");
+      expect(parsed.repositories[0]).toHaveProperty("extra");
+    });
+
+    test("should curate to only requested fields with custom fields param", async () => {
+      mockJson(h.mockClients.api.get, {
+        values: [
+          {
+            slug: "r",
+            name: "Repo",
+            project: { key: "T" },
+            state: "AVAILABLE",
+            extra: "x",
+          },
+        ],
+        size: 1,
+        isLastPage: true,
+      });
+
+      const parsed = await callAndParse<{
+        repositories: Array<Record<string, unknown>>;
+      }>(h.client, "list_repositories", {
+        project: "TEST",
+        fields: "slug,name",
+      });
+
+      expect(Object.keys(parsed.repositories[0]).sort()).toEqual([
+        "name",
+        "slug",
+      ]);
+    });
+
+    test.each([
+      { limit: 0, start: 0 },
+      { limit: 1, start: 0 },
+      { limit: 1000, start: 0 },
+      { limit: 25, start: 99999 },
+    ])(
+      "list_repositories forwards limit=$limit start=$start",
+      async ({ limit, start }) => {
+        mockJson(h.mockClients.api.get, {
+          values: [],
+          size: 0,
+          isLastPage: true,
+        });
+        await h.client.callTool({
+          name: "list_repositories",
+          arguments: { project: "P", limit, start },
+        });
+        expectCalledWithSearchParams(
+          h.mockClients.api.get,
+          "projects/P/repos",
+          { limit, start },
+        );
+      },
+    );
+
+    test.each([
+      { limit: 0, start: 0 },
+      { limit: 1, start: 0 },
+      { limit: 1000, start: 0 },
+      { limit: 25, start: 99999 },
+    ])(
+      "list_projects forwards limit=$limit start=$start",
+      async ({ limit, start }) => {
+        mockJson(h.mockClients.api.get, {
+          values: [],
+          size: 0,
+          isLastPage: true,
+        });
+        await h.client.callTool({
+          name: "list_projects",
+          arguments: { limit, start },
+        });
+        expectCalledWithSearchParams(h.mockClients.api.get, "projects", {
+          limit,
+          start,
+        });
+      },
+    );
+
+    test("should handle errors gracefully", async () => {
+      mockError(h.mockClients.api.get, new Error("Not Found"));
+
+      const result = await callRaw(h.client, "list_repositories", {
+        project: "NONEXISTENT",
+      });
+
+      expect(result.isError).toBe(true);
+    });
+  });
+});

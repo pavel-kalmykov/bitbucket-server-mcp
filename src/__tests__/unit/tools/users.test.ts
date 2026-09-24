@@ -1,0 +1,140 @@
+import { describe, test, expect } from "vitest";
+import { registerUserTools } from "../../../tools/users.js";
+import { mockJson, mockReject } from "../../fixtures/test-utils.js";
+import { aPaginated } from "../../fixtures/test-builders.js";
+import {
+  callAndParse,
+  callRaw,
+  expectCalledWith,
+  expectCalledWithSearchParams,
+  setupToolHarness,
+} from "../../fixtures/tool-test-utils.js";
+
+describe("get_user_profile", () => {
+  const h = setupToolHarness({
+    register: registerUserTools,
+    defaultProject: "DEFAULT",
+  });
+
+  test("returns user profile", async () => {
+    mockJson(h.mockClients.api.get, {
+      name: "jdoe",
+      displayName: "John Doe",
+      emailAddress: "jdoe@example.com",
+      active: true,
+      slug: "jdoe",
+    });
+
+    const parsed = await callAndParse<{ name: string; displayName: string }>(
+      h.client,
+      "get_user_profile",
+      { userSlug: "jdoe" },
+    );
+
+    expect(parsed.name).toBe("jdoe");
+    expect(parsed.displayName).toBe("John Doe");
+  });
+
+  test("curated output drops avatarUrl and links", async () => {
+    mockJson(h.mockClients.api.get, {
+      name: "jdoe",
+      displayName: "John Doe",
+      emailAddress: "jdoe@example.com",
+      active: true,
+      slug: "jdoe",
+      type: "NORMAL",
+      avatarUrl: "https://example.com/avatar.png",
+      links: { self: [{ href: "https://example.com/users/jdoe" }] },
+    });
+
+    const parsed = await callAndParse<Record<string, unknown>>(
+      h.client,
+      "get_user_profile",
+      { userSlug: "jdoe" },
+    );
+
+    expect(parsed.name).toBe("jdoe");
+    expect(parsed.avatarUrl).toBeUndefined();
+    expect(parsed.links).toBeUndefined();
+  });
+
+  test("fields=*all returns the raw response including avatarUrl", async () => {
+    mockJson(h.mockClients.api.get, {
+      name: "jdoe",
+      displayName: "John Doe",
+      avatarUrl: "https://example.com/avatar.png",
+    });
+
+    const parsed = await callAndParse<Record<string, unknown>>(
+      h.client,
+      "get_user_profile",
+      { userSlug: "jdoe", fields: "*all" },
+    );
+
+    expect(parsed.avatarUrl).toBe("https://example.com/avatar.png");
+  });
+
+  test("calls the correct API endpoint", async () => {
+    mockJson(h.mockClients.api.get, { name: "jdoe" });
+
+    await callAndParse(h.client, "get_user_profile", { userSlug: "jdoe" });
+
+    expectCalledWith(h.mockClients.api.get, "users/jdoe");
+  });
+
+  test("returns error when user not found", async () => {
+    mockReject(h.mockClients.api.get, new Error("Not found"));
+
+    const result = await callRaw(h.client, "get_user_profile", {
+      userSlug: "nonexistent",
+    });
+
+    expect(result.isError).toBe(true);
+  });
+});
+
+describe("search_users", () => {
+  const h = setupToolHarness({
+    register: registerUserTools,
+    defaultProject: "DEFAULT",
+  });
+
+  test("returns users matching filter", async () => {
+    mockJson(
+      h.mockClients.api.get,
+      aPaginated([{ name: "admin", displayName: "Administrator" }]),
+    );
+
+    const parsed = await callAndParse<{
+      total: number;
+      users: Array<{ name: string }>;
+    }>(h.client, "search_users", { filter: "admin" });
+
+    expect(parsed.total).toBe(1);
+    expect(parsed.users[0].name).toBe("admin");
+  });
+
+  test("passes filter and pagination as search params", async () => {
+    mockJson(h.mockClients.api.get, aPaginated([]));
+
+    await callAndParse(h.client, "search_users", {
+      filter: "jdoe",
+      limit: 10,
+      start: 5,
+    });
+
+    expectCalledWithSearchParams(h.mockClients.api.get, "users", {
+      filter: "jdoe",
+      limit: 10,
+      start: 5,
+    });
+  });
+
+  test("returns error on API failure", async () => {
+    mockReject(h.mockClients.api.get, new Error("Forbidden"));
+
+    const result = await callRaw(h.client, "search_users", { filter: "admin" });
+
+    expect(result.isError).toBe(true);
+  });
+});

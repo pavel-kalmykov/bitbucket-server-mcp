@@ -1,0 +1,443 @@
+import { describe, test, expect } from "vitest";
+import { BitbucketApiError } from "../../../api/http/errors.js";
+import { registerBranchTools } from "../../../tools/branches.js";
+import { mockError, mockJson } from "../../fixtures/test-utils.js";
+import { aBranch } from "../../fixtures/test-builders.js";
+import {
+  callAndParse,
+  callRaw,
+  expectCalledWithSearchParams,
+  setupToolHarness,
+} from "../../fixtures/tool-test-utils.js";
+
+describe("Branch tools", () => {
+  const h = setupToolHarness({
+    register: registerBranchTools,
+    defaultProject: "DEFAULT",
+  });
+
+  describe("list_branches", () => {
+    test("should list branches and include default branch", async () => {
+      mockJson(h.mockClients.api.get, {
+        values: [
+          aBranch({ displayId: "main" }),
+          aBranch({ displayId: "develop", isDefault: false }),
+        ],
+        size: 2,
+        isLastPage: true,
+      });
+      mockJson(h.mockClients.api.get, {
+        ...aBranch(),
+      });
+
+      const parsed = await callAndParse<{
+        total: number;
+        branches: Array<{ displayId: string }>;
+        defaultBranch: { displayId: string };
+      }>(h.client, "list_branches", {
+        project: "TEST",
+        repository: "my-repo",
+      });
+
+      expect(parsed.total).toBe(2);
+      expect(parsed.branches).toHaveLength(2);
+      expect(parsed.branches[0].displayId).toBe("main");
+      expect(parsed.defaultBranch.displayId).toBe("main");
+    });
+
+    test("should use default project when not provided", async () => {
+      mockJson(h.mockClients.api.get, {
+        values: [],
+        size: 0,
+        isLastPage: true,
+      });
+      mockJson(h.mockClients.api.get, null);
+
+      await callAndParse(h.client, "list_branches", { repository: "my-repo" });
+
+      expect(h.mockClients.api.get).toHaveBeenCalledWith(
+        "projects/DEFAULT/repos/my-repo/branches",
+        expect.anything(),
+      );
+    });
+
+    test("should return raw output when fields is '*all'", async () => {
+      mockJson(h.mockClients.api.get, {
+        values: [
+          {
+            displayId: "main",
+            id: "refs/heads/main",
+            isDefault: true,
+            type: "BRANCH",
+            latestCommit: "abc123",
+            metadata: { someKey: "someValue" },
+            extraField: "should be kept",
+          },
+        ],
+        size: 1,
+        isLastPage: true,
+      });
+      mockJson(h.mockClients.api.get, {
+        ...aBranch(),
+        extraField: "also kept",
+      });
+
+      const parsed = await callAndParse<{
+        branches: Array<{ extraField: string }>;
+        defaultBranch: { extraField: string };
+      }>(h.client, "list_branches", {
+        project: "TEST",
+        repository: "my-repo",
+        fields: "*all",
+      });
+
+      expect(parsed.branches[0].extraField).toBe("should be kept");
+      expect(parsed.defaultBranch.extraField).toBe("also kept");
+    });
+
+    test("should handle default branch fetch failure gracefully", async () => {
+      mockJson(h.mockClients.api.get, {
+        values: [aBranch()],
+        size: 1,
+        isLastPage: true,
+      });
+      mockError(h.mockClients.api.get, new Error("Not found"));
+
+      const parsed = await callAndParse<{
+        total: number;
+        defaultBranch: unknown;
+      }>(h.client, "list_branches", { project: "TEST", repository: "my-repo" });
+
+      expect(parsed.total).toBe(1);
+      expect(parsed.defaultBranch).toBeNull();
+    });
+
+    test("should fetch default branch from the correct endpoint", async () => {
+      mockJson(h.mockClients.api.get, {
+        values: [],
+        size: 0,
+        isLastPage: true,
+      });
+      mockJson(h.mockClients.api.get, { displayId: "main" });
+
+      await callAndParse(h.client, "list_branches", {
+        project: "PROJ",
+        repository: "repo",
+      });
+
+      expect(h.mockClients.api.get).toHaveBeenCalledWith(
+        "projects/PROJ/repos/repo/default-branch",
+      );
+    });
+  });
+
+  describe("list_commits", () => {
+    test("should list commits for a branch", async () => {
+      const mockResponse = {
+        values: [
+          {
+            id: "abc123",
+            message: "Initial commit",
+            author: { name: "john", displayName: "John Doe", slug: "jdoe" },
+          },
+          {
+            id: "def456",
+            message: "Second commit",
+            author: { name: "jane", displayName: "Jane Smith", slug: "jsmith" },
+          },
+        ],
+        size: 2,
+        isLastPage: true,
+      };
+
+      mockJson(h.mockClients.api.get, mockResponse);
+
+      const parsed = await callAndParse<{
+        total: number;
+        commits: Array<{ id: string }>;
+      }>(h.client, "list_commits", {
+        project: "TEST",
+        repository: "my-repo",
+        branch: "main",
+      });
+
+      expect(parsed.total).toBe(2);
+      expect(parsed.commits).toHaveLength(2);
+      expect(parsed.commits[0].id).toBe("abc123");
+
+      expectCalledWithSearchParams(
+        h.mockClients.api.get,
+        "projects/TEST/repos/my-repo/commits",
+        { until: "main", limit: 25, start: 0 },
+      );
+    });
+
+    test("should filter commits by author (case-insensitive)", async () => {
+      const mockResponse = {
+        values: [
+          {
+            id: "abc123",
+            message: "First",
+            author: { name: "john", displayName: "John Doe", slug: "jdoe" },
+          },
+          {
+            id: "def456",
+            message: "Second",
+            author: { name: "jane", displayName: "Jane Smith", slug: "jsmith" },
+          },
+        ],
+        size: 2,
+        isLastPage: true,
+      };
+
+      mockJson(h.mockClients.api.get, mockResponse);
+
+      const parsed = await callAndParse<{
+        total: number;
+        commits: Array<{ id: string }>;
+      }>(h.client, "list_commits", {
+        project: "TEST",
+        repository: "my-repo",
+        author: "JOHN",
+      });
+
+      expect(parsed.total).toBe(1);
+      expect(parsed.commits).toHaveLength(1);
+      expect(parsed.commits[0].id).toBe("abc123");
+    });
+
+    test("should use default project when not provided", async () => {
+      mockJson(h.mockClients.api.get, {
+        values: [],
+        size: 0,
+        isLastPage: true,
+      });
+
+      await callAndParse(h.client, "list_commits", { repository: "my-repo" });
+
+      expect(h.mockClients.api.get).toHaveBeenCalledWith(
+        "projects/DEFAULT/repos/my-repo/commits",
+        expect.anything(),
+      );
+    });
+  });
+
+  describe("list_branches (filterText + pagination params forwarding)", () => {
+    const searchParamsOfBranchesCall = () => {
+      const callArgs = h.mockClients.api.get.mock.calls.find((c) =>
+        String(c[0]).endsWith("/branches"),
+      );
+      expect(
+        callArgs,
+        "expected a /branches request to have been made",
+      ).toBeDefined();
+      return (callArgs![1] as { searchParams: Record<string, unknown> })
+        .searchParams;
+    };
+
+    test.each([
+      { filterText: "feature", limit: 10, start: 0 },
+      { filterText: "fix", limit: 25, start: 50 },
+    ])(
+      "passes filterText=$filterText, limit=$limit, start=$start",
+      async ({ filterText, limit, start }) => {
+        mockJson(h.mockClients.api.get, { values: [], isLastPage: true });
+
+        await h.client.callTool({
+          name: "list_branches",
+          arguments: { repository: "r", filterText, limit, start },
+        });
+
+        const searchParams = searchParamsOfBranchesCall();
+        expect(searchParams.limit).toBe(limit);
+        expect(searchParams.start).toBe(start);
+        expect(searchParams.filterText).toBe(filterText);
+      },
+    );
+
+    test("omits filterText from searchParams when not provided", async () => {
+      mockJson(h.mockClients.api.get, { values: [], isLastPage: true });
+
+      await h.client.callTool({
+        name: "list_branches",
+        arguments: { repository: "r", limit: 1000, start: 0 },
+      });
+
+      const searchParams = searchParamsOfBranchesCall();
+      expect(searchParams.limit).toBe(1000);
+      expect(searchParams.start).toBe(0);
+      expect(searchParams).not.toHaveProperty("filterText");
+    });
+  });
+
+  describe("list_commits author filter (equivalence: case + partial match)", () => {
+    const commitWithAuthor = (name: string, displayName?: string) => ({
+      id: `sha${name}`,
+      displayId: name,
+      message: "c",
+      authorTimestamp: 1,
+      author: { name, displayName, emailAddress: `${name}@x.com` },
+    });
+
+    test.each<{ filter: string; expected: string[] }>([
+      { filter: "alice", expected: ["alice"] },
+      { filter: "ALICE", expected: ["alice"] }, // case-insensitive
+      { filter: "Ali", expected: ["alice"] }, // partial match
+      { filter: "Bob", expected: ["bob"] },
+      { filter: "xyz", expected: [] }, // no match
+    ])("filter '$filter' returns $expected", async ({ filter, expected }) => {
+      mockJson(h.mockClients.api.get, {
+        values: [
+          commitWithAuthor("alice"),
+          commitWithAuthor("bob"),
+          commitWithAuthor("charlie"),
+        ],
+        isLastPage: true,
+      });
+
+      const parsed = await callAndParse<{
+        commits: Array<{ author: { name: string } }>;
+      }>(h.client, "list_commits", {
+        repository: "r",
+        author: filter,
+        fields: "author.name",
+      });
+      const names = parsed.commits.map((c) => c.author.name);
+      expect(names).toEqual(expected);
+    });
+
+    test("matches on displayName too", async () => {
+      mockJson(h.mockClients.api.get, {
+        values: [commitWithAuthor("user1", "Alice Smith")],
+        isLastPage: true,
+      });
+
+      const parsed = await callAndParse<{ commits: unknown[] }>(
+        h.client,
+        "list_commits",
+        { repository: "r", author: "smith" },
+      );
+      expect(parsed.commits).toHaveLength(1);
+    });
+
+    test("matches on slug field", async () => {
+      mockJson(h.mockClients.api.get, {
+        values: [
+          {
+            id: "sha1",
+            author: { name: "user", slug: "dev-user", displayName: "Dev" },
+          },
+        ],
+        isLastPage: true,
+      });
+
+      const parsed = await callAndParse<{ commits: unknown[] }>(
+        h.client,
+        "list_commits",
+        { repository: "r", author: "dev-user" },
+      );
+      expect(parsed.commits).toHaveLength(1);
+    });
+
+    test("excludes commits without author", async () => {
+      mockJson(h.mockClients.api.get, {
+        values: [
+          { id: "sha1", author: { name: "alice" } },
+          { id: "sha2" },
+          { id: "sha3", author: null },
+        ],
+        isLastPage: true,
+      });
+
+      const parsed = await callAndParse<{ commits: unknown[] }>(
+        h.client,
+        "list_commits",
+        { repository: "r", author: "alice" },
+      );
+      expect(parsed.commits).toHaveLength(1);
+    });
+  });
+
+  describe("list_branch_restrictions", () => {
+    test("returns branch restrictions", async () => {
+      mockJson(h.mockClients.branchUtils.get, {
+        values: [
+          {
+            id: 1,
+            type: "push",
+            matcher: { displayId: "refs/heads/*", type: { id: "PATTERN" } },
+            users: [{ name: "jdoe" }],
+          },
+        ],
+        size: 1,
+        isLastPage: true,
+      });
+
+      const parsed = await callAndParse<{
+        total: number;
+        restrictions: Array<{ id: number }>;
+      }>(h.client, "list_branch_restrictions", {
+        project: "TEST",
+        repository: "my-repo",
+      });
+
+      expect(parsed.total).toBe(1);
+      expect(parsed.restrictions[0].id).toBe(1);
+    });
+
+    test("returns empty list when no restrictions exist", async () => {
+      mockJson(h.mockClients.branchUtils.get, {
+        values: [],
+        size: 0,
+        isLastPage: true,
+      });
+
+      const parsed = await callAndParse<{ total: number }>(
+        h.client,
+        "list_branch_restrictions",
+        {
+          project: "TEST",
+          repository: "my-repo",
+        },
+      );
+
+      expect(parsed.total).toBe(0);
+    });
+
+    test("returns empty list when API returns 404", async () => {
+      mockError(
+        h.mockClients.branchUtils.get,
+        new BitbucketApiError({
+          message: "Not Found",
+          status: 404,
+          url: "https://bitbucket.test/restrictions",
+          body: undefined,
+        }),
+      );
+
+      const parsed = await callAndParse<{
+        total: number;
+        restrictions: unknown[];
+        isLastPage: boolean;
+      }>(h.client, "list_branch_restrictions", {
+        project: "TEST",
+        repository: "my-repo",
+      });
+
+      expect(parsed.total).toBe(0);
+      expect(parsed.restrictions).toEqual([]);
+      expect(parsed.isLastPage).toBe(true);
+    });
+
+    test("returns error on non-404 API failure", async () => {
+      mockError(h.mockClients.branchUtils.get, new Error("Server error"));
+
+      const result = await callRaw(h.client, "list_branch_restrictions", {
+        project: "TEST",
+        repository: "my-repo",
+      });
+
+      expect(result.isError).toBe(true);
+    });
+  });
+});
