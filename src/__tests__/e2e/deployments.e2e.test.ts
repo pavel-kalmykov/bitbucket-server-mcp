@@ -31,6 +31,7 @@ describeBitbucket("deployments", () => {
     expect(parsed.key).toBe("e2e-deploy-1");
     expect(parsed.state).toBe("IN_PROGRESS");
     expect(parsed.deploymentSequenceNumber).toBe(1);
+    expect(parsed.environment).toBeDefined();
     expect(parsed.environment?.key).toBe("e2e-env");
     expect(parsed.environment?.displayName).toBe("E2E Env");
     expect(parsed.environment?.type).toBe("TESTING");

@@ -72,7 +72,9 @@ describeBitbucket("pull requests", () => {
         `projects/${scenario.project.key}/repos/${scenario.project.repo.slug}/pull-requests/${r.id}/decline`,
         { json: { version: created.version } },
       )
-      .catch(() => {});
+      .catch((error: unknown) => {
+        console.error("cleanup decline failed:", String(error).slice(0, 120));
+      });
   });
 });
 
@@ -83,6 +85,9 @@ describeBitbucket(
       mcp,
       scenario,
     }) => {
+      // Await the pr before listing: the lazy fixture provisions it on
+      // demand, and the listing must observe it.
+      const prId = (await scenario.project.repo.pr).id;
       const r = await callAndParse<{
         pullRequests: Array<{
           id: number;
@@ -92,7 +97,6 @@ describeBitbucket(
         project: scenario.project.key,
         repository: scenario.project.repo.slug,
       });
-      const prId = (await scenario.project.repo.pr).id;
       const found = r.pullRequests.find((p) => p.id === prId);
       expect(typeof found!.properties!.commentCount).toBe("number");
     });
