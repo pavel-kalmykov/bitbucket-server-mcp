@@ -1,6 +1,7 @@
 import { expect } from "vitest";
 import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
+import { randomUUID } from "node:crypto";
 import { join } from "node:path";
 import { callAndParse, callRaw } from "../tool-test-utils.js";
 import type { Attachment } from "../../api/repositories.js";
@@ -95,7 +96,7 @@ describeBitbucket("attachments", () => {
     // Bitbucket masks the repo as nonexistent for them.
     await bb.api.post("admin/users", {
       searchParams: {
-        name: "limited-user",
+        name: `limited-${randomUUID().slice(0, 8)}`,
         password: "limited-password",
         displayName: "Limited User",
         emailAddress: "limited@example.com",
@@ -103,7 +104,7 @@ describeBitbucket("attachments", () => {
     });
 
     const limited = await setupMcpAgainst(bb, {
-      username: "limited-user",
+      username: `limited-${randomUUID().slice(0, 8)}`,
       password: "limited-password",
     });
     try {

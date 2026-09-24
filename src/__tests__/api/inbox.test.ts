@@ -1,20 +1,23 @@
-import { describe, test, expect } from "vitest";
+import { describe, expect, test } from "vitest";
 import {
-  mockJson,
   createMockClients,
   createTestClient,
+  mockJson,
 } from "../test-utils.js";
 import type { MockHttpClients } from "../test-utils.js";
-import type { ApiContext } from "../../api/context.js";
 import { inboxApi } from "../../api/inbox.js";
 
-function testContext(http: MockHttpClients): ApiContext {
-  return createTestClient({ http });
+function makeInbox(): {
+  http: MockHttpClients;
+  inbox: ReturnType<typeof inboxApi>;
+} {
+  const http = createMockClients();
+  return { http, inbox: inboxApi(createTestClient({ http })) };
 }
 
 describe("inboxApi", () => {
-  test("listPullRequests hits the inbox endpoint with role and status", async () => {
-    const http = createMockClients();
+  test("sends role and participantStatus filters", async () => {
+    const { http, inbox } = makeInbox();
     const page = {
       size: 1,
       limit: 25,
@@ -23,7 +26,7 @@ describe("inboxApi", () => {
     };
     mockJson(http.api.get, page);
 
-    const result = await inboxApi(testContext(http)).listPullRequests({
+    const result = await inbox.listPullRequests({
       role: "REVIEWER",
       participantStatus: "UNAPPROVED",
     });
@@ -40,8 +43,8 @@ describe("inboxApi", () => {
     });
   });
 
-  test("listPullRequests omits unset filters and passes paging", async () => {
-    const http = createMockClients();
+  test("omits unset filters and passes paging", async () => {
+    const { http, inbox } = makeInbox();
     mockJson(http.api.get, {
       size: 0,
       limit: 10,
@@ -49,34 +52,24 @@ describe("inboxApi", () => {
       values: [],
     });
 
-    const result = await inboxApi(testContext(http)).listPullRequests({
-      limit: 10,
-      start: 20,
-    });
+    const result = await inbox.listPullRequests({ limit: 10, start: 20 });
 
     expect(result.values).toEqual([]);
-    const [url, opts] = http.api.get.mock.calls[0] as [
+    const [callUrl, opts] = http.api.get.mock.calls[0] as [
       string,
       { searchParams: Record<string, unknown> },
     ];
-    expect(url).toBe("inbox/pull-requests");
+    expect(callUrl).toBe("inbox/pull-requests");
     expect(opts.searchParams).toEqual({ limit: 10, start: 20 });
   });
 
   test("count reads the inbox count endpoint", async () => {
-    const http = createMockClients();
+    const { http, inbox } = makeInbox();
     mockJson(http.api.get, { count: 19 });
 
-    const result = await inboxApi(testContext(http)).count();
+    const result = await inbox.count();
 
     expect(result).toEqual({ count: 19 });
-    expectCalledUrl(http.api.get, "inbox/pull-requests/count");
+    expect(http.api.get.mock.calls[0]?.[0]).toBe("inbox/pull-requests/count");
   });
 });
-
-function expectCalledUrl(
-  get: MockHttpClients["api"]["get"],
-  url: string,
-): void {
-  expect(get.mock.calls[0]?.[0]).toBe(url);
-}
