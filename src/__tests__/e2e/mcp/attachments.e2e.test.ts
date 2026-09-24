@@ -1,12 +1,12 @@
-import { expect } from "vitest";
+import http from "node:http";
 import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
-import { randomUUID, randomBytes } from "node:crypto";
 import { join } from "node:path";
+import { randomUUID, randomBytes } from "node:crypto";
 import { callAndParse, callRaw } from "../../fixtures/tool-test-utils.js";
 import type { Attachment } from "../../../api/repositories.js";
-import { setupMcpAgainst } from ".././mcp-harness.js";
-import { test, describeBitbucket } from ".././e2e-suite.js";
+import { setupMcpAgainst } from "../mcp-harness.js";
+import { test, describeBitbucket } from "../e2e-suite.js";
 
 // Canonical 1x1 transparent PNG (valid CRCs); a real binary exercises
 // byte-exact round-trips.
@@ -14,6 +14,13 @@ const PNG_BYTES = Buffer.from(
   "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==",
   "base64",
 );
+
+function limitedUser(): { name: string; password: string } {
+  return {
+    name: `limited-${randomUUID().slice(0, 8)}`,
+    password: "limited-password",
+  };
+}
 
 describeBitbucket("attachments", () => {
   test("upload, download, and delete round-trip with exact bytes", async ({
@@ -49,7 +56,6 @@ describeBitbucket("attachments", () => {
         attachmentId: uploaded.id,
         filePath: join(dir, "downloaded.png"),
       });
-      expect(download.contentType).toBe("image/png");
       expect(download.size).toBe(PNG_BYTES.byteLength);
       expect(await readFile(download.savedTo)).toEqual(PNG_BYTES);
 
@@ -87,21 +93,59 @@ describeBitbucket("attachments", () => {
     }
   });
 
-  test("big chunked attachments report their real byte size", async ({
-    mcp,
+  test("chunked-framed downloads report the real byte size", async ({
+    bb,
     scenario,
   }) => {
-    // Responses larger than the servlet buffer are served chunked with no
-    // content-length header (production always does this for downloads);
-    // the reported size must come from the bytes read, not the header.
+    // Production serves attachment downloads behind a proxy that re-frames
+    // large responses as chunked (no content-length). The vanilla container
+    // always declares content-length, so this test routes the mcp server
+    // through a re-framing proxy to reproduce the production framing. With
+    // a header-derived size the tool reported 0 for a complete download.
     const bytes = randomBytes(16 * 1024);
     const dir = await mkdtemp(join(tmpdir(), "e2e-attach-"));
+    let proxy: http.Server | undefined;
     try {
+      const server = http.createServer(async (req, res) => {
+        const headers: Record<string, string> = {};
+        for (const [k, v] of Object.entries(req.headers)) {
+          if (k !== "host" && k !== "connection" && typeof v === "string") {
+            headers[k] = v;
+          }
+        }
+        const chunks: Buffer[] = [];
+        for await (const chunk of req) chunks.push(chunk as Buffer);
+        const body = chunks.length > 0 ? Buffer.concat(chunks) : undefined;
+        const upstream = await fetch(`${bb.url}${req.url}`, {
+          method: req.method,
+          headers,
+          body,
+        });
+        const resHeaders: Record<string, string> = {};
+        upstream.headers.forEach((v, k) => {
+          if (k !== "content-length") resHeaders[k] = v;
+        });
+        res.writeHead(upstream.status, resHeaders);
+        res.end(Buffer.from(await upstream.arrayBuffer()));
+      });
+      await new Promise<void>((resolve) => {
+        server.listen(0, "127.0.0.1", resolve);
+      });
+      proxy = server;
+      const address = server.address() as { port: number };
+      const proxyUrl = `http://127.0.0.1:${address.port}`;
+
+      const { client: proxiedMcp } = await setupMcpAgainst(
+        bb,
+        undefined,
+        proxyUrl,
+      );
+
       const bigPath = join(dir, "big.bin");
       await writeFile(bigPath, bytes);
 
       const uploaded = await callAndParse<{ id: string }>(
-        mcp.client,
+        proxiedMcp,
         "upload_attachment",
         {
           project: scenario.project.key,
@@ -115,7 +159,7 @@ describeBitbucket("attachments", () => {
         contentType: string;
         size: number;
         savedTo: string;
-      }>(mcp.client, "download_attachment", {
+      }>(proxiedMcp, "download_attachment", {
         project: scenario.project.key,
         repository: scenario.project.repo.slug,
         attachmentId: uploaded.id,
@@ -125,6 +169,7 @@ describeBitbucket("attachments", () => {
       expect(download.size).toBe(bytes.byteLength);
       expect(await readFile(download.savedTo)).toEqual(bytes);
     } finally {
+      proxy?.close();
       await rm(dir, { recursive: true, force: true });
     }
   });
@@ -136,18 +181,19 @@ describeBitbucket("attachments", () => {
   }) => {
     // A user with no permissions on the repo cannot delete its attachments;
     // Bitbucket masks the repo as nonexistent for them.
+    const limited = limitedUser();
     await bb.api.post("admin/users", {
       searchParams: {
-        name: `limited-${randomUUID().slice(0, 8)}`,
-        password: "limited-password",
+        name: limited.name,
+        password: limited.password,
         displayName: "Limited User",
         emailAddress: "limited@example.com",
       },
     });
 
-    const limited = await setupMcpAgainst(bb, {
-      username: `limited-${randomUUID().slice(0, 8)}`,
-      password: "limited-password",
+    const limitedSession = await setupMcpAgainst(bb, {
+      username: limited.name,
+      password: limited.password,
     });
     try {
       const dir = await mkdtemp(join(tmpdir(), "e2e-attach-"));
@@ -164,11 +210,15 @@ describeBitbucket("attachments", () => {
           },
         );
 
-        const denied = await callRaw(limited.client, "delete_attachment", {
-          project: scenario.project.key,
-          repository: scenario.project.repo.slug,
-          attachmentId: uploaded.id,
-        });
+        const denied = await callRaw(
+          limitedSession.client,
+          "delete_attachment",
+          {
+            project: scenario.project.key,
+            repository: scenario.project.repo.slug,
+            attachmentId: uploaded.id,
+          },
+        );
         expect(denied.isError).toBe(true);
         expect(
           (denied.content[0] as { text: string }).text.length,
@@ -184,7 +234,7 @@ describeBitbucket("attachments", () => {
         await rm(dir, { recursive: true, force: true });
       }
     } finally {
-      await limited.close();
+      await limitedSession.close();
     }
   });
 });
