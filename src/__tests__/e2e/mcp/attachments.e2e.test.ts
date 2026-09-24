@@ -1,7 +1,7 @@
 import { expect } from "vitest";
 import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
-import { randomUUID } from "node:crypto";
+import { randomUUID, randomBytes } from "node:crypto";
 import { join } from "node:path";
 import { callAndParse, callRaw } from "../../fixtures/tool-test-utils.js";
 import type { Attachment } from "../../../api/repositories.js";
@@ -82,6 +82,48 @@ describeBitbucket("attachments", () => {
       expect((redel.content[0] as { text: string }).text).toContain(
         "does not exist",
       );
+    } finally {
+      await rm(dir, { recursive: true, force: true });
+    }
+  });
+
+  test("big chunked attachments report their real byte size", async ({
+    mcp,
+    scenario,
+  }) => {
+    // Responses larger than the servlet buffer are served chunked with no
+    // content-length header (production always does this for downloads);
+    // the reported size must come from the bytes read, not the header.
+    const bytes = randomBytes(16 * 1024);
+    const dir = await mkdtemp(join(tmpdir(), "e2e-attach-"));
+    try {
+      const bigPath = join(dir, "big.bin");
+      await writeFile(bigPath, bytes);
+
+      const uploaded = await callAndParse<{ id: string }>(
+        mcp.client,
+        "upload_attachment",
+        {
+          project: scenario.project.key,
+          repository: scenario.project.repo.slug,
+          filePath: bigPath,
+        },
+      );
+
+      const download = await callAndParse<{
+        attachmentId: string;
+        contentType: string;
+        size: number;
+        savedTo: string;
+      }>(mcp.client, "download_attachment", {
+        project: scenario.project.key,
+        repository: scenario.project.repo.slug,
+        attachmentId: uploaded.id,
+        filePath: join(dir, "downloaded.bin"),
+      });
+
+      expect(download.size).toBe(bytes.byteLength);
+      expect(await readFile(download.savedTo)).toEqual(bytes);
     } finally {
       await rm(dir, { recursive: true, force: true });
     }
