@@ -97,10 +97,9 @@ export function mockBytes(
   fn.mockReturnValueOnce(
     fakeResponse({
       arrayBuffer: () => Promise.resolve(bytes.buffer as ArrayBuffer),
-      headers: {
-        "content-type": contentType,
-        "content-length": String(bytes.byteLength),
-      },
+      // No content-length header: Bitbucket serves attachments chunked, so
+      // consumers must derive the size from the bytes themselves.
+      headers: { "content-type": contentType },
     }),
   );
 }
