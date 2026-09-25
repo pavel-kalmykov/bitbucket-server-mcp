@@ -276,6 +276,8 @@ describe("Repository tools", () => {
       });
 
       expect(result.isError).toBeFalsy();
+      expect(parsed.size).toBe(bytes.byteLength);
+      expect(parsed.contentType).toBe("application/octet-stream");
       expect(parsed.savedTo).toBe(target);
       expect(readFileSync(target)).toEqual(Buffer.from(bytes));
       expectCalledWith(

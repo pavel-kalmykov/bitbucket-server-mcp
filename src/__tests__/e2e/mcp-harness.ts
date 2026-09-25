@@ -16,9 +16,10 @@ export interface McpAgainstBitbucket {
 export async function setupMcpAgainst(
   container: StartedBitbucket,
   auth?: { username: string; password: string },
+  baseUrl?: string,
 ): Promise<McpAgainstBitbucket> {
   const config: BitbucketConfig = {
-    baseUrl: container.url,
+    baseUrl: baseUrl ?? container.url,
     username: auth?.username ?? container.admin.username,
     password: auth?.password ?? container.admin.password,
     readOnly: false,
