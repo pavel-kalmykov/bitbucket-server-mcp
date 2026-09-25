@@ -31,7 +31,7 @@ export function registerTagTools(ctx: ToolContext) {
     {
       description:
         "List tags in a repository. Supports custom field selection via the `fields` param (`'*all'` for full raw response, `'id,displayId,hash'` for a custom subset).",
-      inputSchema: z.strictObject({
+      inputSchema: {
         project: projectParam(),
         repository: repositoryParam(),
         filterText: z
@@ -44,7 +44,7 @@ export function registerTagTools(ctx: ToolContext) {
           .describe("Number of tags to return (default: 25, max: 1000)."),
         start: startParam(),
         fields: fieldsParam(),
-      }),
+      },
       annotations: toolAnnotations(),
     },
     async ({ fields, ...params }) => {
@@ -63,12 +63,12 @@ export function registerTagTools(ctx: ToolContext) {
     {
       description:
         "Get details of a specific tag by its name. Supports custom field selection via the `fields` param (`'*all'` for full raw response, `'id,displayId,hash'` for a custom subset).",
-      inputSchema: z.strictObject({
+      inputSchema: {
         project: projectParam(),
         repository: repositoryParam(),
         name: z.string().describe("Tag name (e.g. 'v1.0.0')."),
         fields: fieldsParam(),
-      }),
+      },
       annotations: toolAnnotations(),
     },
     async ({ fields, ...params }) => {
@@ -83,7 +83,7 @@ export function registerTagTools(ctx: ToolContext) {
     {
       description:
         'Manage tags in a repository. Actions: "create" (create a new tag pointing to a commit), "delete" (delete a tag by name).',
-      inputSchema: z.strictObject({
+      inputSchema: {
         action: actionParam,
         project: projectParam(),
         repository: repositoryParam(),
@@ -96,7 +96,7 @@ export function registerTagTools(ctx: ToolContext) {
           .string()
           .optional()
           .describe("Optional message for the tag (create only)."),
-      }),
+      },
       annotations: toolAnnotations({
         readOnlyHint: false,
         destructiveHint: true,

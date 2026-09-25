@@ -15,11 +15,11 @@ export function registerReviewerGroupTools(ctx: ToolContext) {
     "list_reviewer_groups",
     {
       description: "List reviewer groups configured for a repository.",
-      inputSchema: z.strictObject({
+      inputSchema: {
         project: projectParam(),
         repository: repositoryParam(),
         fields: fieldsParam(),
-      }),
+      },
       annotations: toolAnnotations(),
     },
     async ({ fields, ...params }) => {
@@ -36,7 +36,7 @@ export function registerReviewerGroupTools(ctx: ToolContext) {
     {
       description:
         "Create a reviewer group for a repository with one or more reviewers.",
-      inputSchema: z.strictObject({
+      inputSchema: {
         project: projectParam(),
         repository: repositoryParam(),
         name: z.string().describe("Reviewer group name."),
@@ -45,7 +45,7 @@ export function registerReviewerGroupTools(ctx: ToolContext) {
           .array(z.string())
           .min(1)
           .describe("Usernames to include in the group (at least one)."),
-      }),
+      },
       annotations: toolAnnotations({
         readOnlyHint: false,
         idempotentHint: false,
@@ -58,11 +58,11 @@ export function registerReviewerGroupTools(ctx: ToolContext) {
     "delete_reviewer_group",
     {
       description: "Delete a reviewer group from a repository by name.",
-      inputSchema: z.strictObject({
+      inputSchema: {
         project: projectParam(),
         repository: repositoryParam(),
         name: z.string().describe("Reviewer group name."),
-      }),
+      },
       annotations: toolAnnotations({
         readOnlyHint: false,
         idempotentHint: false,

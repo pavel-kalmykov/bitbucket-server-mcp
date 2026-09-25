@@ -35,7 +35,7 @@ export function registerPullRequestTools(ctx: ToolContext) {
     {
       description:
         "Create a new pull request. Supports cross-repo PRs via sourceProject/sourceRepository and automatic default reviewer merging.",
-      inputSchema: z.strictObject({
+      inputSchema: {
         project: projectParam(),
         repository: repositoryParam(),
         title: z.string().describe("Pull request title."),
@@ -67,7 +67,7 @@ export function registerPullRequestTools(ctx: ToolContext) {
           .boolean()
           .optional()
           .describe("Create the pull request as a draft."),
-      }),
+      },
       annotations: toolAnnotations({
         readOnlyHint: false,
         idempotentHint: false,
@@ -85,7 +85,7 @@ export function registerPullRequestTools(ctx: ToolContext) {
     {
       description:
         "Get details of a specific pull request including status, reviewers, and metadata. Supports custom field selection via the `fields` param (`'*all'` for full raw response, `'id,title,state'` for a custom subset).",
-      inputSchema: z.strictObject({
+      inputSchema: {
         project: projectParam(),
         repository: repositoryParam(),
         prId: z.coerce.number().describe("Pull request ID."),
@@ -102,7 +102,7 @@ export function registerPullRequestTools(ctx: ToolContext) {
           .describe(
             "Include build summaries from the UI-layer endpoint (default: false). Adds `buildSummaries` with aggregated CI status per commit. May not be available in older Bitbucket deployments.",
           ),
-      }),
+      },
       annotations: toolAnnotations(),
     },
     async ({
@@ -132,7 +132,7 @@ export function registerPullRequestTools(ctx: ToolContext) {
     {
       description:
         "Update a pull request (title, description, target branch, or reviewers). Only changed fields are applied; reviewers are preserved if not provided.",
-      inputSchema: z.strictObject({
+      inputSchema: {
         project: projectParam(),
         repository: repositoryParam(),
         prId: z.coerce.number().describe("Pull request ID."),
@@ -143,7 +143,7 @@ export function registerPullRequestTools(ctx: ToolContext) {
           .array(z.string())
           .optional()
           .describe("Replace reviewer list with these usernames."),
-      }),
+      },
       annotations: toolAnnotations({ readOnlyHint: false }),
     },
     async (params) => {
@@ -158,7 +158,7 @@ export function registerPullRequestTools(ctx: ToolContext) {
     {
       description:
         "Merge an approved pull request. Fetches the current version automatically for optimistic locking.",
-      inputSchema: z.strictObject({
+      inputSchema: {
         project: projectParam(),
         repository: repositoryParam(),
         prId: z.coerce.number().describe("Pull request ID."),
@@ -177,7 +177,7 @@ export function registerPullRequestTools(ctx: ToolContext) {
           .describe(
             "Merge strategy ID. no-ff = merge commit, ff = fast-forward, ff-only = fast-forward only, squash = squash, rebase-no-ff = rebase + merge commit, rebase-ff-only = rebase + fast-forward.",
           ),
-      }),
+      },
       annotations: toolAnnotations({
         readOnlyHint: false,
         destructiveHint: true,
@@ -196,12 +196,12 @@ export function registerPullRequestTools(ctx: ToolContext) {
     {
       description:
         "Decline a pull request. Fetches the current version automatically for optimistic locking.",
-      inputSchema: z.strictObject({
+      inputSchema: {
         project: projectParam(),
         repository: repositoryParam(),
         prId: z.coerce.number().describe("Pull request ID."),
         message: z.string().optional().describe("Reason for declining."),
-      }),
+      },
       annotations: toolAnnotations({
         readOnlyHint: false,
         destructiveHint: true,
@@ -220,7 +220,7 @@ export function registerPullRequestTools(ctx: ToolContext) {
     {
       description:
         "List pull requests in a repository. Supports filtering by state, direction, order, and client-side author filtering. Supports custom field selection via the `fields` param (`'*all'` for full raw response, `'id,title,state'` for a custom subset).",
-      inputSchema: z.strictObject({
+      inputSchema: {
         project: projectParam(),
         repository: repositoryParam(),
         state: z
@@ -241,7 +241,7 @@ export function registerPullRequestTools(ctx: ToolContext) {
         limit: limitParam(),
         start: startParam(),
         fields: fieldsParam(),
-      }),
+      },
       annotations: toolAnnotations(),
     },
     async ({ fields, ...params }) => {
@@ -260,7 +260,7 @@ export function registerPullRequestTools(ctx: ToolContext) {
     {
       description:
         "Get pull requests from the authenticated user dashboard. No project/repo needed. Supports custom field selection via the `fields` param (`'*all'` for full raw response, `'id,title,state'` for a custom subset).",
-      inputSchema: z.strictObject({
+      inputSchema: {
         state: z
           .enum(["OPEN", "MERGED", "DECLINED", "ALL"])
           .optional()
@@ -281,7 +281,7 @@ export function registerPullRequestTools(ctx: ToolContext) {
         limit: limitParam(),
         start: startParam(),
         fields: fieldsParam(),
-      }),
+      },
       annotations: toolAnnotations(),
     },
     async ({ fields, ...params }) => {
@@ -299,7 +299,7 @@ export function registerPullRequestTools(ctx: ToolContext) {
     {
       description:
         "Get activity feed for a pull request. Optionally filter to only reviews or comments.",
-      inputSchema: z.strictObject({
+      inputSchema: {
         project: projectParam(),
         repository: repositoryParam(),
         prId: z.coerce.number().describe("Pull request ID."),
@@ -316,7 +316,7 @@ export function registerPullRequestTools(ctx: ToolContext) {
         limit: limitParam(),
         start: startParam(),
         fields: fieldsParam(),
-      }),
+      },
       annotations: toolAnnotations(),
     },
     async ({ fields, ...params }) => {
@@ -339,7 +339,7 @@ export function registerPullRequestTools(ctx: ToolContext) {
     {
       description:
         "Get the diff of a pull request. Use stat=true for a lightweight summary of changed files (and line counts if the server supports it) instead of the full diff.",
-      inputSchema: z.strictObject({
+      inputSchema: {
         project: projectParam(),
         repository: repositoryParam(),
         prId: z.coerce.number().describe("Pull request ID."),
@@ -367,7 +367,7 @@ export function registerPullRequestTools(ctx: ToolContext) {
           .describe(
             "Max lines per file. 0 = no limit. Defaults to BITBUCKET_DIFF_MAX_LINES_PER_FILE. Ignored when stat=true.",
           ),
-      }),
+      },
       annotations: toolAnnotations(),
     },
     async ({ stat, maxLinesPerFile, project, repository, prId, ...params }) => {
@@ -389,14 +389,14 @@ export function registerPullRequestTools(ctx: ToolContext) {
     {
       description:
         "List commits for a specific pull request. Returns the commits that are part of the pull request with pagination support.",
-      inputSchema: z.strictObject({
+      inputSchema: {
         project: projectParam(),
         repository: repositoryParam(),
         prId: z.coerce.number().describe("Pull request ID."),
         limit: limitParam(),
         start: startParam(),
         fields: fieldsParam(),
-      }),
+      },
       annotations: toolAnnotations(),
     },
     async ({ fields, ...params }) => {
@@ -415,14 +415,14 @@ export function registerPullRequestTools(ctx: ToolContext) {
     {
       description:
         "List pull requests that contain a specific commit. Returns the PRs that include the given commit.",
-      inputSchema: z.strictObject({
+      inputSchema: {
         project: projectParam(),
         repository: repositoryParam(),
         commitId: z.string().describe("Full commit hash."),
         limit: limitParam(),
         start: startParam(),
         fields: fieldsParam(),
-      }),
+      },
       annotations: toolAnnotations(),
     },
     async ({ fields, ...params }) => {
@@ -445,7 +445,7 @@ export function registerReviewTools(ctx: ToolContext) {
     {
       description:
         'Approve, unapprove, or publish a review on a pull request. Use "approve" to approve, "unapprove" to remove your approval, and "publish" to submit a review with an optional overview comment and status.',
-      inputSchema: z.strictObject({
+      inputSchema: {
         action: actionParam,
         project: projectParam(),
         repository: repositoryParam(),
@@ -458,7 +458,7 @@ export function registerReviewTools(ctx: ToolContext) {
           .enum(["APPROVED", "NEEDS_WORK"])
           .optional()
           .describe("Participant status to set (for publish action)."),
-      }),
+      },
       annotations: toolAnnotations({
         readOnlyHint: false,
         idempotentHint: false,

@@ -17,10 +17,10 @@ export function registerUserTools(ctx: ToolContext) {
     {
       description:
         "Get a Bitbucket user profile by user slug. Returns user details including display name, email, and active status.",
-      inputSchema: z.strictObject({
+      inputSchema: {
         userSlug: z.string().describe("User slug (username) to look up."),
         fields: fieldsParam(),
-      }),
+      },
       annotations: toolAnnotations(),
     },
     async ({ fields, ...params }) => {
@@ -37,7 +37,7 @@ export function registerUserTools(ctx: ToolContext) {
     {
       description:
         "Search Bitbucket users by filter query. Returns matching users.",
-      inputSchema: z.strictObject({
+      inputSchema: {
         filter: z
           .string()
           .describe(
@@ -46,7 +46,7 @@ export function registerUserTools(ctx: ToolContext) {
         limit: limitParam(),
         start: startParam(),
         fields: fieldsParam(),
-      }),
+      },
       annotations: toolAnnotations(),
     },
     async ({ fields, ...params }) => {

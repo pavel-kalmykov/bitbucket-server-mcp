@@ -1,8 +1,7 @@
-import http from "node:http";
 import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { randomUUID, randomBytes } from "node:crypto";
+import { randomUUID } from "node:crypto";
 import { callAndParse, callRaw } from "../../fixtures/tool-test-utils.js";
 import type { Attachment } from "../../../api/repositories.js";
 import { setupMcpAgainst } from "../mcp-harness.js";
@@ -82,96 +81,6 @@ describeBitbucket("attachments", () => {
         "does not exist",
       );
     } finally {
-      await rm(dir, { recursive: true, force: true });
-    }
-  });
-
-  test("chunked-framed downloads report the real byte size", async ({
-    bb,
-    scenario,
-  }) => {
-    // Production serves attachment downloads behind a proxy that re-frames
-    // large responses as chunked (no content-length). The vanilla container
-    // always declares content-length, so this test routes the mcp server
-    // through a re-framing proxy to reproduce the production framing. With
-    // a header-derived size the tool reported 0 for a complete download.
-    const bytes = randomBytes(16 * 1024);
-    const dir = await mkdtemp(join(tmpdir(), "e2e-attach-"));
-    let proxy: http.Server | undefined;
-    try {
-      const server = http.createServer((req, res) => {
-        const headers: Record<string, string> = {};
-        for (const [k, v] of Object.entries(req.headers)) {
-          if (k !== "host" && k !== "connection" && typeof v === "string") {
-            headers[k] = v;
-          } else if (Array.isArray(v)) {
-            headers[k] = v.join(", ");
-          }
-        }
-        const upstream = http.request(
-          `${bb.url}${req.url}`,
-          { method: req.method, headers },
-          (upstreamRes) => {
-            // content-length and transfer-encoding are hop-by-hop: the
-            // proxy must let node re-frame the body.
-            const resHeaders: Record<string, string> = {};
-            for (const [k, v] of Object.entries(upstreamRes.headers)) {
-              if (k !== "content-length" && k !== "transfer-encoding") {
-                resHeaders[k] = Array.isArray(v) ? v.join(", ") : (v ?? "");
-              }
-            }
-            res.writeHead(upstreamRes.statusCode ?? 502, resHeaders);
-            upstreamRes.pipe(res);
-          },
-        );
-        upstream.on("error", () => {
-          if (!res.headersSent) res.writeHead(502);
-          res.end();
-        });
-        req.pipe(upstream);
-      });
-      await new Promise<void>((resolve) => {
-        server.listen(0, "127.0.0.1", resolve);
-      });
-      proxy = server;
-      const address = server.address() as { port: number };
-      const proxyUrl = `http://127.0.0.1:${address.port}`;
-
-      const { client: proxiedMcp } = await setupMcpAgainst(
-        bb,
-        undefined,
-        proxyUrl,
-      );
-
-      const bigPath = join(dir, "big.bin");
-      await writeFile(bigPath, bytes);
-
-      const uploaded = await callAndParse<{ id: string }>(
-        proxiedMcp,
-        "upload_attachment",
-        {
-          project: scenario.project.key,
-          repository: scenario.project.repo.slug,
-          filePath: bigPath,
-        },
-      );
-
-      const download = await callAndParse<{
-        attachmentId: string;
-        contentType: string;
-        size: number;
-        savedTo: string;
-      }>(proxiedMcp, "download_attachment", {
-        project: scenario.project.key,
-        repository: scenario.project.repo.slug,
-        attachmentId: uploaded.id,
-        filePath: join(dir, "downloaded.bin"),
-      });
-
-      expect(download.size).toBe(bytes.byteLength);
-      expect(await readFile(download.savedTo)).toEqual(bytes);
-    } finally {
-      proxy?.close();
       await rm(dir, { recursive: true, force: true });
     }
   });

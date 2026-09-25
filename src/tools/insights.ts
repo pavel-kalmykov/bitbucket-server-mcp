@@ -13,7 +13,7 @@ export function registerInsightTools(ctx: ToolContext) {
     {
       description:
         "Get code insight reports and their annotations for a pull request. Shows build results, code quality, and other analysis.",
-      inputSchema: z.strictObject({
+      inputSchema: {
         project: projectParam(),
         repository: repositoryParam(),
         prId: z.coerce.number().describe("Pull request ID."),
@@ -43,7 +43,7 @@ export function registerInsightTools(ctx: ToolContext) {
             "Number of files to fetch annotations for per page. Only used when includeFileAnnotations is true (default: 50, max: 100).",
           ),
         fields: fieldsParam(),
-      }),
+      },
       annotations: toolAnnotations(),
     },
     async ({ fields, ...params }) => {
@@ -68,7 +68,7 @@ export function registerInsightTools(ctx: ToolContext) {
     {
       description:
         "Get CI build status for a commit or pull request. When prId is provided, automatically resolves the latest commit. Returns build state (SUCCESSFUL, FAILED, INPROGRESS), name, and URL to the CI build.",
-      inputSchema: z.strictObject({
+      inputSchema: {
         project: z
           .string()
           .optional()
@@ -89,7 +89,7 @@ export function registerInsightTools(ctx: ToolContext) {
           .string()
           .optional()
           .describe("Full commit hash. Use this or prId, not both."),
-      }),
+      },
       annotations: toolAnnotations(),
     },
     async (params) => formatResponse(await bb.buildStatus.get(params)),

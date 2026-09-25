@@ -2,7 +2,6 @@ import { formatResponse } from "../response/format.js";
 import { toolAnnotations } from "../response/annotations.js";
 import type { ToolContext } from "./shared.js";
 import { projectParam, repositoryParam, fieldsParam } from "./params.js";
-import { z } from "zod";
 import {
   curateList,
   DEFAULT_SECRET_SCANNING_FIELDS,
@@ -16,11 +15,11 @@ export function registerSecretScanningTools(ctx: ToolContext) {
     {
       description:
         "List secret scanning allowlist rules for a repository. Requires Bitbucket Server 8.5+.",
-      inputSchema: z.strictObject({
+      inputSchema: {
         project: projectParam(),
         repository: repositoryParam(),
         fields: fieldsParam(),
-      }),
+      },
       annotations: toolAnnotations(),
     },
     async ({ fields, ...params }) => {

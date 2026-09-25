@@ -25,14 +25,14 @@ export function registerRepositoryTools(ctx: ToolContext) {
     {
       description:
         "List all Bitbucket projects you have access to. Use this first to discover project keys. Supports custom field selection via the `fields` param (`'*all'` for full raw response, `'key,name'` for a custom subset).",
-      inputSchema: z.strictObject({
+      inputSchema: {
         limit: z
           .number()
           .optional()
           .describe("Number of projects to return (default: 25, max: 1000)"),
         start: startParam(),
         fields: fieldsParam(),
-      }),
+      },
       annotations: toolAnnotations(),
     },
     async ({ fields, ...params }) => {
@@ -51,7 +51,7 @@ export function registerRepositoryTools(ctx: ToolContext) {
     {
       description:
         "List repositories in a project. Use this to find repository slugs for other operations. Supports custom field selection via the `fields` param (`'*all'` for full raw response, `'slug,name'` for a custom subset).",
-      inputSchema: z.strictObject({
+      inputSchema: {
         project: projectParam(),
         limit: z
           .number()
@@ -61,7 +61,7 @@ export function registerRepositoryTools(ctx: ToolContext) {
           ),
         start: startParam(),
         fields: fieldsParam(),
-      }),
+      },
       annotations: toolAnnotations(),
     },
     async ({ fields, ...params }) => {
@@ -83,7 +83,7 @@ export function registerRepositoryTools(ctx: ToolContext) {
     {
       description:
         "Browse files and directories in a repository to understand project structure.",
-      inputSchema: z.strictObject({
+      inputSchema: {
         project: projectParam(),
         repository: repositoryParam(),
         path: z
@@ -98,7 +98,7 @@ export function registerRepositoryTools(ctx: ToolContext) {
           .number()
           .optional()
           .describe("Max items to return (default: 50)."),
-      }),
+      },
       annotations: toolAnnotations(),
     },
     async (params) => formatResponse(await bb.repositories.browse(params)),
@@ -109,7 +109,7 @@ export function registerRepositoryTools(ctx: ToolContext) {
     {
       description:
         "Read file contents from a repository with pagination support for large files.",
-      inputSchema: z.strictObject({
+      inputSchema: {
         project: projectParam(),
         repository: repositoryParam(),
         filePath: z.string().describe("Path to the file in the repository."),
@@ -125,7 +125,7 @@ export function registerRepositoryTools(ctx: ToolContext) {
           .number()
           .optional()
           .describe("Starting line number (default: 0)."),
-      }),
+      },
       annotations: toolAnnotations(),
     },
     async (params) => formatResponse(await bb.repositories.getFile(params)),
@@ -136,13 +136,13 @@ export function registerRepositoryTools(ctx: ToolContext) {
     {
       description:
         "Upload a file attachment to a repository. Returns a markdown reference to embed in PR comments or descriptions.",
-      inputSchema: z.strictObject({
+      inputSchema: {
         project: projectParam(),
         repository: repositoryParam(),
         filePath: z
           .string()
           .describe("Absolute path to the file on the local filesystem."),
-      }),
+      },
       annotations: toolAnnotations({
         readOnlyHint: false,
         idempotentHint: false,
@@ -166,7 +166,7 @@ export function registerRepositoryTools(ctx: ToolContext) {
     {
       description:
         "Download a repository attachment by id and write its content to a local file.",
-      inputSchema: z.strictObject({
+      inputSchema: {
         project: projectParam(),
         repository: repositoryParam(),
         attachmentId: z
@@ -175,7 +175,7 @@ export function registerRepositoryTools(ctx: ToolContext) {
         filePath: z
           .string()
           .describe("Local path to write the attachment content to."),
-      }),
+      },
       annotations: toolAnnotations(),
     },
     async ({ project, repository, attachmentId, filePath }) => {
@@ -200,13 +200,13 @@ export function registerRepositoryTools(ctx: ToolContext) {
     {
       description:
         "Delete a repository attachment by id. Requires permission to manage the repository's attachments.",
-      inputSchema: z.strictObject({
+      inputSchema: {
         project: projectParam(),
         repository: repositoryParam(),
         attachmentId: z
           .string()
           .describe("Attachment ID, as returned by upload_attachment."),
-      }),
+      },
       annotations: toolAnnotations({
         readOnlyHint: false,
         destructiveHint: true,
@@ -228,7 +228,7 @@ export function registerRepositoryTools(ctx: ToolContext) {
     {
       description:
         "Edit a file in a repository by committing a new version via the Bitbucket REST API. Returns the commit metadata.",
-      inputSchema: z.strictObject({
+      inputSchema: {
         project: projectParam(),
         repository: repositoryParam(),
         filePath: z.string().describe("Path to the file in the repository."),
@@ -245,7 +245,7 @@ export function registerRepositoryTools(ctx: ToolContext) {
           .string()
           .optional()
           .describe("Fork point branch when creating a new branch."),
-      }),
+      },
       annotations: toolAnnotations({
         readOnlyHint: false,
         idempotentHint: false,
@@ -259,7 +259,7 @@ export function registerRepositoryTools(ctx: ToolContext) {
     {
       description:
         "Get blame/history information for a file. Returns line-by-line commit authorship data.",
-      inputSchema: z.strictObject({
+      inputSchema: {
         project: projectParam(),
         repository: repositoryParam(),
         filePath: z.string().describe("Path to the file in the repository."),
@@ -267,7 +267,7 @@ export function registerRepositoryTools(ctx: ToolContext) {
           .string()
           .optional()
           .describe("Branch or commit hash (default: default branch)."),
-      }),
+      },
       annotations: toolAnnotations(),
     },
     async (params) => formatResponse(await bb.repositories.getBlame(params)),
@@ -277,7 +277,7 @@ export function registerRepositoryTools(ctx: ToolContext) {
     "create_repository",
     {
       description: "Create a new repository in a project.",
-      inputSchema: z.strictObject({
+      inputSchema: {
         project: projectParam(),
         name: z.string().describe("Repository name."),
         description: z.string().optional().describe("Repository description."),
@@ -285,7 +285,7 @@ export function registerRepositoryTools(ctx: ToolContext) {
           .string()
           .optional()
           .describe("Default branch name (defaults to 'main' if not set)."),
-      }),
+      },
       annotations: toolAnnotations({
         readOnlyHint: false,
         idempotentHint: false,
@@ -302,10 +302,10 @@ export function registerRepositoryTools(ctx: ToolContext) {
     "delete_repository",
     {
       description: "Delete a repository. This action is irreversible.",
-      inputSchema: z.strictObject({
+      inputSchema: {
         project: projectParam(),
         repository: repositoryParam(),
-      }),
+      },
       annotations: toolAnnotations({
         readOnlyHint: false,
         destructiveHint: true,

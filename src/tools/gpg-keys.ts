@@ -19,14 +19,14 @@ export function registerGpgKeyTools(ctx: ToolContext) {
     "list_gpg_keys",
     {
       description: "List GPG keys for the authenticated user.",
-      inputSchema: z.strictObject({
+      inputSchema: {
         userSlug: z
           .string()
           .optional()
           .describe("Filter by user slug (admin only)."),
         limit: limitParam(),
         start: startParam(),
-      }),
+      },
       annotations: toolAnnotations(),
     },
     async (params) => {
@@ -41,14 +41,14 @@ export function registerGpgKeyTools(ctx: ToolContext) {
     {
       description:
         'Manage GPG keys for the authenticated user. Actions: "add" (add a key), "delete" (remove a key).',
-      inputSchema: z.strictObject({
+      inputSchema: {
         action: actionParam,
         text: z
           .string()
           .optional()
           .describe("GPG public key text (required for add)."),
         keyId: z.number().optional().describe("Key ID (required for delete)."),
-      }),
+      },
       annotations: toolAnnotations({
         readOnlyHint: false,
         idempotentHint: false,

@@ -32,14 +32,14 @@ export function registerCommitCommentTools(ctx: ToolContext) {
     {
       description:
         "Get comments for a specific commit. Returns all comments on the commit with pagination support.",
-      inputSchema: z.strictObject({
+      inputSchema: {
         project: projectParam(),
         repository: repositoryParam(),
         commitId: z.string().describe("Full commit hash."),
         limit: limitParam(),
         start: startParam(),
         fields: fieldsParam(),
-      }),
+      },
       annotations: toolAnnotations(),
     },
     async ({ fields, ...params }) => {
@@ -58,7 +58,7 @@ export function registerCommitCommentTools(ctx: ToolContext) {
     {
       description:
         'Manage comments on a commit. Actions: "create" (add a new comment), "edit" (update an existing comment), "delete" (remove a comment).',
-      inputSchema: z.strictObject({
+      inputSchema: {
         action: actionParam,
         project: projectParam(),
         repository: repositoryParam(),
@@ -77,7 +77,7 @@ export function registerCommitCommentTools(ctx: ToolContext) {
           .describe(
             "Comment version for optimistic locking (required for edit and delete).",
           ),
-      }),
+      },
       annotations: toolAnnotations({
         readOnlyHint: false,
         idempotentHint: false,

@@ -52,7 +52,7 @@ export function registerDeploymentTools(ctx: ToolContext) {
         "POST body requires deploymentSequenceNumber, description, displayName, environment (with displayName, key, optional type), key, state, and optional url. " +
         "DELETE requires key, environmentKey, and deploymentSequenceNumber.",
 
-      inputSchema: z.strictObject({
+      inputSchema: {
         action: actionParam,
         project: projectParam(),
         repository: repositoryParam(),
@@ -110,7 +110,7 @@ export function registerDeploymentTools(ctx: ToolContext) {
           .string()
           .optional()
           .describe("Deployment URL (for create, max 1024 chars)."),
-      }),
+      },
       annotations: toolAnnotations({
         readOnlyHint: false,
         idempotentHint: false,

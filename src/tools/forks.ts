@@ -22,7 +22,7 @@ export function registerForkTools(ctx: ToolContext) {
     {
       description:
         "List forks of a repository. Supports custom field selection via the `fields` param (`'*all'` for full raw response, `'slug,name'` for a custom subset).",
-      inputSchema: z.strictObject({
+      inputSchema: {
         project: projectParam(),
         repository: repositoryParam(),
         limit: z
@@ -31,7 +31,7 @@ export function registerForkTools(ctx: ToolContext) {
           .describe("Number of forks to return (default: 25, max: 1000)."),
         start: startParam(),
         fields: fieldsParam(),
-      }),
+      },
       annotations: toolAnnotations(),
     },
     async ({ fields, ...params }) => {
@@ -50,7 +50,7 @@ export function registerForkTools(ctx: ToolContext) {
     {
       description:
         "Fork a repository into a target project. Creates a copy of the source repository in the specified target project.",
-      inputSchema: z.strictObject({
+      inputSchema: {
         project: z
           .string()
           .optional()
@@ -70,7 +70,7 @@ export function registerForkTools(ctx: ToolContext) {
           .describe(
             "Target project key where the fork will be created. Defaults to the user's personal project.",
           ),
-      }),
+      },
       annotations: toolAnnotations({
         readOnlyHint: false,
         idempotentHint: false,

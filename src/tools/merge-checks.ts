@@ -12,10 +12,10 @@ export function registerMergeCheckTools(ctx: ToolContext) {
     {
       description:
         "List merge check configurations for a repository. Merge checks control conditions that must be met before a pull request can be merged. Requires repository Admin: non-admins get an AuthorisationException from the server. For the per-PR merge status (what currently blocks a merge), use get_pull_request with includeMergeVetoes instead, which needs no admin.",
-      inputSchema: z.strictObject({
+      inputSchema: {
         project: projectParam(),
         repository: repositoryParam(),
-      }),
+      },
       annotations: toolAnnotations(),
     },
     async (params) => formatResponse(await bb.mergeChecks.list(params)),
@@ -26,14 +26,14 @@ export function registerMergeCheckTools(ctx: ToolContext) {
     {
       description:
         "Configure merge check settings for a repository. Requires repository Admin: non-admins get an AuthorisationException from the server.",
-      inputSchema: z.strictObject({
+      inputSchema: {
         project: projectParam(),
         repository: repositoryParam(),
         hookKey: z.string().describe("Merge check hook key."),
         settings: z
           .record(z.string(), z.unknown())
           .describe("Hook settings object."),
-      }),
+      },
       annotations: toolAnnotations({
         readOnlyHint: false,
         idempotentHint: false,

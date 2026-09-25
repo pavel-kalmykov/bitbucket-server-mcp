@@ -1,4 +1,3 @@
-import { z } from "zod";
 import { formatResponse } from "../response/format.js";
 import { toolAnnotations } from "../response/annotations.js";
 import type { ToolContext } from "./shared.js";
@@ -13,11 +12,11 @@ export function registerDefaultReviewerTools(ctx: ToolContext) {
     {
       description:
         "List default reviewer conditions for a repository. These conditions determine which users are automatically added as reviewers to pull requests.",
-      inputSchema: z.strictObject({
+      inputSchema: {
         project: projectParam(),
         repository: repositoryParam(),
         fields: fieldsParam(),
-      }),
+      },
       annotations: toolAnnotations(),
     },
     async ({ fields, ...params }) => {
