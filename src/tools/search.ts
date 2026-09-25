@@ -13,7 +13,7 @@ export function registerSearchTools(ctx: ToolContext) {
     {
       description:
         "Search for code or files across Bitbucket repositories. Supports filtering by project, repository, and search type. Supports custom field selection via the `fields` param (`'*all'` for full raw response, `'file,hitCount'` for a custom subset).",
-      inputSchema: {
+      inputSchema: z.strictObject({
         query: z.string().describe("Search query string."),
         project: z
           .string()
@@ -36,7 +36,7 @@ export function registerSearchTools(ctx: ToolContext) {
         limit: limitParam(),
         start: startParam(),
         fields: fieldsParam(),
-      },
+      }),
       annotations: toolAnnotations({ openWorldHint: true }),
     },
     async ({ fields, type, ...params }) => {
