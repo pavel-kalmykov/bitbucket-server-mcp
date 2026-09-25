@@ -144,7 +144,7 @@ export function setupToolHarness(options: {
  * Our server always returns text-only content, so tests can safely use this
  * narrower type and access `.content[0].text` without an inline cast.
  */
-interface TextToolResult {
+export interface TextToolResult {
   content: ToolSuccessResult["content"];
   isError?: boolean;
 }

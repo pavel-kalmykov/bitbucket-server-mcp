@@ -2,6 +2,7 @@ import { describe, test, expect, beforeAll, afterAll } from "vitest";
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { InMemoryTransport } from "@modelcontextprotocol/sdk/inMemory.js";
 import type { Tool, ToolAnnotations } from "@modelcontextprotocol/sdk/types.js";
+import type { TextToolResult } from "../../fixtures/tool-test-utils.js";
 import { createServer } from "../../../server.js";
 
 let client: Client;
@@ -766,5 +767,32 @@ describe("Tool schema contract: all expected tools are registered", () => {
       "manage_deployments",
     ];
     expect(new Set(names)).toEqual(new Set(expected));
+  });
+});
+
+describe("Tool schema contract: strict input", () => {
+  test("an unknown param surfaces as a validation error, not silent stripping", async () => {
+    // A stripped parentId once created a loose top-level comment instead
+    // of a reply, so the strict wrapper is pinned behaviorally too.
+    const result = (await client.callTool({
+      name: "manage_comment",
+      arguments: {
+        action: "create",
+        repository: "my-repo",
+        prId: 42,
+        text: "orphan reply",
+        parent_id: 42,
+      },
+    })) as TextToolResult;
+
+    expect(result.isError).toBe(true);
+    expect(result.content[0].text).toContain("parent_id");
+  });
+
+  test("every tool rejects unknown params", () => {
+    expect(allTools.length).toBeGreaterThan(0);
+    for (const tool of allTools) {
+      expect(tool.inputSchema.additionalProperties, tool.name).toBe(false);
+    }
   });
 });
