@@ -173,6 +173,20 @@ describe("Comment tools", () => {
 
       expect(result.isError).toBeFalsy();
 
+      // Strict input: a snake_case near-miss of a declared param must be
+      // rejected with a validation error instead of being stripped silently
+      // (a stripped parentId once created a loose top-level comment).
+      const typo = await callRaw(h.client, "manage_comment", {
+        action: "create",
+        repository: "my-repo",
+        prId: 42,
+        text: "orphan reply",
+        parent_id: 42,
+      });
+
+      expect(typo.isError).toBe(true);
+      expect((typo.content[0] as { text: string }).text).toContain("parent_id");
+
       expectCalledWithJson(h.mockClients.api.post, commentUrl, {
         anchor: {
           path: "old.ts",
