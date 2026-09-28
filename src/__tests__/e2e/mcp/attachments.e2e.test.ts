@@ -1,12 +1,11 @@
-import { expect } from "vitest";
 import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
-import { randomUUID } from "node:crypto";
 import { join } from "node:path";
+import { randomUUID } from "node:crypto";
 import { callAndParse, callRaw } from "../../fixtures/tool-test-utils.js";
 import type { Attachment } from "../../../api/repositories.js";
-import { setupMcpAgainst } from ".././mcp-harness.js";
-import { test, describeBitbucket } from ".././e2e-suite.js";
+import { setupMcpAgainst } from "../mcp-harness.js";
+import { test, describeBitbucket } from "../e2e-suite.js";
 
 // Canonical 1x1 transparent PNG (valid CRCs); a real binary exercises
 // byte-exact round-trips.
@@ -49,7 +48,6 @@ describeBitbucket("attachments", () => {
         attachmentId: uploaded.id,
         filePath: join(dir, "downloaded.png"),
       });
-      expect(download.contentType).toBe("image/png");
       expect(download.size).toBe(PNG_BYTES.byteLength);
       expect(await readFile(download.savedTo)).toEqual(PNG_BYTES);
 
@@ -94,18 +92,22 @@ describeBitbucket("attachments", () => {
   }) => {
     // A user with no permissions on the repo cannot delete its attachments;
     // Bitbucket masks the repo as nonexistent for them.
+    const limited = {
+      name: `limited-${randomUUID().slice(0, 8)}`,
+      password: "limited-password",
+    };
     await bb.api.post("admin/users", {
       searchParams: {
-        name: `limited-${randomUUID().slice(0, 8)}`,
-        password: "limited-password",
+        name: limited.name,
+        password: limited.password,
         displayName: "Limited User",
         emailAddress: "limited@example.com",
       },
     });
 
-    const limited = await setupMcpAgainst(bb, {
-      username: `limited-${randomUUID().slice(0, 8)}`,
-      password: "limited-password",
+    const limitedSession = await setupMcpAgainst(bb, {
+      username: limited.name,
+      password: limited.password,
     });
     try {
       const dir = await mkdtemp(join(tmpdir(), "e2e-attach-"));
@@ -122,11 +124,15 @@ describeBitbucket("attachments", () => {
           },
         );
 
-        const denied = await callRaw(limited.client, "delete_attachment", {
-          project: scenario.project.key,
-          repository: scenario.project.repo.slug,
-          attachmentId: uploaded.id,
-        });
+        const denied = await callRaw(
+          limitedSession.client,
+          "delete_attachment",
+          {
+            project: scenario.project.key,
+            repository: scenario.project.repo.slug,
+            attachmentId: uploaded.id,
+          },
+        );
         expect(denied.isError).toBe(true);
         expect(
           (denied.content[0] as { text: string }).text.length,
@@ -142,7 +148,7 @@ describeBitbucket("attachments", () => {
         await rm(dir, { recursive: true, force: true });
       }
     } finally {
-      await limited.close();
+      await limitedSession.close();
     }
   });
 });

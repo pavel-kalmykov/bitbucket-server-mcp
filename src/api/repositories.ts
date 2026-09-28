@@ -177,10 +177,13 @@ export function repositoriesApi(ctx: ApiContext) {
       const response = await ctx.http.api.get(
         `${repoPath(project, repository)}/attachments/${attachmentId}`,
       );
+      const data = Buffer.from(await response.arrayBuffer());
       return {
-        data: Buffer.from(await response.arrayBuffer()),
+        data,
         contentType: response.headers.get("content-type") ?? "",
-        size: Number(response.headers.get("content-length") ?? 0),
+        // Bitbucket serves attachments chunked (no content-length); report
+        // the actual bytes read rather than trusting the header.
+        size: data.byteLength,
       };
     },
 
