@@ -19,14 +19,14 @@ export function registerSshKeyTools(ctx: ToolContext) {
     "list_ssh_keys",
     {
       description: "List SSH keys for the authenticated user.",
-      inputSchema: {
+      inputSchema: z.strictObject({
         userSlug: z
           .string()
           .optional()
           .describe("Filter by user slug (admin only)."),
         limit: limitParam(),
         start: startParam(),
-      },
+      }),
       annotations: toolAnnotations(),
     },
     async (params) => {
@@ -41,14 +41,14 @@ export function registerSshKeyTools(ctx: ToolContext) {
     {
       description:
         'Manage SSH keys for the authenticated user. Actions: "add" (add a key), "delete" (remove a key).',
-      inputSchema: {
+      inputSchema: z.strictObject({
         action: actionParam,
         text: z
           .string()
           .optional()
           .describe("SSH public key text (required for add)."),
         keyId: z.number().optional().describe("Key ID (required for delete)."),
-      },
+      }),
       annotations: toolAnnotations({
         readOnlyHint: false,
         idempotentHint: false,

@@ -25,12 +25,12 @@ export function registerHookTools(ctx: ToolContext) {
     "list_repository_hooks",
     {
       description: "List repository hooks and their enabled/disabled state.",
-      inputSchema: {
+      inputSchema: z.strictObject({
         project: projectParam(),
         repository: repositoryParam(),
         limit: limitParam(),
         start: startParam(),
-      },
+      }),
       annotations: toolAnnotations(),
     },
     async (params) => {
@@ -45,7 +45,7 @@ export function registerHookTools(ctx: ToolContext) {
     {
       description:
         'Manage repository hook settings. Actions: "enable" (enable a hook), "disable" (disable a hook), "configure" (set hook settings).',
-      inputSchema: {
+      inputSchema: z.strictObject({
         action: actionParam,
         project: projectParam(),
         repository: repositoryParam(),
@@ -58,7 +58,7 @@ export function registerHookTools(ctx: ToolContext) {
           .record(z.string(), z.unknown())
           .optional()
           .describe("Hook settings object (for 'configure' action)."),
-      },
+      }),
       annotations: toolAnnotations({
         readOnlyHint: false,
         idempotentHint: false,
