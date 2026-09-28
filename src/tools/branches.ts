@@ -9,6 +9,7 @@ import {
   curateList,
   curateResponse,
   DEFAULT_BRANCH_FIELDS,
+  DEFAULT_BRANCH_RESTRICTION_FIELDS,
   DEFAULT_COMMIT_FIELDS,
 } from "../response/curate.js";
 import type { ToolContext } from "./shared.js";
@@ -32,20 +33,26 @@ export function registerBranchTools(ctx: ToolContext) {
     "list_branch_restrictions",
     {
       description:
-        "List branch restrictions for a repository. These control which users/groups can push to or delete specific branches or branch patterns.",
+        "List branch restrictions for a repository. These control which users/groups can push to or delete specific branches or branch patterns. Supports custom field selection via the `fields` param (`'*all'` for full raw response, `'id,type'` for a custom subset).",
       inputSchema: z.strictObject({
         project: projectParam(),
         repository: repositoryParam(),
         limit: limitParam(),
         start: startParam(),
+        fields: fieldsParam(),
       }),
       annotations: toolAnnotations(),
     },
-    async (params) => {
+    async ({ fields, ...params }) => {
       const data = await bb.branches.listRestrictions(params);
 
       return formatResponse(
-        buildPaginated(data, { restrictions: data.values }),
+        buildPaginated(data, {
+          restrictions: curateList(
+            data.values,
+            fields ?? DEFAULT_BRANCH_RESTRICTION_FIELDS,
+          ),
+        }),
       );
     },
   );

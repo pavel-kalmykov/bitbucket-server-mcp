@@ -1,4 +1,5 @@
 import type { ApiContext } from "./context.js";
+import type { Paginated } from "./http/pagination.js";
 import type { KyInstance } from "ky";
 
 export interface ListKeysParams {
@@ -15,23 +16,17 @@ export interface DeleteKeyParams {
   keyId: number;
 }
 
-export interface KeyPage {
-  values: unknown[];
-  size: number;
-  isLastPage: boolean;
-}
-
 function keysApi(client: KyInstance) {
   return {
     async list({
       userSlug,
       limit = 25,
       start = 0,
-    }: ListKeysParams): Promise<KeyPage> {
+    }: ListKeysParams): Promise<Paginated> {
       const searchParams: Record<string, string | number> = { limit, start };
       if (userSlug) searchParams.user = userSlug;
 
-      return client.get("keys", { searchParams }).json<KeyPage>();
+      return client.get("keys", { searchParams }).json<Paginated>();
     },
 
     async add({ text }: AddKeyParams): Promise<unknown> {

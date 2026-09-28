@@ -37,6 +37,16 @@ export const DEFAULT_ACTIVITY_FIELDS =
 export const DEFAULT_USER_FIELDS =
   "name,displayName,emailAddress,slug,active,type";
 
+export const DEFAULT_BRANCH_RESTRICTION_FIELDS =
+  "id,type,matcher.id,matcher.type.id,matcher.type.name,matcher.value," +
+  "users.name,users.displayName,groups.name";
+
+export const DEFAULT_HOOK_FIELDS =
+  "details.key,details.name,details.type,details.description," +
+  "enabled,configured";
+
+export const DEFAULT_GPG_KEY_FIELDS = "id,fingerprint,emailAddress,expiryDate";
+
 export const DEFAULT_WEBHOOK_FIELDS = "name,url,events,active";
 
 export const DEFAULT_REVIEWER_GROUP_FIELDS = "id,name,description,users.name";

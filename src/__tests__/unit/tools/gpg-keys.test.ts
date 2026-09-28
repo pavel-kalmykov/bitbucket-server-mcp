@@ -31,6 +31,34 @@ describe("list_gpg_keys", () => {
     expect(p.isLastPage).toBe(false);
   });
 
+  test("curates keys to the default field set", async () => {
+    mockJson(h.mockClients.gpg.get, {
+      values: [
+        {
+          id: "1",
+          fingerprint: "43:51",
+          emailAddress: "a@b.c",
+          expiryDate: 61550496000000,
+          text: "-----BEGIN PGP PUBLIC KEY BLOCK-----",
+          subKeys: [{ fingerprint: "aa:bb" }],
+        },
+      ],
+      size: 1,
+      isLastPage: true,
+    });
+    const p = await callAndParse<{ keys: Array<Record<string, unknown>> }>(
+      h.client,
+      "list_gpg_keys",
+      {},
+    );
+    expect(p.keys[0]).toEqual({
+      id: "1",
+      fingerprint: "43:51",
+      emailAddress: "a@b.c",
+      expiryDate: 61550496000000,
+    });
+  });
+
   test("defaults limit to 25 and start to 0", async () => {
     mockJson(h.mockClients.gpg.get, {
       values: [],

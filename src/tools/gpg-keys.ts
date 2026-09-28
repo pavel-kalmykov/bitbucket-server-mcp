@@ -6,7 +6,8 @@ import {
 } from "../response/format.js";
 import { toolAnnotations } from "../response/annotations.js";
 import type { ToolContext } from "./shared.js";
-import { limitParam, startParam } from "./params.js";
+import { limitParam, startParam, fieldsParam } from "./params.js";
+import { curateList, DEFAULT_GPG_KEY_FIELDS } from "../response/curate.js";
 
 const actionParam = z.enum(["add", "delete"]).describe("Operation to perform.");
 type KeyAction = z.infer<typeof actionParam>;
@@ -18,7 +19,8 @@ export function registerGpgKeyTools(ctx: ToolContext) {
   server.registerTool(
     "list_gpg_keys",
     {
-      description: "List GPG keys for the authenticated user.",
+      description:
+        "List GPG keys for the authenticated user. Supports custom field selection via the `fields` param (`'*all'` for full raw response, `'id,fingerprint'` for a custom subset).",
       inputSchema: z.strictObject({
         userSlug: z
           .string()
@@ -26,13 +28,18 @@ export function registerGpgKeyTools(ctx: ToolContext) {
           .describe("Filter by user slug (admin only)."),
         limit: limitParam(),
         start: startParam(),
+        fields: fieldsParam(),
       }),
       annotations: toolAnnotations(),
     },
-    async (params) => {
+    async ({ fields, ...params }) => {
       const data = await keys.list(params);
 
-      return formatResponse(buildPaginated(data, { keys: data.values }));
+      return formatResponse(
+        buildPaginated(data, {
+          keys: curateList(data.values, fields ?? DEFAULT_GPG_KEY_FIELDS),
+        }),
+      );
     },
   );
 

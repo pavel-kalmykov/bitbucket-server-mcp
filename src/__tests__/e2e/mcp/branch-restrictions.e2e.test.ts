@@ -12,4 +12,20 @@ describeBitbucket("branch restrictions", () => {
     expect(typeof r.total).toBe("number");
     expect(Array.isArray(r.restrictions)).toBe(true);
   });
+
+  test("list_branch_restrictions curates the response", async ({
+    mcp,
+    scenario,
+  }) => {
+    const r = await callAndParse<{
+      restrictions: Array<Record<string, unknown>>;
+    }>(mcp.client, "list_branch_restrictions", {
+      project: scenario.project.key,
+      repository: scenario.project.repo.slug,
+      fields: "id,type",
+    });
+    for (const restriction of r.restrictions) {
+      expect(Object.keys(restriction).sort()).toEqual(["id", "type"]);
+    }
+  });
 });

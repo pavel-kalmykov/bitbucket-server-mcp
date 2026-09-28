@@ -120,28 +120,11 @@ Each bullet is one PR. P1 first, then P2, then P3.
 
 ### B2. Token economy (P1)
 
-- Fix `list_pull_requests`: `withProperties:false` strips the `properties.*`
-  fields that `DEFAULT_PR_FIELDS` asks for. Drop the flag; curation strips
-  anyway.
-- Curate `get_pull_request_activity`. Biggest uncurated sink (15k-40k tokens),
-  and the review-pr prompt calls it. Add `DEFAULT_ACTIVITY_FIELDS` plus a
-  `fields` param.
-- Curate `get_pull_request_commits` and `get_commit_pull_requests`
-  (`DEFAULT_COMMIT_FIELDS` already exists).
-- Extend curation to **all** remaining read tools: comments, webhooks, hooks,
-  insights, labels, merge-checks, reviewer-groups, ssh/gpg keys, users,
-  default-reviewers, deployments, secret-scanning, system. Done means green
-  tests and no uncurated read tool left.
 - Move the field catalog out of the always-loaded server instructions into
   **on-demand MCP resources** (`bitbucket://schema/<entity>`). Keep a one-line
   pointer in the instructions.
 - Cap `limit` with `.max(100)` on list tools, and add a global diff line/byte
   cap next to the per-file truncation.
-- Document the admin boundary of merge-checks tools in their descriptions:
-  `list_merge_checks` and `manage_merge_checks` hit `/settings/hooks`, which
-  requires repository Admin (non-admins get a raw `AuthorisationException`);
-  per-PR merge status needs no admin via `get_pull_request` with
-  `includeMergeVetoes`. Surface server errors as-is, no hardcoded hints.
 
 ### B3. AI harness (P0-P2)
 

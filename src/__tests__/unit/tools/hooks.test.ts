@@ -32,6 +32,53 @@ describe("list_repository_hooks", () => {
     );
   });
 
+  test("curates hooks to the default field set", async () => {
+    mockJson(
+      h.mockClients.api.get,
+      aPaginated([
+        {
+          details: {
+            key: "k",
+            name: "Hook",
+            type: "PRE_RECEIVE",
+            description: "d",
+            version: "1.0",
+            configFormKey: "c",
+          },
+          enabled: true,
+          configured: false,
+          scope: { type: "REPOSITORY", resourceId: 2 },
+        },
+      ]),
+    );
+    const p = await callAndParse<{
+      hooks: Array<Record<string, unknown>>;
+    }>(h.client, "list_repository_hooks", { project: "P", repository: "r" });
+    expect(p.hooks[0]).toEqual({
+      details: {
+        key: "k",
+        name: "Hook",
+        type: "PRE_RECEIVE",
+        description: "d",
+      },
+      enabled: true,
+      configured: false,
+    });
+  });
+
+  test("fields param narrows the response", async () => {
+    mockJson(
+      h.mockClients.api.get,
+      aPaginated([{ details: { key: "k", name: "Hook" }, enabled: true }]),
+    );
+    const p = await callAndParse<{ hooks: Array<Record<string, unknown>> }>(
+      h.client,
+      "list_repository_hooks",
+      { project: "P", repository: "r", fields: "details.key" },
+    );
+    expect(p.hooks[0]).toEqual({ details: { key: "k" } });
+  });
+
   test("returns empty", async () => {
     mockJson(h.mockClients.api.get, aPaginated([]));
     const p = await callAndParse<{ total: number }>(
