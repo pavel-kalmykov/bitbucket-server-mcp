@@ -18,7 +18,7 @@ export function registerCommentTools(ctx: ToolContext) {
     {
       description:
         'Manage pull request comments. Actions: "create" (general, inline, threaded, or tasks), "edit" (update text/severity/state/threadResolved), "delete", "react" (add emoji reaction), "unreact" (remove reaction). `state: RESOLVED` toggles the task checkbox on a BLOCKER comment; `threadResolved: true` closes the conversation (the "Resolve" button in the UI). They are independent and can be passed together.',
-      inputSchema: {
+      inputSchema: z.strictObject({
         action: actionParam,
         project: projectParam(),
         repository: repositoryParam(),
@@ -91,7 +91,7 @@ export function registerCommentTools(ctx: ToolContext) {
           .describe(
             "Emoticon shortcut for react/unreact (e.g. thumbsup, heart, tada). Use search_emoticons to find available options.",
           ),
-      },
+      }),
       annotations: toolAnnotations({
         readOnlyHint: false,
         idempotentHint: false,
@@ -118,9 +118,9 @@ export function registerCommentTools(ctx: ToolContext) {
     {
       description:
         "Search available emoticons for comment reactions. Returns matching shortcut names to use with manage_comment react/unreact.",
-      inputSchema: {
+      inputSchema: z.strictObject({
         query: z.string().describe("Search term (e.g. thumb, fire, heart)."),
-      },
+      }),
       annotations: toolAnnotations(),
     },
     async (params) => {

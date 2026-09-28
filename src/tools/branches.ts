@@ -33,12 +33,12 @@ export function registerBranchTools(ctx: ToolContext) {
     {
       description:
         "List branch restrictions for a repository. These control which users/groups can push to or delete specific branches or branch patterns.",
-      inputSchema: {
+      inputSchema: z.strictObject({
         project: projectParam(),
         repository: repositoryParam(),
         limit: limitParam(),
         start: startParam(),
-      },
+      }),
       annotations: toolAnnotations(),
     },
     async (params) => {
@@ -55,7 +55,7 @@ export function registerBranchTools(ctx: ToolContext) {
     {
       description:
         "List branches in a repository. Also returns the default branch when available. Supports custom field selection via the `fields` param (`'*all'` for full raw response, `'displayId,latestCommit'` for a custom subset).",
-      inputSchema: {
+      inputSchema: z.strictObject({
         project: projectParam(),
         repository: repositoryParam(),
         filterText: z
@@ -68,7 +68,7 @@ export function registerBranchTools(ctx: ToolContext) {
           .describe("Number of branches to return (default: 25, max: 1000)."),
         start: startParam(),
         fields: fieldsParam(),
-      },
+      }),
       annotations: toolAnnotations(),
     },
     async ({ fields, ...params }) => {
@@ -91,7 +91,7 @@ export function registerBranchTools(ctx: ToolContext) {
     {
       description:
         "List commits in a repository, optionally filtered by branch and author. Supports custom field selection via the `fields` param (`'*all'` for full raw response, `'id,message,author.name'` for a custom subset).",
-      inputSchema: {
+      inputSchema: z.strictObject({
         project: projectParam(),
         repository: repositoryParam(),
         branch: z
@@ -110,7 +110,7 @@ export function registerBranchTools(ctx: ToolContext) {
           .describe("Number of commits to return (default: 25, max: 1000)."),
         start: startParam(),
         fields: fieldsParam(),
-      },
+      }),
       annotations: toolAnnotations(),
     },
     async ({ fields, ...params }) => {
@@ -129,7 +129,7 @@ export function registerBranchTools(ctx: ToolContext) {
     {
       description:
         'Manage branches in a repository. Actions: "create" (create a new branch), "delete" (delete a branch). Refuses to delete the default branch.',
-      inputSchema: {
+      inputSchema: z.strictObject({
         action: actionParam,
         project: projectParam(),
         repository: repositoryParam(),
@@ -138,7 +138,7 @@ export function registerBranchTools(ctx: ToolContext) {
           .string()
           .optional()
           .describe("Ref to branch from (create only)."),
-      },
+      }),
       annotations: toolAnnotations({
         readOnlyHint: false,
         destructiveHint: true,
@@ -166,12 +166,12 @@ export function registerBranchTools(ctx: ToolContext) {
     {
       description:
         "Get details of a specific commit by its ID. Supports custom field selection via the `fields` param (`'*all'` for full raw response, `'id,message,author.name'` for a custom subset).",
-      inputSchema: {
+      inputSchema: z.strictObject({
         project: projectParam(),
         repository: repositoryParam(),
         commitId: z.string().describe("Full commit hash."),
         fields: fieldsParam(),
-      },
+      }),
       annotations: toolAnnotations(),
     },
     async ({ fields, ...params }) => {
@@ -188,7 +188,7 @@ export function registerBranchTools(ctx: ToolContext) {
     {
       description:
         "Compare two refs and list commits accessible from `to` but not from `from`. Supports custom field selection via the `fields` param (`'*all'` for full raw response, `'id,message,author.name'` for a custom subset).",
-      inputSchema: {
+      inputSchema: z.strictObject({
         project: projectParam(),
         repository: repositoryParam(),
         from: z
@@ -205,7 +205,7 @@ export function registerBranchTools(ctx: ToolContext) {
           .describe("Number of commits to return (default: 25, max: 1000)."),
         start: startParam(),
         fields: fieldsParam(),
-      },
+      }),
       annotations: toolAnnotations(),
     },
     async ({ fields, ...params }) => {

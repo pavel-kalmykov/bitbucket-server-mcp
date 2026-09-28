@@ -27,13 +27,13 @@ export function registerWebhookTools(ctx: ToolContext) {
     "list_webhooks",
     {
       description: "List webhooks configured for a repository.",
-      inputSchema: {
+      inputSchema: z.strictObject({
         project: projectParam(),
         repository: repositoryParam(),
         limit: limitParam(),
         start: startParam(),
         fields: fieldsParam(),
-      },
+      }),
       annotations: toolAnnotations(),
     },
     async ({ fields, ...params }) => {
@@ -52,7 +52,7 @@ export function registerWebhookTools(ctx: ToolContext) {
     {
       description:
         'Manage repository webhooks. Actions: "create" (add a new webhook), "update" (modify an existing webhook), "delete" (remove a webhook).',
-      inputSchema: {
+      inputSchema: z.strictObject({
         action: actionParam,
         project: projectParam(),
         repository: repositoryParam(),
@@ -78,7 +78,7 @@ export function registerWebhookTools(ctx: ToolContext) {
           .boolean()
           .optional()
           .describe("Whether the webhook is active (default: true)."),
-      },
+      }),
       annotations: toolAnnotations({
         readOnlyHint: false,
         idempotentHint: false,

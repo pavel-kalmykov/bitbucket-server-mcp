@@ -23,12 +23,12 @@ export function registerLabelTools(ctx: ToolContext) {
     "list_labels",
     {
       description: "List labels for a repository.",
-      inputSchema: {
+      inputSchema: z.strictObject({
         project: projectParam(),
         repository: repositoryParam(),
         limit: limitParam(),
         start: startParam(),
-      },
+      }),
       annotations: toolAnnotations(),
     },
     async (params) => {
@@ -43,12 +43,12 @@ export function registerLabelTools(ctx: ToolContext) {
     {
       description:
         'Manage repository labels. Actions: "add" (create a new label), "remove" (delete a label).',
-      inputSchema: {
+      inputSchema: z.strictObject({
         action: actionParam,
         project: projectParam(),
         repository: repositoryParam(),
         name: z.string().describe("Label name."),
-      },
+      }),
       annotations: toolAnnotations({
         readOnlyHint: false,
         idempotentHint: false,
