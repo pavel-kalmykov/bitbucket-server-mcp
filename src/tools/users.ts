@@ -2,7 +2,7 @@ import { z } from "zod";
 import { formatResponse, buildPaginated } from "../response/format.js";
 import { toolAnnotations } from "../response/annotations.js";
 import type { ToolContext } from "./shared.js";
-import { limitParam, startParam, fieldsParam } from "./params.js";
+import { fieldsHint, fieldsParam, limitParam, startParam } from "./params.js";
 import {
   curateResponse,
   curateList,
@@ -16,7 +16,8 @@ export function registerUserTools(ctx: ToolContext) {
     "get_user_profile",
     {
       description:
-        "Get a Bitbucket user profile by user slug. Returns user details including display name, email, and active status.",
+        "Get a Bitbucket user profile by user slug. Returns user details including display name, email, and active status." +
+        fieldsHint(DEFAULT_USER_FIELDS),
       inputSchema: z.strictObject({
         userSlug: z.string().describe("User slug (username) to look up."),
         fields: fieldsParam(),
@@ -36,7 +37,8 @@ export function registerUserTools(ctx: ToolContext) {
     "search_users",
     {
       description:
-        "Search Bitbucket users by filter query. Returns matching users.",
+        "Search Bitbucket users by filter query. Returns matching users." +
+        fieldsHint(DEFAULT_USER_FIELDS),
       inputSchema: z.strictObject({
         filter: z
           .string()

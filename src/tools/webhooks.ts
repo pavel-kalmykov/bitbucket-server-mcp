@@ -7,11 +7,12 @@ import {
 import { toolAnnotations } from "../response/annotations.js";
 import type { ToolContext } from "./shared.js";
 import {
+  fieldsHint,
+  fieldsParam,
+  limitParam,
   projectParam,
   repositoryParam,
-  limitParam,
   startParam,
-  fieldsParam,
 } from "./params.js";
 import { curateList, DEFAULT_WEBHOOK_FIELDS } from "../response/curate.js";
 
@@ -26,7 +27,9 @@ export function registerWebhookTools(ctx: ToolContext) {
   server.registerTool(
     "list_webhooks",
     {
-      description: "List webhooks configured for a repository.",
+      description:
+        "List webhooks configured for a repository." +
+        fieldsHint(DEFAULT_WEBHOOK_FIELDS),
       inputSchema: z.strictObject({
         project: projectParam(),
         repository: repositoryParam(),

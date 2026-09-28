@@ -15,11 +15,12 @@ import {
 } from "../response/curate.js";
 import type { ToolContext } from "./shared.js";
 import {
+  fieldsHint,
+  fieldsParam,
+  limitParam,
   projectParam,
   repositoryParam,
-  limitParam,
   startParam,
-  fieldsParam,
 } from "./params.js";
 
 const actionParam = z
@@ -84,7 +85,8 @@ export function registerPullRequestTools(ctx: ToolContext) {
     "get_pull_request",
     {
       description:
-        "Get details of a specific pull request including status, reviewers, and metadata. Supports custom field selection via the `fields` param (`'*all'` for full raw response, `'id,title,state'` for a custom subset).",
+        "Get details of a specific pull request including status, reviewers, and metadata." +
+        fieldsHint(DEFAULT_PR_FIELDS),
       inputSchema: z.strictObject({
         project: projectParam(),
         repository: repositoryParam(),
@@ -219,7 +221,8 @@ export function registerPullRequestTools(ctx: ToolContext) {
     "list_pull_requests",
     {
       description:
-        "List pull requests in a repository. Supports filtering by state, direction, order, and client-side author filtering. Supports custom field selection via the `fields` param (`'*all'` for full raw response, `'id,title,state'` for a custom subset).",
+        "List pull requests in a repository. Supports filtering by state, direction, order, and client-side author filtering." +
+        fieldsHint(DEFAULT_PR_FIELDS),
       inputSchema: z.strictObject({
         project: projectParam(),
         repository: repositoryParam(),
@@ -259,7 +262,8 @@ export function registerPullRequestTools(ctx: ToolContext) {
     "list_dashboard_pull_requests",
     {
       description:
-        "Get pull requests from the authenticated user dashboard. No project/repo needed. Supports custom field selection via the `fields` param (`'*all'` for full raw response, `'id,title,state'` for a custom subset).",
+        "Get pull requests from the authenticated user dashboard. No project/repo needed" +
+        fieldsHint(DEFAULT_PR_FIELDS),
       inputSchema: z.strictObject({
         state: z
           .enum(["OPEN", "MERGED", "DECLINED", "ALL"])
@@ -298,7 +302,8 @@ export function registerPullRequestTools(ctx: ToolContext) {
     "get_pull_request_activity",
     {
       description:
-        "Get activity feed for a pull request. Optionally filter to only reviews or comments.",
+        "Get activity feed for a pull request. Optionally filter to only reviews or comments." +
+        fieldsHint(DEFAULT_ACTIVITY_FIELDS),
       inputSchema: z.strictObject({
         project: projectParam(),
         repository: repositoryParam(),
@@ -388,7 +393,8 @@ export function registerPullRequestTools(ctx: ToolContext) {
     "get_pull_request_commits",
     {
       description:
-        "List commits for a specific pull request. Returns the commits that are part of the pull request with pagination support.",
+        "List commits for a specific pull request. Returns the commits that are part of the pull request with pagination support." +
+        fieldsHint(DEFAULT_COMMIT_FIELDS),
       inputSchema: z.strictObject({
         project: projectParam(),
         repository: repositoryParam(),
@@ -414,7 +420,8 @@ export function registerPullRequestTools(ctx: ToolContext) {
     "get_commit_pull_requests",
     {
       description:
-        "List pull requests that contain a specific commit. Returns the PRs that include the given commit.",
+        "List pull requests that contain a specific commit. Returns the PRs that include the given commit." +
+        fieldsHint(DEFAULT_PR_FIELDS),
       inputSchema: z.strictObject({
         project: projectParam(),
         repository: repositoryParam(),

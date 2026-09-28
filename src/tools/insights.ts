@@ -2,7 +2,12 @@ import { z } from "zod";
 import { formatResponse } from "../response/format.js";
 import { toolAnnotations } from "../response/annotations.js";
 import type { ToolContext } from "./shared.js";
-import { projectParam, repositoryParam, fieldsParam } from "./params.js";
+import {
+  fieldsHint,
+  fieldsParam,
+  projectParam,
+  repositoryParam,
+} from "./params.js";
 import { curateList, DEFAULT_INSIGHT_FIELDS } from "../response/curate.js";
 
 export function registerInsightTools(ctx: ToolContext) {
@@ -12,7 +17,8 @@ export function registerInsightTools(ctx: ToolContext) {
     "get_code_insights",
     {
       description:
-        "Get code insight reports and their annotations for a pull request. Shows build results, code quality, and other analysis.",
+        "Get code insight reports and their annotations for a pull request. Shows build results, code quality, and other analysis." +
+        fieldsHint(DEFAULT_INSIGHT_FIELDS),
       inputSchema: z.strictObject({
         project: projectParam(),
         repository: repositoryParam(),

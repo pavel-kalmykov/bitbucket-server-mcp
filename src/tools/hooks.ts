@@ -8,11 +8,12 @@ import { toolAnnotations } from "../response/annotations.js";
 import { curateList, DEFAULT_HOOK_FIELDS } from "../response/curate.js";
 import type { ToolContext } from "./shared.js";
 import {
+  fieldsHint,
+  fieldsParam,
+  limitParam,
   projectParam,
   repositoryParam,
-  limitParam,
   startParam,
-  fieldsParam,
 } from "./params.js";
 
 const actionParam = z
@@ -27,7 +28,8 @@ export function registerHookTools(ctx: ToolContext) {
     "list_repository_hooks",
     {
       description:
-        "List repository hooks and their enabled/disabled state. Supports custom field selection via the `fields` param (`'*all'` for full raw response, `'details.key,enabled'` for a custom subset).",
+        "List repository hooks and their enabled/disabled state." +
+        fieldsHint(DEFAULT_HOOK_FIELDS),
       inputSchema: z.strictObject({
         project: projectParam(),
         repository: repositoryParam(),

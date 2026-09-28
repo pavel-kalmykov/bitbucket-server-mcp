@@ -2,7 +2,12 @@ import { z } from "zod";
 import { formatResponse } from "../response/format.js";
 import { toolAnnotations } from "../response/annotations.js";
 import type { ToolContext } from "./shared.js";
-import { projectParam, repositoryParam, fieldsParam } from "./params.js";
+import {
+  fieldsHint,
+  fieldsParam,
+  projectParam,
+  repositoryParam,
+} from "./params.js";
 import {
   curateList,
   DEFAULT_REVIEWER_GROUP_FIELDS,
@@ -14,7 +19,9 @@ export function registerReviewerGroupTools(ctx: ToolContext) {
   server.registerTool(
     "list_reviewer_groups",
     {
-      description: "List reviewer groups configured for a repository.",
+      description:
+        "List reviewer groups configured for a repository." +
+        fieldsHint(DEFAULT_REVIEWER_GROUP_FIELDS),
       inputSchema: z.strictObject({
         project: projectParam(),
         repository: repositoryParam(),
