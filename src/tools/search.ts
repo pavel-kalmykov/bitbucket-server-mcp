@@ -3,7 +3,7 @@ import { formatResponse } from "../response/format.js";
 import { toolAnnotations } from "../response/annotations.js";
 import { curateList, DEFAULT_SEARCH_FIELDS } from "../response/curate.js";
 import type { ToolContext } from "./shared.js";
-import { limitParam, startParam, fieldsParam } from "./params.js";
+import { fieldsHint, fieldsParam, limitParam, startParam } from "./params.js";
 
 export function registerSearchTools(ctx: ToolContext) {
   const { server, bb } = ctx;
@@ -12,7 +12,8 @@ export function registerSearchTools(ctx: ToolContext) {
     "search",
     {
       description:
-        "Search for code or files across Bitbucket repositories. Supports filtering by project, repository, and search type. Supports custom field selection via the `fields` param (`'*all'` for full raw response, `'file,hitCount'` for a custom subset).",
+        "Search for code or files across Bitbucket repositories. Supports filtering by project, repository, and search type." +
+        fieldsHint(DEFAULT_SEARCH_FIELDS),
       inputSchema: z.strictObject({
         query: z.string().describe("Search query string."),
         project: z

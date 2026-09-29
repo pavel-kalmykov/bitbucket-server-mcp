@@ -385,6 +385,45 @@ describe("Branch tools", () => {
       expect(parsed.restrictions[0].id).toBe(1);
     });
 
+    test("curates restrictions to the default field set", async () => {
+      mockJson(h.mockClients.branchUtils.get, {
+        values: [
+          {
+            id: 1,
+            type: "push",
+            active: true,
+            matcher: {
+              id: "refs/heads/*",
+              displayId: "refs/heads/*",
+              type: { id: "PATTERN", name: "Pattern" },
+              value: null,
+            },
+            users: [{ name: "jdoe", displayName: "J. Doe", email: "j@x" }],
+          },
+        ],
+        size: 1,
+        isLastPage: true,
+      });
+
+      const parsed = await callAndParse<{
+        restrictions: Array<Record<string, unknown>>;
+      }>(h.client, "list_branch_restrictions", {
+        project: "TEST",
+        repository: "my-repo",
+      });
+
+      expect(parsed.restrictions[0]).toEqual({
+        id: 1,
+        type: "push",
+        matcher: {
+          id: "refs/heads/*",
+          type: { id: "PATTERN", name: "Pattern" },
+          value: null,
+        },
+        users: [{ name: "jdoe", displayName: "J. Doe" }],
+      });
+    });
+
     test("returns empty list when no restrictions exist", async () => {
       mockJson(h.mockClients.branchUtils.get, {
         values: [],

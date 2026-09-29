@@ -7,11 +7,12 @@ import {
 import { toolAnnotations } from "../response/annotations.js";
 import type { ToolContext } from "./shared.js";
 import {
+  fieldsHint,
+  fieldsParam,
+  limitParam,
   projectParam,
   repositoryParam,
-  limitParam,
   startParam,
-  fieldsParam,
 } from "./params.js";
 import {
   curateResponse,
@@ -31,7 +32,8 @@ export function registerCommitCommentTools(ctx: ToolContext) {
     "list_commit_comments",
     {
       description:
-        "Get comments for a specific commit. Returns all comments on the commit with pagination support.",
+        "Get comments for a specific commit. Returns all comments on the commit with pagination support." +
+        fieldsHint(DEFAULT_COMMENT_FIELDS),
       inputSchema: z.strictObject({
         project: projectParam(),
         repository: repositoryParam(),

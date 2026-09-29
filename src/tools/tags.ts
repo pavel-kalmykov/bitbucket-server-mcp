@@ -12,10 +12,11 @@ import {
 } from "../response/curate.js";
 import type { ToolContext } from "./shared.js";
 import {
+  fieldsHint,
+  fieldsParam,
   projectParam,
   repositoryParam,
   startParam,
-  fieldsParam,
 } from "./params.js";
 
 const actionParam = z
@@ -30,7 +31,7 @@ export function registerTagTools(ctx: ToolContext) {
     "list_tags",
     {
       description:
-        "List tags in a repository. Supports custom field selection via the `fields` param (`'*all'` for full raw response, `'id,displayId,hash'` for a custom subset).",
+        "List tags in a repository." + fieldsHint(DEFAULT_TAG_FIELDS),
       inputSchema: z.strictObject({
         project: projectParam(),
         repository: repositoryParam(),
@@ -62,7 +63,8 @@ export function registerTagTools(ctx: ToolContext) {
     "get_tag",
     {
       description:
-        "Get details of a specific tag by its name. Supports custom field selection via the `fields` param (`'*all'` for full raw response, `'id,displayId,hash'` for a custom subset).",
+        "Get details of a specific tag by its name" +
+        fieldsHint(DEFAULT_TAG_FIELDS),
       inputSchema: z.strictObject({
         project: projectParam(),
         repository: repositoryParam(),

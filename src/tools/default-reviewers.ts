@@ -2,7 +2,12 @@ import { z } from "zod";
 import { formatResponse } from "../response/format.js";
 import { toolAnnotations } from "../response/annotations.js";
 import type { ToolContext } from "./shared.js";
-import { projectParam, repositoryParam, fieldsParam } from "./params.js";
+import {
+  fieldsHint,
+  fieldsParam,
+  projectParam,
+  repositoryParam,
+} from "./params.js";
 import { curateList, DEFAULT_REVIEWER_FIELDS } from "../response/curate.js";
 
 export function registerDefaultReviewerTools(ctx: ToolContext) {
@@ -12,7 +17,8 @@ export function registerDefaultReviewerTools(ctx: ToolContext) {
     "list_default_reviewer_conditions",
     {
       description:
-        "List default reviewer conditions for a repository. These conditions determine which users are automatically added as reviewers to pull requests.",
+        "List default reviewer conditions for a repository. These conditions determine which users are automatically added as reviewers to pull requests." +
+        fieldsHint(DEFAULT_REVIEWER_FIELDS),
       inputSchema: z.strictObject({
         project: projectParam(),
         repository: repositoryParam(),

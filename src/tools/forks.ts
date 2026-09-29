@@ -8,10 +8,11 @@ import {
 } from "../response/curate.js";
 import type { ToolContext } from "./shared.js";
 import {
+  fieldsHint,
+  fieldsParam,
   projectParam,
   repositoryParam,
   startParam,
-  fieldsParam,
 } from "./params.js";
 
 export function registerForkTools(ctx: ToolContext) {
@@ -21,7 +22,7 @@ export function registerForkTools(ctx: ToolContext) {
     "list_forks",
     {
       description:
-        "List forks of a repository. Supports custom field selection via the `fields` param (`'*all'` for full raw response, `'slug,name'` for a custom subset).",
+        "List forks of a repository." + fieldsHint(DEFAULT_REPOSITORY_FIELDS),
       inputSchema: z.strictObject({
         project: projectParam(),
         repository: repositoryParam(),

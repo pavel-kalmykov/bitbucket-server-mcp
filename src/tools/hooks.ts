@@ -5,11 +5,14 @@ import {
   type ToolSuccessResult,
 } from "../response/format.js";
 import { toolAnnotations } from "../response/annotations.js";
+import { curateList, DEFAULT_HOOK_FIELDS } from "../response/curate.js";
 import type { ToolContext } from "./shared.js";
 import {
+  fieldsHint,
+  fieldsParam,
+  limitParam,
   projectParam,
   repositoryParam,
-  limitParam,
   startParam,
 } from "./params.js";
 
@@ -24,19 +27,26 @@ export function registerHookTools(ctx: ToolContext) {
   server.registerTool(
     "list_repository_hooks",
     {
-      description: "List repository hooks and their enabled/disabled state.",
+      description:
+        "List repository hooks and their enabled/disabled state." +
+        fieldsHint(DEFAULT_HOOK_FIELDS),
       inputSchema: z.strictObject({
         project: projectParam(),
         repository: repositoryParam(),
         limit: limitParam(),
         start: startParam(),
+        fields: fieldsParam(),
       }),
       annotations: toolAnnotations(),
     },
-    async (params) => {
+    async ({ fields, ...params }) => {
       const data = await bb.hooks.list(params);
 
-      return formatResponse(buildPaginated(data, { hooks: data.values }));
+      return formatResponse(
+        buildPaginated(data, {
+          hooks: curateList(data.values, fields ?? DEFAULT_HOOK_FIELDS),
+        }),
+      );
     },
   );
 

@@ -100,48 +100,13 @@ does not). "Complete" is defined by the audit, not by feel.
 
 Each bullet is one PR. P1 first, then P2, then P3.
 
-### B1. Bugs and quick wins (P1)
-
-- Minify JSON in `formatResponse` and the projects resource: drop the `null, 2`
-  indent. ~10-20% fewer tokens on every structured response, one line.
-- Fix the **labels version gate**. The labels API shipped in Bitbucket Server
-  **5.13**, not 8.5. Update `labels.ts`, `server.ts`, and the README.
-- Fix the **README server minimum**. It claims 8.5+ but the E2E matrix boots and
-  passes on 7.21. Align it with what CI actually verifies.
-- Delete the stray untracked `debug-draft.e2e.test.ts` (no assertions).
-- Remove the dead `@semantic-release/git` devDependency.
-- Fix `GOVERNANCE.md`: npm publish uses OIDC trusted publishing, not an
-  `NPM_TOKEN`. The doc has to match reality.
-- Add `.github/ISSUE_TEMPLATE/config.yml` with `blank_issues_enabled: false`.
-- Delete `opencode.json` and remove its entry (and `AGENTS.md`'s) from
-  `.gitignore`. AGENTS.md must travel with the repo; it is the cross-tool
-  standard 25+ agents read, and gitignoring it blocks the whole harness plan
-  below. The plugin in `opencode.json` loads globally, so the file is dead.
-
 ### B2. Token economy (P1)
 
-- Fix `list_pull_requests`: `withProperties:false` strips the `properties.*`
-  fields that `DEFAULT_PR_FIELDS` asks for. Drop the flag; curation strips
-  anyway.
-- Curate `get_pull_request_activity`. Biggest uncurated sink (15k-40k tokens),
-  and the review-pr prompt calls it. Add `DEFAULT_ACTIVITY_FIELDS` plus a
-  `fields` param.
-- Curate `get_pull_request_commits` and `get_commit_pull_requests`
-  (`DEFAULT_COMMIT_FIELDS` already exists).
-- Extend curation to **all** remaining read tools: comments, webhooks, hooks,
-  insights, labels, merge-checks, reviewer-groups, ssh/gpg keys, users,
-  default-reviewers, deployments, secret-scanning, system. Done means green
-  tests and no uncurated read tool left.
 - Move the field catalog out of the always-loaded server instructions into
   **on-demand MCP resources** (`bitbucket://schema/<entity>`). Keep a one-line
   pointer in the instructions.
 - Cap `limit` with `.max(100)` on list tools, and add a global diff line/byte
   cap next to the per-file truncation.
-- Document the admin boundary of merge-checks tools in their descriptions:
-  `list_merge_checks` and `manage_merge_checks` hit `/settings/hooks`, which
-  requires repository Admin (non-admins get a raw `AuthorisationException`);
-  per-PR merge status needs no admin via `get_pull_request` with
-  `includeMergeVetoes`. Surface server errors as-is, no hardcoded hints.
 
 ### B3. AI harness (P0-P2)
 
@@ -149,37 +114,18 @@ Each bullet is one PR. P1 first, then P2, then P3.
   `openspec init`, seed it with the current architecture as context, then run
   each roadmap item (Phase A or B) as one change: propose, design, tasks,
   implement, archive. Brownfield-first, 20+ agents, ~50k stars.
-- Rewrite `AGENTS.md` as a thin, hand-written orientation map: commands,
-  boundaries, commit rules, the per-tool definition of done, and a doc map.
-  Un-gitignore it (see B1). Do not auto-generate it; measured to hurt.
-- Add `CLAUDE.md` with `@AGENTS.md` as its first line. Claude Code does not
-  read AGENTS.md natively, so the import loads it. Not a symlink.
 - Adopt **rulesync** for single-source config: maintain `.rulesync/` and
   generate AGENTS.md, CLAUDE.md, Cursor, Copilot, Codex, and OpenCode from one
   source. Add a CI job that asserts the generated output matches the source.
-- Add `.claude/skills/add-tool/SKILL.md`: the codified "add a tool" checklist
-  (define, register, curate, annotate, E2E test, lint, build). Progressive
-  disclosure, so it does not belong in CLAUDE.md.
-- Add a `.claude/settings.json` PreToolUse hook that blocks edits to
-  `src/generated/**`, `build/**`, and the quality-gate configs.
-- Add `scripts/check-tool-coverage.ts` and `npm run check:tools`: fail CI when
-  a registered tool has no E2E file or is missing from `mcp-harness.ts`.
 - Commit a `.devcontainer/` for reproducible contributor toolchains.
 - Run the **MCP Inspector CLI** in CI as a deterministic contract and
   schema-drift smoke.
 
 ### B4. Maintainability refactors (P2)
 
-- Make `curate` and `curateList` generic. Removes the `as Record<string,
-unknown>` double-casts at every call-site.
-- Extract reusable zod fragments into **`src/tools/params.ts`** (not a
-  `shared.ts` grab-bag): `projectParam`, `repositoryParam`, `prIdParam`,
-  `paginationParams`, `fieldsParam`. Replaces ~49 duplicated `project` fields,
-  ~46 `repository`, and ~7 duplicated `fields` descriptions.
 - Add a `withErrorHandling(handler)` wrapper next to the registration
   machinery, and fold caching and paginated-result shaping into it. Removes
   ~59 hand-rolled try/catch blocks. Not in `shared.ts`.
-- Split `refs.ts` into `branches.ts` and `tags.ts`. Two concerns under one name.
 - Remove the remaining `as` casts with zod schemas for the error body and the
   `Paginated` envelope. The standing preference is zero avoidable casts.
 - Wire up `ctx.cache` through **ky hooks** (`beforeRequest` / `afterResponse`
@@ -188,11 +134,6 @@ unknown>` double-casts at every call-site.
 
 ### B5. Testing (P1-P2)
 
-- **Stryker gate**: `thresholds.break`, `checkers: ["typescript"]`,
-  `ignoreStatic: true`, a PR job running `stryker run --incremental`, the
-  dashboard badge, a `json` reporter artifact. Do not use per-line
-  `// Stryker disable` comments; refactor to kill mutants, or raise the
-  threshold.
 - Write **`TESTING.md`**: a tier table (unit/property/integration/e2e), the
   Meszaros double taxonomy with this repo's rule ("fake the boundary you don't
   own with msw; stub and spy the seams you do own with mock-extended"), the
@@ -207,11 +148,6 @@ unknown>` double-casts at every call-site.
   seed.
 - **Coverage `perFile` and per-glob**: tighten `src/http` and `src/response`
   toward 90+.
-- **E2E dedup**: extract the 12-line `beforeAll`/`afterAll` replicated x23 into
-  `setupBitbucketSuite(version)`, and share one `registerAllTools(ctx)` between
-  prod and E2E.
-- Add **test data builders** for Bitbucket payloads, and finish parametrizing
-  repetitive cases with `test.each`.
 - Formalize **metamorphic relations** on the curator and formatter
   (idempotence, subset-monotonicity, field-order independence).
 
@@ -241,14 +177,7 @@ Keep semantic-release as it is (one package, one version).
   status checks strict, dismiss stale approvals, block force-push, include
   admins. Settings only, but it lifts Branch-Protection and Code-Review.
 - `npm audit fix` until the dev-toolchain tree is clean; commit the lockfile.
-- CodeQL: add `queries: security-extended`. dependency-review: add
-  `fail-on-severity: high`.
 - DCO bot plus Best Practices badge self-attestation toward Gold.
-- Dependabot: group github-actions updates.
-- Dockerfile: share the base-image digest through an `ARG`.
-- `ci.yml`: run the publish dry-run build on one matrix node only.
-- `scorecard.yml`: top-level `permissions: {}` with per-job grants.
-- `release.yml`: add a `concurrency` group.
 
 ### B8. Optional and experimental (P3)
 
