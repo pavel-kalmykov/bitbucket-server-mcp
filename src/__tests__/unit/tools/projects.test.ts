@@ -120,6 +120,64 @@ describe("manage_projects", () => {
     expect(result.content[0].text).toContain("project is required");
   });
 
+  test("create keeps an explicit public:false in the body", async () => {
+    mockJson(h.mockClients.api.post, { key: "PRJ" });
+    await callAndParse(h.client, "manage_projects", {
+      action: "create",
+      name: "My Project",
+      key: "prj",
+      public: false,
+    });
+    expectCalledWithJson(h.mockClients.api.post, "projects", {
+      name: "My Project",
+      key: "prj",
+      public: false,
+    });
+  });
+
+  test("update with no fields sends an empty body", async () => {
+    mockJson(h.mockClients.api.put, { key: "PRJ" });
+    await callAndParse(h.client, "manage_projects", {
+      action: "update",
+      project: "prj",
+    });
+    expectCalledWithJson(h.mockClients.api.put, "projects/prj", {});
+  });
+
+  test("fields param narrows the created project", async () => {
+    mockJson(h.mockClients.api.post, {
+      id: 7,
+      key: "PRJ",
+      name: "My Project",
+      links: { self: [] },
+    });
+    const parsed = await callAndParse<Record<string, unknown>>(
+      h.client,
+      "manage_projects",
+      { action: "create", name: "My Project", key: "prj", fields: "key" },
+    );
+    expect(parsed).toEqual({ key: "PRJ" });
+  });
+
+  test("fields '*all' returns the raw response", async () => {
+    mockJson(h.mockClients.api.post, {
+      id: 7,
+      key: "PRJ",
+      links: { self: [] },
+    });
+    const parsed = await callAndParse<{ links: unknown }>(
+      h.client,
+      "manage_projects",
+      {
+        action: "create",
+        name: "My Project",
+        key: "prj",
+        fields: "*all",
+      },
+    );
+    expect(parsed.links).toEqual({ self: [] });
+  });
+
   test("returns error on API failure", async () => {
     mockReject(h.mockClients.api.post, new Error("fail"));
     const result = await callRaw(h.client, "manage_projects", {
