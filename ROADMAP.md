@@ -58,8 +58,6 @@ the swagger plus the un-documented endpoints catches anything missed.
 
 - `manage_default_reviewers`: create, update, and delete conditions (today only
   `list_default_reviewer_conditions`).
-- `manage_secret_scanning`: add and remove allowlist rules (today only
-  `list_secret_scanning_rules`).
 - ~~`list_inbox`~~ Redundant as an MCP tool: the endpoint is the same
   data as `dashboard/pull-requests`, already exposed via
   `list_dashboard_pull_requests` with `role` + `participantStatus`
