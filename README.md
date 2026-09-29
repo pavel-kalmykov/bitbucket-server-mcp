@@ -158,6 +158,7 @@ Or build locally: `docker build -t bitbucket-mcp .`
 | Tool | Description |
 |------|-------------|
 | `list_projects` | List all accessible Bitbucket projects |
+| `manage_projects` | Create, update, and delete projects |
 | `list_repositories` | List repositories in a project |
 | `browse_repository` | Browse files and directories |
 | `get_file_content` | Read file contents with pagination |
