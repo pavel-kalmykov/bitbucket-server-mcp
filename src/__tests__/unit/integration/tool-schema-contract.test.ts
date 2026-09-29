@@ -159,6 +159,7 @@ describe("Tool schema contract: required fields", () => {
     { name: "list_branch_restrictions", required: ["repository"] },
     { name: "get_pull_request_commits", required: ["repository", "prId"] },
     { name: "get_user_profile", required: ["userSlug"] },
+    { name: "manage_projects", required: ["action"] },
     { name: "list_labels", required: ["repository"] },
     { name: "manage_labels", required: ["action", "repository", "name"] },
     { name: "list_webhooks", required: ["repository"] },
@@ -399,6 +400,10 @@ describe("Tool schema contract: enum values", () => {
 describe("Tool schema contract: annotations", () => {
   test.each<{ name: string; expected: Partial<ToolAnnotations> }>([
     { name: "list_projects", expected: { readOnlyHint: true } },
+    {
+      name: "manage_projects",
+      expected: { readOnlyHint: false, destructiveHint: true },
+    },
     { name: "get_pull_request", expected: { readOnlyHint: true } },
     { name: "get_diff", expected: { readOnlyHint: true } },
     { name: "search", expected: { readOnlyHint: true, openWorldHint: true } },
@@ -704,6 +709,7 @@ describe("Tool schema contract: all expected tools are registered", () => {
     const names = allTools.map((t) => t.name);
     const expected = [
       "list_projects",
+      "manage_projects",
       "list_repositories",
       "browse_repository",
       "get_file_content",

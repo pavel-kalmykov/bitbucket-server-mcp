@@ -56,8 +56,6 @@ the swagger plus the un-documented endpoints catches anything missed.
 
 **Gaps confirmed in the swagger:**
 
-- `manage_projects`: create, update, and delete projects (today only
-  `list_projects`).
 - `manage_default_reviewers`: create, update, and delete conditions (today only
   `list_default_reviewer_conditions`).
 - `manage_secret_scanning`: add and remove allowlist rules (today only
