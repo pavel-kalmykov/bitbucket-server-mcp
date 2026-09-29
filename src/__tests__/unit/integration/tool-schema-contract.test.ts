@@ -160,6 +160,7 @@ describe("Tool schema contract: required fields", () => {
     { name: "get_pull_request_commits", required: ["repository", "prId"] },
     { name: "get_user_profile", required: ["userSlug"] },
     { name: "manage_projects", required: ["action"] },
+    { name: "manage_default_reviewers", required: ["action"] },
     { name: "list_labels", required: ["repository"] },
     { name: "manage_labels", required: ["action", "repository", "name"] },
     { name: "list_webhooks", required: ["repository"] },
@@ -403,6 +404,10 @@ describe("Tool schema contract: annotations", () => {
     {
       name: "manage_projects",
       expected: { readOnlyHint: false, destructiveHint: true },
+    },
+    {
+      name: "manage_default_reviewers",
+      expected: { readOnlyHint: false, destructiveHint: false },
     },
     { name: "get_pull_request", expected: { readOnlyHint: true } },
     { name: "get_diff", expected: { readOnlyHint: true } },
@@ -744,6 +749,7 @@ describe("Tool schema contract: all expected tools are registered", () => {
       "list_forks",
       "fork_repository",
       "list_default_reviewer_conditions",
+      "manage_default_reviewers",
       "list_branch_restrictions",
       "get_pull_request_commits",
       "get_user_profile",

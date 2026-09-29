@@ -67,9 +67,9 @@ export const DEFAULT_INSIGHT_FIELDS =
   "key,result,createdDate,details,link,title,reporter";
 
 export const DEFAULT_REVIEWER_FIELDS =
-  "id,scope.type,reviewers.name," +
-  "sourceMatcher.type,sourceMatcher.displayId," +
-  "targetMatcher.type,targetMatcher.displayId";
+  "id,scope.type,reviewers.name,requiredApprovals," +
+  "sourceRefMatcher.type,sourceRefMatcher.displayId," +
+  "targetRefMatcher.type,targetRefMatcher.displayId";
 
 function pickFieldsFromObject(
   source: Record<string, unknown>,

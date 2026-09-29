@@ -253,6 +253,7 @@ Or build locally: `docker build -t bitbucket-mcp .`
 | Tool | Description |
 |------|-------------|
 | `list_default_reviewer_conditions` | List default reviewer conditions |
+| `manage_default_reviewers` | Create, update, and delete default reviewer conditions |
 | `list_branch_restrictions` | List branch permission restrictions |
 | `list_repository_hooks` | List repository hooks and their status |
 | `manage_repository_hooks` | Enable, disable, or configure repository hooks |
