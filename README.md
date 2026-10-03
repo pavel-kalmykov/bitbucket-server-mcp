@@ -263,6 +263,7 @@ Or build locally: `docker build -t bitbucket-mcp .`
 | `create_reviewer_group` | Create a reviewer group with one or more reviewers |
 | `delete_reviewer_group` | Delete a reviewer group by name |
 | `list_secret_scanning_rules` | List secret scanning allowlist rules (8.5+) |
+| `manage_secret_scanning` | Create, update, and delete secret scanning allowlist rules (8.5+) |
 
 ### Keys
 
