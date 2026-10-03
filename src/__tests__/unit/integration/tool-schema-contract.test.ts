@@ -162,6 +162,7 @@ describe("Tool schema contract: required fields", () => {
     { name: "manage_projects", required: ["action"] },
     { name: "manage_default_reviewers", required: ["action"] },
     { name: "manage_secret_scanning", required: ["action"] },
+    { name: "set_default_branch", required: ["repository", "branch"] },
     { name: "list_labels", required: ["repository"] },
     { name: "manage_labels", required: ["action", "repository", "name"] },
     { name: "list_webhooks", required: ["repository"] },
@@ -413,6 +414,11 @@ describe("Tool schema contract: annotations", () => {
     {
       name: "manage_secret_scanning",
       expected: { readOnlyHint: false, destructiveHint: true },
+    },
+    { name: "get_default_branch", expected: { readOnlyHint: true } },
+    {
+      name: "set_default_branch",
+      expected: { readOnlyHint: false, idempotentHint: true },
     },
     { name: "get_pull_request", expected: { readOnlyHint: true } },
     { name: "get_diff", expected: { readOnlyHint: true } },
@@ -729,6 +735,8 @@ describe("Tool schema contract: all expected tools are registered", () => {
       "edit_file",
       "get_server_info",
       "list_branches",
+      "get_default_branch",
+      "set_default_branch",
       "list_commits",
       "manage_branches",
       "get_commit",
