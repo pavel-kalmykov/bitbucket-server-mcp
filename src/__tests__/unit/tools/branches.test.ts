@@ -1,11 +1,12 @@
 import { describe, test, expect } from "vitest";
 import { BitbucketApiError } from "../../../api/http/errors.js";
 import { registerBranchTools } from "../../../tools/branches.js";
-import { mockError, mockJson } from "../../fixtures/test-utils.js";
+import { mockError, mockJson, mockReject } from "../../fixtures/test-utils.js";
 import { aBranch } from "../../fixtures/test-builders.js";
 import {
   callAndParse,
   callRaw,
+  expectCalledWithJson,
   expectCalledWithSearchParams,
   setupToolHarness,
 } from "../../fixtures/tool-test-utils.js";
@@ -14,6 +15,97 @@ describe("Branch tools", () => {
   const h = setupToolHarness({
     register: registerBranchTools,
     defaultProject: "DEFAULT",
+  });
+
+  describe("get_default_branch", () => {
+    test("returns the configured default branch", async () => {
+      mockJson(h.mockClients.api.get, {
+        id: "refs/heads/main",
+        displayId: "main",
+        type: { id: "BRANCH", name: "Branch" },
+        latestCommit: "abc123",
+        isDefault: true,
+      });
+      const parsed = await callAndParse<Record<string, unknown>>(
+        h.client,
+        "get_default_branch",
+        { project: "TEST", repository: "my-repo" },
+      );
+      expect(parsed).toEqual({
+        id: "refs/heads/main",
+        displayId: "main",
+        type: { id: "BRANCH", name: "Branch" },
+        latestCommit: "abc123",
+        isDefault: true,
+      });
+      expect(h.mockClients.api.get).toHaveBeenCalledWith(
+        "projects/TEST/repos/my-repo/default-branch",
+      );
+    });
+
+    test("fields param narrows the response", async () => {
+      mockJson(h.mockClients.api.get, {
+        id: "refs/heads/main",
+        displayId: "main",
+        isDefault: true,
+      });
+      const parsed = await callAndParse<Record<string, unknown>>(
+        h.client,
+        "get_default_branch",
+        { project: "TEST", repository: "my-repo", fields: "displayId" },
+      );
+      expect(parsed).toEqual({ displayId: "main" });
+    });
+
+    test("returns error on API failure", async () => {
+      mockReject(h.mockClients.api.get, new Error("fail"));
+      const result = await callRaw(h.client, "get_default_branch", {
+        project: "TEST",
+        repository: "my-repo",
+      });
+      expect(result.isError).toBe(true);
+    });
+  });
+
+  describe("set_default_branch", () => {
+    test("puts refs/heads/<branch> and reads the branch back", async () => {
+      mockJson(h.mockClients.api.put, "");
+      mockJson(h.mockClients.api.get, {
+        id: "refs/heads/develop",
+        displayId: "develop",
+        isDefault: true,
+      });
+      const parsed = await callAndParse<Record<string, unknown>>(
+        h.client,
+        "set_default_branch",
+        { project: "TEST", repository: "my-repo", branch: "develop" },
+      );
+      expect(parsed.displayId).toBe("develop");
+      expectCalledWithJson(
+        h.mockClients.api.put,
+        "projects/TEST/repos/my-repo/default-branch",
+        { id: "refs/heads/develop" },
+      );
+    });
+
+    test("without branch fails with a validation error", async () => {
+      const result = await callRaw(h.client, "set_default_branch", {
+        project: "TEST",
+        repository: "my-repo",
+      });
+      expect(result.isError).toBe(true);
+      expect(result.content[0].text).toContain("branch");
+    });
+
+    test("returns error on API failure", async () => {
+      mockReject(h.mockClients.api.put, new Error("fail"));
+      const result = await callRaw(h.client, "set_default_branch", {
+        project: "TEST",
+        repository: "my-repo",
+        branch: "develop",
+      });
+      expect(result.isError).toBe(true);
+    });
   });
 
   describe("list_branches", () => {
