@@ -20,6 +20,10 @@ import {
 } from "./default-reviewers.js";
 import { emoticonsApi, type EmoticonsApi } from "./emoticons.js";
 import { groupsApi, type GroupsApi } from "./groups.js";
+import {
+  projectPermissionsApi,
+  type ProjectPermissionsApi,
+} from "./project-permissions.js";
 import { inboxApi, type InboxApi } from "./inbox.js";
 import { forksApi, type ForksApi } from "./forks.js";
 import { hooksApi, type HooksApi } from "./hooks.js";
@@ -81,6 +85,7 @@ export interface BitbucketClient {
   readonly inbox: InboxApi;
   readonly emoticons: EmoticonsApi;
   readonly groups: GroupsApi;
+  readonly projectPermissions: ProjectPermissionsApi;
   readonly forks: ForksApi;
   readonly gpgKeys: GpgKeysApi;
   readonly hooks: HooksApi;
@@ -127,6 +132,7 @@ export function createBitbucketClient(
     inbox: inboxApi(context),
     emoticons: emoticonsApi(context),
     groups: groupsApi(context),
+    projectPermissions: projectPermissionsApi(context),
     forks: forksApi(context),
     hooks: hooksApi(context),
     gpgKeys: gpgKeysApi(context),
