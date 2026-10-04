@@ -53,6 +53,9 @@ export const DEFAULT_REVIEWER_GROUP_FIELDS = "id,name,description,users.name";
 
 export const DEFAULT_SECRET_SCANNING_FIELDS = "id,name,lineRegex,pathRegex";
 
+export const DEFAULT_PROJECT_PERMISSION_FIELDS =
+  "group.name,user.name,permission";
+
 export const DEFAULT_DEPLOYMENT_FIELDS =
   "key,state,displayName,description,url," +
   "environment.key,environment.displayName,environment.type," +
