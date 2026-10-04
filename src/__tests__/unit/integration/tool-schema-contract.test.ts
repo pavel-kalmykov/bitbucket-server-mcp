@@ -161,6 +161,7 @@ describe("Tool schema contract: required fields", () => {
     { name: "get_user_profile", required: ["userSlug"] },
     { name: "manage_projects", required: ["action"] },
     { name: "manage_default_reviewers", required: ["action"] },
+    { name: "manage_project_permissions", required: ["action"] },
     { name: "manage_secret_scanning", required: ["action"] },
     { name: "set_default_branch", required: ["repository", "branch"] },
     { name: "list_labels", required: ["repository"] },
@@ -416,6 +417,10 @@ describe("Tool schema contract: annotations", () => {
       expected: { readOnlyHint: false, destructiveHint: true },
     },
     { name: "get_default_branch", expected: { readOnlyHint: true } },
+    {
+      name: "manage_project_permissions",
+      expected: { readOnlyHint: false, idempotentHint: true },
+    },
     {
       name: "set_default_branch",
       expected: { readOnlyHint: false, idempotentHint: true },
@@ -786,6 +791,7 @@ describe("Tool schema contract: all expected tools are registered", () => {
       "delete_reviewer_group",
       "list_secret_scanning_rules",
       "list_groups",
+      "manage_project_permissions",
       "manage_secret_scanning",
       "list_ssh_keys",
       "manage_ssh_keys",
