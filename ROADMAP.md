@@ -65,7 +65,6 @@ the swagger plus the un-documented endpoints catches anything missed.
   returns the waiting-for-review queue). The reusable client exposes
   the endpoint as `bb.inbox` for JS/CLI consumers; no MCP tool is
   planned to avoid a duplicate agent surface.
-- `get_default_branch` and `set_default_branch`.
 - `list_groups` and user permission lookups (`/admin/groups`, repo and project
   permissions).
 

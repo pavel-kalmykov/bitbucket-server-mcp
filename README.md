@@ -197,6 +197,8 @@ Or build locally: `docker build -t bitbucket-mcp .`
 | Tool | Description |
 |------|-------------|
 | `list_branches` | List branches with default branch detection |
+| `get_default_branch` | Get the repository's configured default branch |
+| `set_default_branch` | Set the repository's default branch |
 | `list_commits` | Browse commit history with branch and author filtering |
 | `manage_branches` | Create or delete branches (safety check prevents deleting default branch) |
 | `get_commit` | Get details of a specific commit by its ID |
