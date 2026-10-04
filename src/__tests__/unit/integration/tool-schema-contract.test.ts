@@ -785,6 +785,7 @@ describe("Tool schema contract: all expected tools are registered", () => {
       "create_reviewer_group",
       "delete_reviewer_group",
       "list_secret_scanning_rules",
+      "list_groups",
       "manage_secret_scanning",
       "list_ssh_keys",
       "manage_ssh_keys",

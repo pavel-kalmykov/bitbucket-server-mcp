@@ -6,6 +6,7 @@ import { registerDefaultReviewerTools } from "./default-reviewers.js";
 import { registerDeploymentTools } from "./deployments.js";
 import { registerForkTools } from "./forks.js";
 import { registerGpgKeyTools } from "./gpg-keys.js";
+import { registerGroupTools } from "./groups.js";
 import { registerHookTools } from "./hooks.js";
 import { registerInsightTools } from "./insights.js";
 import { registerLabelTools } from "./labels.js";
@@ -48,5 +49,6 @@ export const TOOL_REGISTRARS: Array<(ctx: ToolContext) => void> = [
   registerSecretScanningTools,
   registerSshKeyTools,
   registerGpgKeyTools,
+  registerGroupTools,
   registerDeploymentTools,
 ];
