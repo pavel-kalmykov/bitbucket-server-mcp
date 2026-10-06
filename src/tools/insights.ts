@@ -27,9 +27,10 @@ export function registerInsightTools(ctx: ToolContext) {
           .boolean()
           .optional()
           .describe(
-            "Include per-file annotations keyed by file path (default: false). " +
-              "Fetches changed files and retrieves annotations for each. " +
-              "Paginate with fileStart/fileLimit. Adds `fileAnnotations` to the response.",
+            "Include per-file annotations keyed by file path (default: true; " +
+              "this is where code smells and other findings live). Set false " +
+              "to skip the per-file fetch. Paginate with fileStart/fileLimit. " +
+              "Adds `fileAnnotations` to the response.",
           ),
         fileStart: z
           .number()
@@ -52,8 +53,11 @@ export function registerInsightTools(ctx: ToolContext) {
       }),
       annotations: toolAnnotations(),
     },
-    async ({ fields, ...params }) => {
-      const { reports, annotations, files } = await bb.insights.get(params);
+    async ({ fields, includeFileAnnotations = true, ...params }) => {
+      const { reports, annotations, files } = await bb.insights.get({
+        ...params,
+        includeFileAnnotations,
+      });
 
       return formatResponse({
         reports: curateList(reports, fields ?? DEFAULT_INSIGHT_FIELDS),
