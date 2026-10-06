@@ -1,8 +1,12 @@
 import { describe, test, expect } from "vitest";
 import { http, HttpResponse } from "msw";
+import { BitbucketApiError } from "../../../api/http/errors.js";
 import { formatApiError, handleToolError } from "../../../response/errors.js";
 import { createHttpClients } from "../../../api/http/client.js";
-import { extractBitbucketMessage } from "../../../api/http/errors.js";
+import {
+  extractBitbucketMessage,
+  hasExceptionName,
+} from "../../../api/http/errors.js";
 import type { components } from "../../../generated/bitbucket-api.js";
 import { setupHttpCapture } from "../../fixtures/http-test-utils.js";
 
@@ -16,6 +20,22 @@ const { server } = setupHttpCapture();
  * That is the point: mocks cannot drift from the spec.
  */
 type RestErrors = components["schemas"]["RestErrors"];
+
+describe("BitbucketApiError", () => {
+  test("carries the server reason, status, url, and body", () => {
+    const error = new BitbucketApiError({
+      message: "E: m",
+      status: 409,
+      url: "https://x/y",
+      body: { errors: [] },
+    });
+    expect(error.name).toBe("BitbucketApiError");
+    expect(error.message).toBe("E: m");
+    expect(error.status).toBe(409);
+    expect(error.url).toBe("https://x/y");
+    expect(error.body).toEqual({ errors: [] });
+  });
+});
 
 describe("formatApiError (status code)", () => {
   // Stable substrings: short, semantically meaningful words unlikely to be
@@ -163,6 +183,142 @@ describe("extractBitbucketMessage (equivalence classes over response bodies)", (
     ["object with unrelated fields", { foo: "bar" }],
   ])("returns empty string for %s", (_name, value) => {
     expect(extractBitbucketMessage(value)).toBe("");
+  });
+});
+
+describe("hasExceptionName (truth table over the guard chain)", () => {
+  test.each<[string, unknown]>([
+    ["null", null],
+    ["undefined", undefined],
+    ["string", "errors: x"],
+    ["number", 42],
+    ["boolean", true],
+    ["object without errors", {}],
+    ["errors not an array", { errors: "x" }],
+    ["empty errors array", { errors: [] }],
+    ["null error entry", { errors: [null] }],
+    ["error entry without exceptionName", { errors: [{}] }],
+    ["non-string exceptionName", { errors: [{ exceptionName: 42 }] }],
+    ["empty-string exceptionName", { errors: [{ exceptionName: "" }] }],
+  ])("%s -> false", (_name, value) => {
+    expect(hasExceptionName(value)).toBe(false);
+  });
+
+  test.each<[string, unknown]>([
+    ["single valid entry", { errors: [{ exceptionName: "E" }] }],
+    [
+      "a valid entry after invalid ones flips the result",
+      { errors: [{}, null, { exceptionName: "E" }] },
+    ],
+  ])("%s -> true", (_name, value) => {
+    expect(hasExceptionName(value)).toBe(true);
+  });
+});
+
+describe("extractBitbucketMessage — exact formatting of the fallback parts", () => {
+  test("reviewerErrors line is the whole output when nothing else is present", () => {
+    const body = {
+      errors: [{ reviewerErrors: [{ context: "j", message: "m" }] }],
+    };
+    expect(extractBitbucketMessage(body)).toBe('reviewer "j": m');
+  });
+
+  test("reviewerErrors without context", () => {
+    const body = { errors: [{ reviewerErrors: [{ message: "m" }] }] };
+    expect(extractBitbucketMessage(body)).toBe("reviewer: m");
+  });
+
+  test("reviewerErrors entries join with '; '", () => {
+    const body = {
+      errors: [
+        {
+          reviewerErrors: [{ context: "j", message: "m" }, { message: "a" }],
+        },
+      ],
+    };
+    expect(extractBitbucketMessage(body)).toBe('reviewer "j": m; reviewer: a');
+  });
+
+  test("reviewerErrors that is not an array contributes nothing", () => {
+    const body = { errors: [{ reviewerErrors: "x" }] };
+    expect(extractBitbucketMessage(body)).toBe("");
+  });
+
+  test("reviewerErrors entries without message contribute nothing", () => {
+    const body = { errors: [{ reviewerErrors: [{ context: "j" }] }] };
+    expect(extractBitbucketMessage(body)).toBe("");
+  });
+
+  test("validReviewers objects render their user.name", () => {
+    const body = {
+      errors: [{ validReviewers: [{ user: { name: "jdoe" } }] }],
+    };
+    expect(extractBitbucketMessage(body)).toBe("validReviewers: [jdoe]");
+  });
+
+  test("validReviewers strings render as-is", () => {
+    const body = { errors: [{ validReviewers: ["a", "b"] }] };
+    expect(extractBitbucketMessage(body)).toBe("validReviewers: [a, b]");
+  });
+
+  test("validReviewers entries without a usable name are filtered", () => {
+    const body = {
+      errors: [
+        { validReviewers: [null, { user: {} }, { user: { name: "ok" } }, ""] },
+      ],
+    };
+    expect(extractBitbucketMessage(body)).toBe("validReviewers: [ok]");
+  });
+
+  test("reviewerError with a non-string context falls back to the unquoted form", () => {
+    const body = {
+      errors: [{ reviewerErrors: [{ context: 42, message: "m" }] }],
+    };
+    expect(extractBitbucketMessage(body)).toBe("reviewer: m");
+  });
+
+  test("reviewerError with a non-string message contributes nothing", () => {
+    const body = { errors: [{ reviewerErrors: [{ message: 42 }] }] };
+    expect(extractBitbucketMessage(body)).toBe("");
+  });
+
+  test("validReviewers that is not an array contributes nothing", () => {
+    const body = {
+      errors: [{ message: "m", validReviewers: "not-an-array" }],
+    };
+    expect(extractBitbucketMessage(body)).toBe("m");
+  });
+
+  test("a numeric body produces an empty string", () => {
+    expect(extractBitbucketMessage(42)).toBe("");
+  });
+
+  test("reviewerErrors and validReviewers join in order", () => {
+    const body = {
+      errors: [
+        {
+          reviewerErrors: [{ message: "r" }],
+          validReviewers: [{ user: { name: "v" } }],
+        },
+      ],
+    };
+    expect(extractBitbucketMessage(body)).toBe(
+      "reviewer: r: validReviewers: [v]",
+    );
+  });
+
+  test("an empty errors array falls through to the body message", () => {
+    const body = { errors: [], message: "fb" };
+    expect(extractBitbucketMessage(body)).toBe("fb");
+  });
+
+  test("long string bodies truncate at exactly 500 chars", () => {
+    const result = extractBitbucketMessage("y".repeat(600));
+    expect(result).toBe("y".repeat(500));
+  });
+
+  test("objects without errors or message produce an empty string", () => {
+    expect(extractBitbucketMessage({ unrelated: true })).toBe("");
   });
 });
 

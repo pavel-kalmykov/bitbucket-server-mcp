@@ -64,7 +64,7 @@ export const DEFAULT_COMMENT_FIELDS =
   "anchor.path,anchor.line,anchor.lineType";
 
 export const DEFAULT_INSIGHT_FIELDS =
-  "key,result,createdDate,details,link,title,reporter";
+  "key,result,createdDate,details,link,title,reporter,data";
 
 export const DEFAULT_REVIEWER_FIELDS =
   "id,scope.type,reviewers.name,requiredApprovals," +
