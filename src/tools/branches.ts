@@ -60,6 +60,55 @@ export function registerBranchTools(ctx: ToolContext) {
   );
 
   server.registerTool(
+    "get_default_branch",
+    {
+      description:
+        "Get the repository's configured default branch, even when the ref does not exist yet." +
+        fieldsHint(DEFAULT_BRANCH_FIELDS),
+      inputSchema: z.strictObject({
+        project: projectParam(),
+        repository: repositoryParam(),
+        fields: fieldsParam(),
+      }),
+      annotations: toolAnnotations(),
+    },
+    async ({ fields, ...params }) => {
+      const data = await bb.branches.getDefault(params);
+
+      return formatResponse(
+        curateResponse(data, fields ?? DEFAULT_BRANCH_FIELDS),
+      );
+    },
+  );
+
+  server.registerTool(
+    "set_default_branch",
+    {
+      description:
+        "Set the repository's default branch. The branch must already exist. Use get_default_branch first to read the current value.",
+      inputSchema: z.strictObject({
+        project: projectParam(),
+        repository: repositoryParam(),
+        branch: z
+          .string()
+          .describe("Branch name to make the default, e.g. main."),
+        fields: fieldsParam(),
+      }),
+      annotations: toolAnnotations({
+        readOnlyHint: false,
+        idempotentHint: true,
+      }),
+    },
+    async ({ fields, branch, ...params }) => {
+      const data = await bb.branches.setDefault({ ...params, branch });
+
+      return formatResponse(
+        curateResponse(data, fields ?? DEFAULT_BRANCH_FIELDS),
+      );
+    },
+  );
+
+  server.registerTool(
     "list_branches",
     {
       description:

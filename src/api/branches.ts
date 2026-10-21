@@ -37,17 +37,52 @@ export interface DeleteBranchParams {
   branch: string;
 }
 
+export interface SetDefaultBranchParams {
+  project?: string;
+  repository: string;
+  branch: string;
+}
+
 export function branchesApi(ctx: ApiContext) {
   function defaultBranchOf(
     project: string,
     repository: string,
-  ): Promise<{ displayId?: string }> {
+  ): Promise<Record<string, unknown>> {
     return ctx.http.api
       .get(`projects/${project}/repos/${repository}/default-branch`)
-      .json<{ displayId?: string }>();
+      .json<Record<string, unknown>>();
   }
 
   return {
+    /**
+     * The repository's configured default branch, even when the ref does
+     * not exist yet (the deprecated branch endpoint only answers with an
+     * existing ref).
+     */
+    async getDefault({
+      project,
+      repository,
+    }: {
+      project?: string;
+      repository: string;
+    }): Promise<Record<string, unknown>> {
+      return defaultBranchOf(resolveProject(ctx, project), repository);
+    },
+
+    async setDefault({
+      project,
+      repository,
+      branch,
+    }: SetDefaultBranchParams): Promise<Record<string, unknown>> {
+      const resolved = resolveProject(ctx, project);
+      // The PUT answers with an empty body; read back the resulting state.
+      await ctx.http.api.put(
+        `projects/${resolved}/repos/${repository}/default-branch`,
+        { json: { id: `refs/heads/${branch}` } },
+      );
+      return defaultBranchOf(resolved, repository);
+    },
+
     /**
      * Branch permission restrictions. Repositories without the branch
      * permissions add-on answer 404, which reads as "no restrictions".

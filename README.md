@@ -197,6 +197,8 @@ Or build locally: `docker build -t bitbucket-mcp .`
 | Tool | Description |
 |------|-------------|
 | `list_branches` | List branches with default branch detection |
+| `get_default_branch` | Get the repository's configured default branch |
+| `set_default_branch` | Set the repository's default branch |
 | `list_commits` | Browse commit history with branch and author filtering |
 | `manage_branches` | Create or delete branches (safety check prevents deleting default branch) |
 | `get_commit` | Get details of a specific commit by its ID |
@@ -263,6 +265,7 @@ Or build locally: `docker build -t bitbucket-mcp .`
 | `create_reviewer_group` | Create a reviewer group with one or more reviewers |
 | `delete_reviewer_group` | Delete a reviewer group by name |
 | `list_secret_scanning_rules` | List secret scanning allowlist rules (8.5+) |
+| `list_groups` | List Bitbucket group names (admin) |
 | `manage_secret_scanning` | Create, update, and delete secret scanning allowlist rules (8.5+) |
 
 ### Keys
