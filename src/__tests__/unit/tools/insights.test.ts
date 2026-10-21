@@ -55,6 +55,7 @@ describe("Insight tools", () => {
         project: "TEST",
         repository: "my-repo",
         prId: 1,
+        includeFileAnnotations: false,
       });
 
       expect(parsed.reports).toHaveLength(2);
@@ -99,6 +100,7 @@ describe("Insight tools", () => {
         project: "TEST",
         repository: "my-repo",
         prId: 1,
+        includeFileAnnotations: false,
       });
 
       expect(parsed.reports).toHaveLength(1);
@@ -131,6 +133,7 @@ describe("Insight tools", () => {
         project: "TEST",
         repository: "my-repo",
         prId: 1,
+        includeFileAnnotations: false,
       });
 
       const urls = h.mockClients.insights.get.mock.calls.map((c) =>
@@ -162,6 +165,7 @@ describe("Insight tools", () => {
         project: "TEST",
         repository: "my-repo",
         prId: 1,
+        includeFileAnnotations: false,
       });
 
       expect(parsed.reports).toHaveLength(2);
@@ -179,6 +183,7 @@ describe("Insight tools", () => {
         project: "TEST",
         repository: "my-repo",
         prId: 1,
+        includeFileAnnotations: false,
       });
 
       expect(parsed.reports).toHaveLength(0);
@@ -288,15 +293,16 @@ describe("Insight tools", () => {
       );
     });
 
-    test("should not include fileAnnotations when flag is omitted", async () => {
-      // given: only reports (no /changes mock)
+    test("defaults includeFileAnnotations to true", async () => {
+      // given: only reports; the changed-files fetch answers empty
       mockJson(h.mockClients.insights.get, { values: [] });
+      mockJson(h.mockClients.api.get, { values: [], isLastPage: true });
 
       // when
       const parsed = await callAndParse<{
         reports: unknown[];
         annotations: Record<string, unknown>;
-        fileAnnotations?: unknown;
+        fileAnnotations: unknown;
       }>(h.client, "get_code_insights", {
         project: "TEST",
         repository: "my-repo",
@@ -306,8 +312,8 @@ describe("Insight tools", () => {
       // then
       expect(parsed.reports).toHaveLength(0);
       expect(parsed.annotations).toEqual({});
-      expect(parsed).not.toHaveProperty("fileAnnotations");
-      expect(h.mockClients.api.get).not.toHaveBeenCalled();
+      expect(parsed.fileAnnotations).toEqual({});
+      expect(h.mockClients.api.get).toHaveBeenCalled();
     });
 
     test("should not include fileAnnotations when changes endpoint fails", async () => {
