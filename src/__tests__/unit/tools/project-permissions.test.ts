@@ -160,6 +160,44 @@ describe("manage_project_permissions", () => {
     );
   });
 
+  test("revoke of a user deletes on the users endpoint", async () => {
+    mockJson(h.mockClients.api.delete, "");
+    const parsed = await callAndParse<Record<string, unknown>>(
+      h.client,
+      "manage_project_permissions",
+      {
+        action: "revoke",
+        project: "PRJ",
+        subject: "user",
+        name: "jdoe",
+      },
+    );
+    expect(parsed).toEqual({ revoked: true, name: "jdoe" });
+    expect(h.mockClients.api.delete).toHaveBeenCalledWith(
+      "projects/PRJ/permissions/users",
+      { searchParams: { name: "jdoe" } },
+    );
+  });
+
+  test("list passes the filter as a query param", async () => {
+    mockJson(h.mockClients.api.get, {
+      values: [],
+      size: 0,
+      limit: 25,
+      isLastPage: true,
+    });
+    await callAndParse(h.client, "manage_project_permissions", {
+      action: "list-groups",
+      project: "PRJ",
+      filter: "dev",
+    });
+    expectCalledWithSearchParams(
+      h.mockClients.api.get,
+      "projects/PRJ/permissions/groups",
+      { filter: "dev", limit: 25, start: 0 },
+    );
+  });
+
   test("revoke without name fails", async () => {
     const result = await callRaw(h.client, "manage_project_permissions", {
       action: "revoke",

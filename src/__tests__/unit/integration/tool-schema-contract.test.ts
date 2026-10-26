@@ -57,6 +57,7 @@ describe("Tool schema contract: descriptions", () => {
     { name: "get_pull_request_activity", contains: "activity" },
     { name: "get_diff", contains: "stat=true" },
     { name: "list_projects", contains: "project keys" },
+    { name: "manage_project_permissions", contains: "PROJECT_READ" },
     {
       name: "manage_repository_permissions",
       contains: "several names in one call",
