@@ -8,6 +8,7 @@ import { registerForkTools } from "./forks.js";
 import { registerGpgKeyTools } from "./gpg-keys.js";
 import { registerGroupTools } from "./groups.js";
 import { registerProjectPermissionTools } from "./project-permissions.js";
+import { registerRepositoryPermissionTools } from "./repository-permissions.js";
 import { registerHookTools } from "./hooks.js";
 import { registerInsightTools } from "./insights.js";
 import { registerLabelTools } from "./labels.js";
@@ -52,5 +53,6 @@ export const TOOL_REGISTRARS: Array<(ctx: ToolContext) => void> = [
   registerGpgKeyTools,
   registerGroupTools,
   registerProjectPermissionTools,
+  registerRepositoryPermissionTools,
   registerDeploymentTools,
 ];

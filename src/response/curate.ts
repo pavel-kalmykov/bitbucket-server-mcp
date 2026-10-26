@@ -58,6 +58,8 @@ export const DEFAULT_PROJECT_PERMISSION_FIELDS =
 
 export const DEFAULT_PARTICIPANT_FIELDS =
   "status,approved,role,lastReviewedCommit,user.name";
+export const DEFAULT_REPOSITORY_PERMISSION_FIELDS =
+  "group.name,user.name,permission";
 
 export const DEFAULT_DEPLOYMENT_FIELDS =
   "key,state,displayName,description,url," +

@@ -57,6 +57,10 @@ describe("Tool schema contract: descriptions", () => {
     { name: "get_pull_request_activity", contains: "activity" },
     { name: "get_diff", contains: "stat=true" },
     { name: "list_projects", contains: "project keys" },
+    {
+      name: "manage_repository_permissions",
+      contains: "several names in one call",
+    },
     { name: "list_repositories", contains: "repository slugs" },
     { name: "browse_repository", contains: "project structure" },
     { name: "get_file_content", contains: "pagination" },
@@ -162,6 +166,7 @@ describe("Tool schema contract: required fields", () => {
     { name: "manage_projects", required: ["action"] },
     { name: "manage_default_reviewers", required: ["action"] },
     { name: "manage_project_permissions", required: ["action"] },
+    { name: "manage_repository_permissions", required: ["action"] },
     { name: "manage_secret_scanning", required: ["action"] },
     { name: "set_default_branch", required: ["repository", "branch"] },
     { name: "list_labels", required: ["repository"] },
@@ -419,6 +424,10 @@ describe("Tool schema contract: annotations", () => {
     { name: "get_default_branch", expected: { readOnlyHint: true } },
     {
       name: "manage_project_permissions",
+      expected: { readOnlyHint: false, idempotentHint: true },
+    },
+    {
+      name: "manage_repository_permissions",
       expected: { readOnlyHint: false, idempotentHint: true },
     },
     {
@@ -792,6 +801,7 @@ describe("Tool schema contract: all expected tools are registered", () => {
       "list_secret_scanning_rules",
       "list_groups",
       "manage_project_permissions",
+      "manage_repository_permissions",
       "manage_secret_scanning",
       "list_ssh_keys",
       "manage_ssh_keys",
