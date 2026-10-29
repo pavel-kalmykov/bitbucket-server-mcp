@@ -1,1 +1,2 @@
+. "$(dirname "$0")/work-leak-guard.sh" staged
 npx lint-staged
