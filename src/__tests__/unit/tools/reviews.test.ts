@@ -1,8 +1,9 @@
 import { describe, test, expect } from "vitest";
 import { registerReviewTools } from "../../../tools/pull-requests.js";
-import { mockJson, mockVoid } from "../../fixtures/test-utils.js";
+import { mockJson } from "../../fixtures/test-utils.js";
 import {
   callAndParse,
+  callRaw,
   expectCalledWithJson,
   setupToolHarness,
 } from "../../fixtures/tool-test-utils.js";
@@ -14,52 +15,91 @@ describe("Review tools", () => {
   });
 
   describe("manage_review", () => {
-    test("should approve a pull request", async () => {
-      const mockResponse = {
-        approved: true,
-        user: { name: "admin" },
+    test("status infers the caller slug and PUTs the participant status", async () => {
+      h.mockClients.caller.username = "jdoe";
+      mockJson(h.mockClients.api.put, {
+        status: "NEEDS_WORK",
+        approved: false,
         role: "REVIEWER",
-        status: "APPROVED",
-      };
+        user: { name: "jdoe" },
+      });
 
-      mockJson(h.mockClients.api.post, mockResponse);
-
-      const parsed = await callAndParse<{ approved: boolean }>(
+      const parsed = await callAndParse<Record<string, unknown>>(
         h.client,
         "manage_review",
         {
-          action: "approve",
+          action: "status",
           repository: "my-repo",
           prId: "42",
+          status: "NEEDS_WORK",
         },
       );
 
-      expect(parsed.approved).toBe(true);
-      expect(h.mockClients.api.post).toHaveBeenCalledWith(
-        "projects/DEFAULT/repos/my-repo/pull-requests/42/approve",
-        { json: {} },
+      expect(parsed).toEqual({
+        status: "NEEDS_WORK",
+        approved: false,
+        role: "REVIEWER",
+        user: { name: "jdoe" },
+      });
+      expectCalledWithJson(
+        h.mockClients.api.put,
+        "projects/DEFAULT/repos/my-repo/pull-requests/42/participants/jdoe",
+        { status: "NEEDS_WORK" },
       );
     });
-
-    test("should unapprove a pull request", async () => {
-      mockVoid(h.mockClients.api.delete);
-
-      const parsed = await callAndParse<{
-        unapproved: boolean;
-        prId: number;
-      }>(h.client, "manage_review", {
-        action: "unapprove",
-        repository: "my-repo",
-        prId: 42,
+    test("status with an explicit userSlug overrides the inference", async () => {
+      h.mockClients.caller.username = "jdoe";
+      mockJson(h.mockClients.api.put, {
+        status: "APPROVED",
+        approved: true,
       });
 
-      expect(parsed.unapproved).toBe(true);
-      expect(parsed.prId).toBe(42);
-      expect(h.mockClients.api.delete).toHaveBeenCalledWith(
-        "projects/DEFAULT/repos/my-repo/pull-requests/42/approve",
+      await callAndParse(h.client, "manage_review", {
+        action: "status",
+        repository: "my-repo",
+        prId: "42",
+        userSlug: "other",
+        status: "APPROVED",
+      });
+
+      expectCalledWithJson(
+        h.mockClients.api.put,
+        "projects/DEFAULT/repos/my-repo/pull-requests/42/participants/other",
+        { status: "APPROVED" },
       );
     });
-
+    test("status without a usable slug fails with a clear error", async () => {
+      h.mockClients.caller.username = undefined;
+      mockJson(h.mockClients.api.get, { id: 42 });
+      const result = await callRaw(h.client, "manage_review", {
+        action: "status",
+        repository: "my-repo",
+        prId: "42",
+        status: "NEEDS_WORK",
+      });
+      expect(result.isError).toBe(true);
+      expect(result.content[0].text).toContain(
+        "Could not infer the caller's slug",
+      );
+    });
+    test("status without status fails", async () => {
+      const result = await callRaw(h.client, "manage_review", {
+        action: "status",
+        repository: "my-repo",
+        prId: "42",
+      });
+      expect(result.isError).toBe(true);
+      expect(result.content[0].text).toContain("status is required");
+    });
+    test("status with an invalid value fails validation", async () => {
+      const result = await callRaw(h.client, "manage_review", {
+        action: "status",
+        repository: "my-repo",
+        prId: "42",
+        status: "MAYBE",
+      });
+      expect(result.isError).toBe(true);
+    });
     test("should publish a review with participantStatus APPROVED", async () => {
       const mockResponse = {
         user: { name: "admin" },
@@ -144,85 +184,23 @@ describe("Review tools", () => {
         { json: expectedBody },
       );
     });
-  });
-
-  describe("manage_review action-to-verb mapping over sequences", () => {
-    test("approve then unapprove issues POST then DELETE in that order", async () => {
-      mockJson(h.mockClients.api.post, { approved: true, status: "APPROVED" });
-      mockVoid(h.mockClients.api.delete);
-
-      await h.client.callTool({
-        name: "manage_review",
-        arguments: { action: "approve", repository: "r", prId: 1 },
-      });
-      await h.client.callTool({
-        name: "manage_review",
-        arguments: { action: "unapprove", repository: "r", prId: 1 },
-      });
-
-      const postOrder = h.mockClients.api.post.mock.invocationCallOrder[0];
-      const deleteOrder = h.mockClients.api.delete.mock.invocationCallOrder[0];
-      expect(postOrder).toBeLessThan(deleteOrder);
-      expect(h.mockClients.api.post).toHaveBeenCalledWith(
-        "projects/DEFAULT/repos/r/pull-requests/1/approve",
-        { json: {} },
-      );
-      expect(h.mockClients.api.delete).toHaveBeenCalledWith(
-        "projects/DEFAULT/repos/r/pull-requests/1/approve",
-      );
-    });
-
-    test("unapprove, approve, unapprove issues DELETE, POST, DELETE in order", async () => {
-      mockVoid(h.mockClients.api.delete);
-      mockJson(h.mockClients.api.post, { approved: true });
-
-      await h.client.callTool({
-        name: "manage_review",
-        arguments: { action: "unapprove", repository: "r", prId: 1 },
-      });
-      await h.client.callTool({
-        name: "manage_review",
-        arguments: { action: "approve", repository: "r", prId: 1 },
-      });
-      await h.client.callTool({
-        name: "manage_review",
-        arguments: { action: "unapprove", repository: "r", prId: 1 },
-      });
-
-      const deleteOrders = h.mockClients.api.delete.mock.invocationCallOrder;
-      const postOrders = h.mockClients.api.post.mock.invocationCallOrder;
-      expect(deleteOrders).toHaveLength(2);
-      expect(postOrders).toHaveLength(1);
-      expect(deleteOrders[0]).toBeLessThan(postOrders[0]);
-      expect(postOrders[0]).toBeLessThan(deleteOrders[1]);
-    });
-  });
-
-  describe("manage_review URL construction (grey box)", () => {
-    test.each([
-      { project: "TEST", repository: "r1", prId: 1 },
-      { project: "OTHER", repository: "another-repo", prId: 999 },
-    ])("approve on $project/$repository/$prId", async (args) => {
-      mockJson(h.mockClients.api.post, { approved: true });
-      await h.client.callTool({
-        name: "manage_review",
-        arguments: { action: "approve", ...args },
-      });
-      expect(h.mockClients.api.post).toHaveBeenCalledWith(
-        `projects/${args.project}/repos/${args.repository}/pull-requests/${args.prId}/approve`,
-        { json: {} },
-      );
-    });
 
     test("uses default project when project omitted", async () => {
-      mockJson(h.mockClients.api.post, { approved: true });
-      await h.client.callTool({
-        name: "manage_review",
-        arguments: { action: "approve", repository: "r", prId: 1 },
+      h.mockClients.caller.username = "jdoe";
+      mockJson(h.mockClients.api.put, {
+        status: "NEEDS_WORK",
+        user: { name: "jdoe" },
       });
-      expect(h.mockClients.api.post).toHaveBeenCalledWith(
-        "projects/DEFAULT/repos/r/pull-requests/1/approve",
-        { json: {} },
+      const result = await callRaw(h.client, "manage_review", {
+        action: "status",
+        repository: "r",
+        prId: 1,
+        status: "NEEDS_WORK",
+      });
+      expect(result.isError).toBeFalsy();
+      expect(h.mockClients.api.put).toHaveBeenCalledWith(
+        "projects/DEFAULT/repos/r/pull-requests/1/participants/jdoe",
+        { json: { status: "NEEDS_WORK" } },
       );
     });
   });

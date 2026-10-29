@@ -190,7 +190,7 @@ Or build locally: `docker build -t bitbucket-mcp .`
 | Tool | Description |
 |------|-------------|
 | `manage_comment` | Unified create/edit/delete for PR comments. Supports inline anchoring (`filePath`/`line`/`lineType`), draft state (`state: PENDING`), task creation (`severity: BLOCKER`), threaded replies (`parentId`), and resolve/unresolve (`state: RESOLVED`/`OPEN`). |
-| `manage_review` | Unified approve/unapprove/publish. Publish transitions all `PENDING` comments to visible and optionally sets `participantStatus` (`APPROVED`/`NEEDS_WORK`). |
+| `manage_review` | Publish a review (transitions `PENDING` comments to visible, optional overview and final `participantStatus`), or set your own status (`APPROVED`/`UNAPPROVED`/`NEEDS_WORK`: the UI approve and "Needs work" buttons). |
 
 ### Branches & Commits
 

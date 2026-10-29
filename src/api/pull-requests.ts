@@ -134,6 +134,15 @@ export interface PublishReviewParams extends PullRequestTarget {
   participantStatus?: "APPROVED" | "NEEDS_WORK";
 }
 
+export interface SetReviewStatusParams {
+  project?: string;
+  repository: string;
+  prId: number;
+  /** The caller's own slug; the server rejects any other value. */
+  userSlug?: string;
+  status: "APPROVED" | "UNAPPROVED" | "NEEDS_WORK";
+}
+
 interface DefaultReviewerParams {
   ctx: ApiContext;
   targetProject: string;
@@ -546,17 +555,29 @@ export function pullRequestsApi(ctx: ApiContext) {
       );
     },
 
-    async approve(target: PullRequestTarget): Promise<unknown> {
+    async setStatus({
+      project,
+      repository,
+      prId,
+      userSlug,
+      status,
+    }: SetReviewStatusParams): Promise<Record<string, unknown>> {
+      const target = { project, repository, prId };
+      if (userSlug === undefined && ctx.http.caller.username === undefined) {
+        // Bitbucket stamps the caller identity on every response, but the
+        // very first request has none yet; a cheap read of the PR both
+        // validates the target and captures the x-ausername header.
+        await ctx.http.api.get(prPath(target)).json();
+      }
+      const slug = userSlug ?? ctx.http.caller.username;
+      if (slug === undefined) {
+        throw new Error(
+          "Could not infer the caller's slug from the server response; pass userSlug explicitly.",
+        );
+      }
       return ctx.http.api
-        .post(`${prPath(target)}/approve`, { json: {} })
-        .json();
-    },
-
-    async unapprove(
-      target: PullRequestTarget,
-    ): Promise<{ unapproved: true; prId: number }> {
-      await ctx.http.api.delete(`${prPath(target)}/approve`);
-      return { unapproved: true, prId: target.prId };
+        .put(`${prPath(target)}/participants/${slug}`, { json: { status } })
+        .json<Record<string, unknown>>();
     },
 
     async publishReview({

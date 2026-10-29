@@ -1,16 +1,10 @@
 import { expect } from "vitest";
-import { randomUUID } from "node:crypto";
 import {
   createBitbucketClient,
   type BitbucketClient,
 } from "../../../api/client.js";
 import type { StartedBitbucket } from ".././bitbucket-container.js";
-import { test, describeBitbucket } from ".././e2e-suite.js";
-
-const LIMITED = {
-  name: `limited-${randomUUID().slice(0, 8)}`,
-  password: "Limited-2026!review",
-} as const;
+import { test, describeBitbucket, type ScenarioUser } from ".././e2e-suite.js";
 
 function adminClient(bb: StartedBitbucket): BitbucketClient {
   return createBitbucketClient({
@@ -20,45 +14,15 @@ function adminClient(bb: StartedBitbucket): BitbucketClient {
   });
 }
 
-function limitedClient(bb: StartedBitbucket): BitbucketClient {
+function limitedClient(
+  bb: StartedBitbucket,
+  limited: ScenarioUser,
+): BitbucketClient {
   return createBitbucketClient({
     baseUrl: bb.url,
-    username: LIMITED.name,
-    password: LIMITED.password,
+    username: limited.username,
+    password: limited.password,
   });
-}
-
-async function provisionLimitedUser(
-  bb: StartedBitbucket,
-  projectKey: string,
-  repoSlug: string,
-): Promise<void> {
-  const created = await bb.api.post("admin/users", {
-    searchParams: {
-      ...LIMITED,
-      displayName: "Limited User",
-      emailAddress: "limited@example.com",
-    },
-    throwHttpErrors: false,
-  });
-  // 409 = already provisioned by another test in this container.
-  if (created.status !== 204 && created.status !== 409) {
-    throw new Error(
-      `user provisioning failed with ${created.status}: ${await created.text()}`,
-    );
-  }
-  const granted = await bb.api.put(
-    `projects/${projectKey}/repos/${repoSlug}/permissions/users`,
-    {
-      searchParams: { permission: "REPO_READ", name: LIMITED.name },
-      throwHttpErrors: false,
-    },
-  );
-  if (granted.status !== 204) {
-    throw new Error(
-      `permission grant failed with ${granted.status}: ${await granted.text()}`,
-    );
-  }
 }
 
 describeBitbucket("inbox", () => {
@@ -81,22 +45,18 @@ describeBitbucket("inbox", () => {
     scenario,
   }) => {
     const admin = adminClient(bb);
-    const limited = limitedClient(bb);
+    const limited = await scenario.project.repo.reviewer;
+    const session = limitedClient(bb, limited);
     const pr = await scenario.project.repo.pr;
-    await provisionLimitedUser(
-      bb,
-      scenario.project.key,
-      scenario.project.repo.slug,
-    );
 
     // Before the review is requested, the limited user has no relation to
     // the pr and their reviewer inbox must not list it.
-    const before = await limited.inbox.listPullRequests({
+    const before = await session.inbox.listPullRequests({
       role: "REVIEWER",
       participantStatus: "UNAPPROVED",
       limit: 50,
     });
-    expect(before.values.map((pr) => pr.id)).not.toContain(pr.id);
+    expect(before.values.map((row) => row.id)).not.toContain(pr.id);
 
     // Requesting the review adds them as a reviewer; the same filtered
     // inbox must now list it.
@@ -104,14 +64,14 @@ describeBitbucket("inbox", () => {
       project: scenario.project.key,
       repository: scenario.project.repo.slug,
       prId: pr.id,
-      reviewers: [LIMITED.name],
+      reviewers: [limited.username],
     });
-    const after = await limited.inbox.listPullRequests({
+    const after = await session.inbox.listPullRequests({
       role: "REVIEWER",
       participantStatus: "UNAPPROVED",
       limit: 50,
     });
-    expect(after.values.map((pr) => pr.id)).toContain(pr.id);
+    expect(after.values.map((row) => row.id)).toContain(pr.id);
   });
 
   test("L4: limit=1 paginates instead of returning everything", async ({

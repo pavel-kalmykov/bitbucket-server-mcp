@@ -1,10 +1,8 @@
 import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { randomUUID } from "node:crypto";
 import { callAndParse, callRaw } from "../../fixtures/tool-test-utils.js";
 import type { Attachment } from "../../../api/repositories.js";
-import { setupMcpAgainst } from "../mcp-harness.js";
 import { test, describeBitbucket } from "../e2e-suite.js";
 
 // Canonical 1x1 transparent PNG (valid CRCs); a real binary exercises
@@ -86,69 +84,47 @@ describeBitbucket("attachments", () => {
   });
 
   test("delete_attachment without management permission surfaces the server error", async ({
-    bb,
     mcp,
     scenario,
+    spawnMcp,
   }) => {
     // A user with no permissions on the repo cannot delete its attachments;
     // Bitbucket masks the repo as nonexistent for them.
-    const limited = {
-      name: `limited-${randomUUID().slice(0, 8)}`,
-      password: "limited-password",
-    };
-    await bb.api.post("admin/users", {
-      searchParams: {
-        name: limited.name,
-        password: limited.password,
-        displayName: "Limited User",
-        emailAddress: "limited@example.com",
-      },
-    });
+    const limited = await scenario.outsider;
 
-    const limitedSession = await setupMcpAgainst(bb, {
-      username: limited.name,
-      password: limited.password,
-    });
+    const limitedSession = await spawnMcp(limited);
+    const dir = await mkdtemp(join(tmpdir(), "e2e-attach-"));
     try {
-      const dir = await mkdtemp(join(tmpdir(), "e2e-attach-"));
-      try {
-        const textPath = join(dir, "notes.txt");
-        await writeFile(textPath, "e2e attachment content\n");
-        const uploaded = await callAndParse<{ id: string }>(
-          mcp.client,
-          "upload_attachment",
-          {
-            project: scenario.project.key,
-            repository: scenario.project.repo.slug,
-            filePath: textPath,
-          },
-        );
-
-        const denied = await callRaw(
-          limitedSession.client,
-          "delete_attachment",
-          {
-            project: scenario.project.key,
-            repository: scenario.project.repo.slug,
-            attachmentId: uploaded.id,
-          },
-        );
-        expect(denied.isError).toBe(true);
-        expect(
-          (denied.content[0] as { text: string }).text.length,
-        ).toBeGreaterThan(0);
-
-        // The admin cleans the attachment up afterwards.
-        await callAndParse(mcp.client, "delete_attachment", {
+      const textPath = join(dir, "notes.txt");
+      await writeFile(textPath, "e2e attachment content\n");
+      const uploaded = await callAndParse<{ id: string }>(
+        mcp.client,
+        "upload_attachment",
+        {
           project: scenario.project.key,
           repository: scenario.project.repo.slug,
-          attachmentId: uploaded.id,
-        });
-      } finally {
-        await rm(dir, { recursive: true, force: true });
-      }
+          filePath: textPath,
+        },
+      );
+
+      const denied = await callRaw(limitedSession.client, "delete_attachment", {
+        project: scenario.project.key,
+        repository: scenario.project.repo.slug,
+        attachmentId: uploaded.id,
+      });
+      expect(denied.isError).toBe(true);
+      expect(
+        (denied.content[0] as { text: string }).text.length,
+      ).toBeGreaterThan(0);
+
+      // The admin cleans the attachment up afterwards.
+      await callAndParse(mcp.client, "delete_attachment", {
+        project: scenario.project.key,
+        repository: scenario.project.repo.slug,
+        attachmentId: uploaded.id,
+      });
     } finally {
-      await limitedSession.close();
+      await rm(dir, { recursive: true, force: true });
     }
   });
 });
