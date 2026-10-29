@@ -118,6 +118,14 @@ describe("Comment tools", () => {
         version: 0,
         anchor: { path: "src/main.ts", line: 10, lineType: "ADDED" },
       });
+      mockJson(h.mockClients.api.get, {
+        values: [
+          {
+            id: 3,
+            anchor: { path: "src/main.ts", line: 10, lineType: "ADDED" },
+          },
+        ],
+      });
 
       const parsed = await callAndParse<{ anchor: { path: string } }>(
         h.client,
@@ -146,6 +154,74 @@ describe("Comment tools", () => {
       });
     });
 
+    test("create inline warns when the server drops the anchor", async () => {
+      mockJson(h.mockClients.api.post, {
+        id: 9,
+        text: "Misplaced note",
+        version: 0,
+      });
+      // The list readback shows the same comment without an anchor: the
+      // server dropped it (file/line not in the PR diff).
+      mockJson(h.mockClients.api.get, {
+        values: [{ id: 9 }],
+      });
+
+      const parsed = await callAndParse<{
+        id: number;
+        anchor?: unknown;
+        warning?: string;
+      }>(h.client, "manage_comment", {
+        action: "create",
+        repository: "my-repo",
+        prId: 42,
+        text: "Misplaced note",
+        filePath: "src/missing.ts",
+        line: 3,
+        lineType: "ADDED",
+      });
+
+      expect(parsed.id).toBe(9);
+      expect(parsed.anchor).toBeUndefined();
+      expect(parsed.warning).toContain("did not store the inline anchor");
+      expectCalledWithSearchParams(
+        h.mockClients.api.get,
+        "projects/DEFAULT/repos/my-repo/pull-requests/42/comments",
+        { path: "src/missing.ts", limit: 100 },
+      );
+    });
+
+    test("create general comment does not read back the anchor", async () => {
+      mockJson(h.mockClients.api.post, { id: 10, text: "General" });
+      await callAndParse(h.client, "manage_comment", {
+        action: "create",
+        repository: "my-repo",
+        prId: 42,
+        text: "General",
+      });
+      expect(h.mockClients.api.get).not.toHaveBeenCalled();
+    });
+
+    test("create inline without a list match does not warn", async () => {
+      mockJson(h.mockClients.api.post, { id: 11, text: "note" });
+      mockJson(h.mockClients.api.get, { values: [] });
+
+      const parsed = await callAndParse<{
+        id: number;
+        warning?: string;
+      }>(h.client, "manage_comment", {
+        action: "create",
+        repository: "my-repo",
+        prId: 42,
+        text: "note",
+        filePath: "src/main.ts",
+        line: 1,
+        lineType: "ADDED",
+      });
+
+      expect(parsed.id).toBe(11);
+      expect(parsed.warning).toBeUndefined();
+    });
+
     test("create inline comment with custom diffType and fileType", async () => {
       mockJson(h.mockClients.api.post, {
         id: 6,
@@ -157,6 +233,19 @@ describe("Comment tools", () => {
           lineType: "CONTEXT",
         },
         version: 0,
+      });
+      mockJson(h.mockClients.api.get, {
+        values: [
+          {
+            id: 6,
+            anchor: {
+              path: "old.ts",
+              diffType: "COMMIT",
+              fileType: "FROM",
+              lineType: "CONTEXT",
+            },
+          },
+        ],
       });
 
       const result = await callRaw(h.client, "manage_comment", {

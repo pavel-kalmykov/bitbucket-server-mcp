@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { formatResponse, type ToolSuccessResult } from "../response/format.js";
 import { toolAnnotations } from "../response/annotations.js";
+import type { CreateCommentParams } from "../api/comments.js";
 import type { ToolContext } from "./shared.js";
 import { projectParam, repositoryParam } from "./params.js";
 import { curateResponse, DEFAULT_COMMENT_FIELDS } from "../response/curate.js";
@@ -9,6 +10,24 @@ const actionParam = z
   .enum(["create", "edit", "delete", "react", "unreact"])
   .describe("Operation to perform on the comment.");
 type CommentAction = z.infer<typeof actionParam>;
+
+/**
+ * Reads the just-created comment through the path-filtered list, the
+ * only endpoint that returns its anchor.
+ */
+async function readbackAnchor(
+  bb: ToolContext["bb"],
+  params: CreateCommentParams,
+  filePath: string,
+  createdId: number | undefined,
+): Promise<Record<string, unknown> | undefined> {
+  if (createdId === undefined) return undefined;
+  const comments = await bb.comments.listForPath({
+    ...params,
+    filePath,
+  });
+  return comments.find((c) => c.id === createdId);
+}
 
 export function registerCommentTools(ctx: ToolContext) {
   const { server, bb } = ctx;
@@ -102,7 +121,38 @@ export function registerCommentTools(ctx: ToolContext) {
         formatResponse(curateResponse(await data, DEFAULT_COMMENT_FIELDS));
 
       const run: Record<CommentAction, () => Promise<ToolSuccessResult>> = {
-        create: async () => curated(bb.comments.create(params)),
+        create: async () => {
+          const filePath = params.filePath;
+          const created = curateResponse(
+            await bb.comments.create(params),
+            DEFAULT_COMMENT_FIELDS,
+          );
+          if (!filePath) return formatResponse(created);
+
+          // The POST response never carries the anchor, and some server
+          // versions silently drop it when it does not match the PR
+          // diff. Read it back through the only endpoint that returns
+          // it and say so when it came back without one.
+          const stored = await readbackAnchor(
+            bb,
+            params,
+            filePath,
+            created.id as number | undefined,
+          );
+          if (stored && stored.anchor != null) {
+            // The readback carries the server-resolved anchor (from/to
+            // hashes included), which the POST response omits.
+            return formatResponse(
+              curateResponse(stored, DEFAULT_COMMENT_FIELDS),
+            );
+          }
+          if (!stored) return formatResponse(created);
+          return formatResponse({
+            ...created,
+            warning:
+              "The server did not store the inline anchor: the comment was created as a general comment. The anchor (file/line) likely does not match the current PR diff.",
+          });
+        },
         edit: async () => curated(bb.comments.update(params)),
         delete: async () => formatResponse(await bb.comments.delete(params)),
         react: async () => formatResponse(await bb.comments.react(params)),
