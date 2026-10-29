@@ -23,7 +23,7 @@ Workflow tips:
 - For cross-repo PRs from forks: use sourceProject/sourceRepository in create_pull_request.
 - get_pull_request_activity returns reviews, comments, and events; use the filter param to narrow results.
 - manage_comment consolidates create/edit/delete of comments. Use severity: BLOCKER to create tasks. Use state: RESOLVED/OPEN to resolve/reopen.
-- manage_review consolidates approve/unapprove/publish actions.
+- manage_review publishes reviews and sets your participant status (approve = status APPROVED, needs work = NEEDS_WORK).
 - When reviewing PRs: use get_diff with stat=true first to see which files changed, then get the full diff or read files locally for context.
 - get_build_status accepts either a commitId or a prId (resolves the latest commit automatically). Use it to check CI status before approving.
 - upload_attachment uploads a local file and returns a markdown reference to embed in PR comments (images: ![name](ref), files: [name](ref)).

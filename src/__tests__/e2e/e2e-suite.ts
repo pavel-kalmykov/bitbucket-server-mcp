@@ -31,6 +31,12 @@ export interface ScenarioRepo {
   };
   /** Awaiting it creates the feature branch and an open PR over main. */
   readonly pr: Promise<{ readonly id: number }>;
+  /**
+   * A second user with REPO_WRITE on the repo: the "other participant"
+   * a test needs when the action must come from someone who is not the
+   * PR author.
+   */
+  readonly reviewer: Promise<ScenarioUser>;
 }
 
 export interface ScenarioProject {
@@ -49,6 +55,18 @@ function uniqueSuffix(): string {
   return Date.now().toString(36);
 }
 
+async function createBranch(
+  bb: StartedBitbucket,
+  projectKey: string,
+  repoSlug: string,
+  name: string,
+  startPoint: string,
+): Promise<void> {
+  await bb.api.post(`projects/${projectKey}/repos/${repoSlug}/branches`, {
+    json: { name: `refs/heads/${name}`, startPoint },
+  });
+}
+
 async function commitFile(
   bb: StartedBitbucket,
   projectKey: string,
@@ -57,7 +75,6 @@ async function commitFile(
   path: string,
   content: string,
   message: string,
-  sourceBranch?: string,
 ): Promise<string> {
   // Fixture setup talks to the raw Bitbucket REST contract, never to the
   // client this suite validates: a client bug must fail assertions, not
@@ -67,7 +84,6 @@ async function commitFile(
   form.append("content", content);
   form.append("message", message);
   form.append("branch", branch);
-  if (sourceBranch !== undefined) form.append("sourceBranch", sourceBranch);
   const result = await bb.api
     .put(`projects/${projectKey}/repos/${repoSlug}/browse/${path}`, {
       body: form,
@@ -76,13 +92,32 @@ async function commitFile(
   return result.id;
 }
 
+export interface ScenarioUser {
+  readonly username: string;
+  readonly password: string;
+}
+
 export interface Scenario {
   readonly project: ScenarioProject;
+  /**
+   * A user with no permission on the repo: to the server it looks like a
+   * repo that does not exist.
+   */
+  readonly outsider: Promise<ScenarioUser>;
 }
 
 export interface BitbucketSuite {
   bb: StartedBitbucket;
   mcp: McpAgainstBitbucket;
+  /**
+   * Secondary MCP sessions (other users, other credentials). Every
+   * session spawned through it is closed in the fixture teardown, so
+   * tests never close sessions by hand.
+   */
+  spawnMcp: (auth?: {
+    username: string;
+    password: string;
+  }) => Promise<McpAgainstBitbucket>;
   scenario: Scenario;
 }
 
@@ -153,7 +188,32 @@ export const test = base.extend<BitbucketSuite>({
         "init",
       );
 
+      const provisionUser = async (username: string): Promise<ScenarioUser> => {
+        const password = `e2e-pass-${username}`;
+        await bb.api.post("admin/users", {
+          searchParams: {
+            name: username,
+            password,
+            displayName: username,
+            emailAddress: `${username}@example.com`,
+          },
+        });
+        return { username, password };
+      };
+
+      const grantRepoPermission = async (
+        username: string,
+        permission: "REPO_READ" | "REPO_WRITE" | "REPO_ADMIN",
+      ): Promise<void> => {
+        await bb.api.put(
+          `projects/${projectKey}/repos/${repoSlug}/permissions/users`,
+          { searchParams: { permission, name: username } },
+        );
+      };
+
       let prNode: Promise<{ id: number }> | undefined;
+      let featureCommitNode: Promise<string> | undefined;
+      let reviewerNode: Promise<ScenarioUser> | undefined;
       const repo: ScenarioRepo = {
         slug: repoSlug,
         mainCommitId,
@@ -163,19 +223,34 @@ export const test = base.extend<BitbucketSuite>({
             name: "feature",
             firstCommit: {
               get id() {
-                return commitFile(
+                featureCommitNode ??= createBranch(
                   bb,
                   projectKey,
                   repoSlug,
                   "feature",
-                  "CHANGE.md",
-                  "change\n",
-                  "change",
                   "main",
+                ).then(() =>
+                  commitFile(
+                    bb,
+                    projectKey,
+                    repoSlug,
+                    "feature",
+                    "CHANGE.md",
+                    "change\n",
+                    "change",
+                  ),
                 );
+                return featureCommitNode;
               },
             },
           },
+        },
+        get reviewer() {
+          reviewerNode ??= provisionUser(`e2e-reviewer-${suffix}`).then(
+            (user) =>
+              grantRepoPermission(user.username, "REPO_WRITE").then(() => user),
+          );
+          return reviewerNode;
         },
         get pr() {
           prNode ??= (async () => {
@@ -209,7 +284,33 @@ export const test = base.extend<BitbucketSuite>({
           return prNode;
         },
       };
-      await use({ project: { key: projectKey, repo } });
+      let outsiderNode: Promise<ScenarioUser> | undefined;
+
+      await use({
+        project: { key: projectKey, repo },
+        get outsider() {
+          outsiderNode ??= provisionUser(`e2e-outsider-${suffix}`);
+          return outsiderNode;
+        },
+      });
+    },
+    { scope: "file" },
+  ],
+  spawnMcp: [
+    async ({ bb }, use) => {
+      const sessions: McpAgainstBitbucket[] = [];
+      const spawn = async (auth?: {
+        username: string;
+        password: string;
+      }): Promise<McpAgainstBitbucket> => {
+        const session = await setupMcpAgainst(bb, auth);
+        sessions.push(session);
+        return session;
+      };
+      await use(spawn);
+      for (const session of sessions) {
+        await session.close();
+      }
     },
     { scope: "file" },
   ],

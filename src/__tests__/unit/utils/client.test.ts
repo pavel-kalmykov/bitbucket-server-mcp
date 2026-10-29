@@ -1,4 +1,5 @@
 import { describe, test, expect, vi, afterEach } from "vitest";
+import type { KyInstance } from "ky";
 import { http, HttpResponse } from "msw";
 import { createHttpClients, getPaginated } from "../../../api/http/client.js";
 import type { HttpClientOptions } from "../../../api/http/client.js";
@@ -159,7 +160,8 @@ describe("createHttpClients", () => {
       ["defaultReviewers", "rest/default-reviewers/1.0"],
     ])("%s client sends Accept: application/json", async (clientKey) => {
       const clients = createHttpClients(baseOptions({ token: "t" }));
-      await clients[clientKey]
+      const client = clients[clientKey] as KyInstance;
+      await client
         .get("ping")
         .json()
         .catch(() => undefined);
@@ -179,7 +181,8 @@ describe("createHttpClients", () => {
       ["defaultReviewers", "rest/default-reviewers/1.0"],
     ])("%s client hits /%s", async (clientKey, expectedPath) => {
       const clients = createHttpClients(baseOptions({ token: "t" }));
-      await clients[clientKey]
+      const client = clients[clientKey] as KyInstance;
+      await client
         .get("ping")
         .json()
         .catch(() => undefined);

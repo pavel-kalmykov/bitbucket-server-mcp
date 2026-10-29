@@ -9,6 +9,7 @@ import { truncateDiff } from "../diff.js";
 import {
   curateResponse,
   curateList,
+  DEFAULT_PARTICIPANT_FIELDS,
   DEFAULT_PR_FIELDS,
   DEFAULT_COMMIT_FIELDS,
   DEFAULT_ACTIVITY_FIELDS,
@@ -24,7 +25,7 @@ import {
 } from "./params.js";
 
 const actionParam = z
-  .enum(["approve", "unapprove", "publish"])
+  .enum(["publish", "status"])
   .describe("Review action to perform.");
 type ReviewAction = z.infer<typeof actionParam>;
 
@@ -451,12 +452,13 @@ export function registerReviewTools(ctx: ToolContext) {
     "manage_review",
     {
       description:
-        'Approve, unapprove, or publish a review on a pull request. Use "approve" to approve, "unapprove" to remove your approval, and "publish" to submit a review with an optional overview comment and status.',
+        'Publish a review, or set your own participant status on a pull request. Use "publish" to submit a review with an optional overview comment and status (it finishes an open review and transitions its PENDING comments), and "status" to set your own participant status (APPROVED is the UI approve button, NEEDS_WORK the "Needs work" button) without needing an open review.',
       inputSchema: z.strictObject({
         action: actionParam,
         project: projectParam(),
         repository: repositoryParam(),
         prId: z.coerce.number().describe("Pull request ID."),
+        fields: fieldsParam(),
         commentText: z
           .string()
           .optional()
@@ -465,18 +467,47 @@ export function registerReviewTools(ctx: ToolContext) {
           .enum(["APPROVED", "NEEDS_WORK"])
           .optional()
           .describe("Participant status to set (for publish action)."),
+        userSlug: z
+          .string()
+          .optional()
+          .describe(
+            "Your own user slug (for the status action). The server only allows setting your own status; when omitted, it is inferred from the authenticated response identity.",
+          ),
+        status: z
+          .enum(["APPROVED", "UNAPPROVED", "NEEDS_WORK"])
+          .optional()
+          .describe(
+            'Participant status to set (required for the status action; the UI "Needs work" button).',
+          ),
       }),
       annotations: toolAnnotations({
         readOnlyHint: false,
         idempotentHint: false,
       }),
     },
-    async ({ action, commentText, participantStatus, ...target }) => {
+    async ({
+      action,
+      commentText,
+      participantStatus,
+      userSlug,
+      status,
+      fields,
+      ...target
+    }) => {
       const run: Record<ReviewAction, () => Promise<ToolSuccessResult>> = {
-        approve: async () =>
-          formatResponse(await bb.pullRequests.approve(target)),
-        unapprove: async () =>
-          formatResponse(await bb.pullRequests.unapprove(target)),
+        status: async () => {
+          if (status === undefined) {
+            throw new Error("status is required for the status action.");
+          }
+          const participant = await bb.pullRequests.setStatus({
+            ...target,
+            userSlug,
+            status,
+          });
+          return formatResponse(
+            curateResponse(participant, fields ?? DEFAULT_PARTICIPANT_FIELDS),
+          );
+        },
         publish: async () =>
           formatResponse(
             await bb.pullRequests.publishReview({

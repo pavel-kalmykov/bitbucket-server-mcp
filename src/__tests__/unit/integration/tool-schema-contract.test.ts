@@ -357,7 +357,7 @@ describe("Tool schema contract: enum values", () => {
     {
       tool: "manage_review",
       field: "action",
-      enums: ["approve", "unapprove", "publish"],
+      enums: ["publish", "status"],
     },
     {
       tool: "manage_review",

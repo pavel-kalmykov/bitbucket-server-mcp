@@ -15,6 +15,13 @@ export interface HttpClientOptions {
 }
 
 export interface HttpClients {
+  /**
+   * The authenticated user's identity as Bitbucket reports it (the
+   * `x-ausername` response header), captured from every response. Undefined
+   * until the first response arrives.
+   */
+  caller: { username?: string };
+
   /** Unprefixed base: endpoints outside /rest (repository attachments). */
   root: KyInstance;
   api: KyInstance;
@@ -82,6 +89,10 @@ export function createHttpClients(options: HttpClientOptions): HttpClients {
 
   const redact = buildRedactor(options);
 
+  // Bitbucket stamps the authenticated user on every API response; the
+  // review-status feature uses it as the caller identity.
+  const caller: { username?: string } = {};
+
   const create = (
     path: string,
     requestHeaders: Record<string, string> = allHeaders,
@@ -108,6 +119,8 @@ export function createHttpClients(options: HttpClientOptions): HttpClients {
         ],
         afterResponse: [
           ({ response }) => {
+            const username = response.headers.get("x-ausername");
+            if (username) caller.username = username;
             if (!response.ok) {
               if (response.status === 429) {
                 const reset = response.headers.get("X-RateLimit-Reset");
@@ -132,6 +145,7 @@ export function createHttpClients(options: HttpClientOptions): HttpClients {
     });
 
   return {
+    caller,
     root: create("/", rootHeaders),
     api: create("/rest/api/1.0", allHeaders),
     buildStatus: create("/rest/build-status/1.0"),
