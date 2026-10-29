@@ -26,7 +26,7 @@ jobs:
 
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
 
-      - uses: paladini/harness-score/action@4a7e11d1f4857224a3677cd890312fc8bef55a53 # v1.3.1
+      - uses: paladini/harness-score@b8c3941ba49edcf69f973e26c1940dae487f7c7a # v1.8.3
         with:
           min-level: "0"
           badge: "harness-badge.svg"
