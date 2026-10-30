@@ -190,6 +190,21 @@ describe("Comment tools", () => {
       );
     });
 
+    test("create PENDING inline comment skips the anchor readback", async () => {
+      mockJson(h.mockClients.api.post, { id: 12, text: "Pending note" });
+      await callAndParse(h.client, "manage_comment", {
+        action: "create",
+        repository: "my-repo",
+        prId: 42,
+        text: "Pending note",
+        filePath: "src/main.ts",
+        line: 1,
+        lineType: "ADDED",
+        state: "PENDING",
+      });
+      expect(h.mockClients.api.get).not.toHaveBeenCalled();
+    });
+
     test("create general comment does not read back the anchor", async () => {
       mockJson(h.mockClients.api.post, { id: 10, text: "General" });
       await callAndParse(h.client, "manage_comment", {

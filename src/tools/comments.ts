@@ -81,7 +81,9 @@ export function registerCommentTools(ctx: ToolContext) {
         filePath: z
           .string()
           .optional()
-          .describe("File path for inline comments (create only)."),
+          .describe(
+            "File path for inline comments (create only). For PENDING comments the anchor cannot be verified on creation (the server only exposes anchors for published comments through the readback list).",
+          ),
         line: z
           .number()
           .optional()
@@ -122,12 +124,13 @@ export function registerCommentTools(ctx: ToolContext) {
 
       const run: Record<CommentAction, () => Promise<ToolSuccessResult>> = {
         create: async () => {
-          const filePath = params.filePath;
+          const { filePath, state } = params;
           const created = curateResponse(
             await bb.comments.create(params),
             DEFAULT_COMMENT_FIELDS,
           );
           if (!filePath) return formatResponse(created);
+          if (state === "PENDING") return formatResponse(created);
 
           // The POST response never carries the anchor, and some server
           // versions silently drop it when it does not match the PR
