@@ -52,6 +52,22 @@ export function commentsApi(ctx: ApiContext) {
     `${path(target)}/${commentId}/reactions/${emoticon}`;
 
   return {
+    /**
+     * Reads the comments anchored to one diff path. This is the only
+     * endpoint that returns the `anchor` field: GET
+     * /pull-requests/{id}/comments/{commentId} never includes it.
+     */
+    async listForPath(
+      params: CommentTarget & { filePath: string },
+    ): Promise<Array<Record<string, unknown>>> {
+      const page = await ctx.http.api
+        .get(path(params), {
+          searchParams: { path: params.filePath, limit: 100 },
+        })
+        .json<{ values?: Array<Record<string, unknown>> }>();
+      return page.values ?? [];
+    },
+
     async create(
       params: CreateCommentParams,
     ): Promise<Record<string, unknown>> {
