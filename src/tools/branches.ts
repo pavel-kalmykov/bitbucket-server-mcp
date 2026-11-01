@@ -9,6 +9,7 @@ import {
   curateList,
   curateResponse,
   DEFAULT_BRANCH_FIELDS,
+  DEFAULT_BRANCH_MODEL_FIELDS,
   DEFAULT_BRANCH_RESTRICTION_FIELDS,
   DEFAULT_COMMIT_FIELDS,
 } from "../response/curate.js";
@@ -218,6 +219,28 @@ export function registerBranchTools(ctx: ToolContext) {
       };
 
       return run[action]();
+    },
+  );
+
+  server.registerTool(
+    "get_branch_model",
+    {
+      description:
+        "Get the repository's branch model (the branch-utils plugin configuration: production and development branches, plus enabled types and strategies)." +
+        fieldsHint(DEFAULT_BRANCH_MODEL_FIELDS),
+      inputSchema: z.strictObject({
+        project: projectParam(),
+        repository: repositoryParam(),
+        fields: fieldsParam(),
+      }),
+      annotations: toolAnnotations(),
+    },
+    async ({ fields, ...params }) => {
+      const data = await bb.branches.getModel(params);
+
+      return formatResponse(
+        curateResponse(data, fields ?? DEFAULT_BRANCH_MODEL_FIELDS),
+      );
     },
   );
 

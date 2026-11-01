@@ -43,6 +43,11 @@ export interface SetDefaultBranchParams {
   branch: string;
 }
 
+export interface GetBranchModelParams {
+  project?: string;
+  repository: string;
+}
+
 export function branchesApi(ctx: ApiContext) {
   function defaultBranchOf(
     project: string,
@@ -131,6 +136,17 @@ export function branchesApi(ctx: ApiContext) {
       ]);
 
       return { branches, defaultBranch };
+    },
+
+    async getModel({
+      project,
+      repository,
+    }: GetBranchModelParams): Promise<Record<string, unknown>> {
+      return ctx.http.branchUtils
+        .get(
+          `projects/${resolveProject(ctx, project)}/repos/${repository}/branchmodel`,
+        )
+        .json<Record<string, unknown>>();
     },
 
     async create({

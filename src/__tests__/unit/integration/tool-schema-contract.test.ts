@@ -754,6 +754,7 @@ describe("Tool schema contract: all expected tools are registered", () => {
       "set_default_branch",
       "list_commits",
       "manage_branches",
+      "get_branch_model",
       "get_commit",
       "compare_refs",
       "list_tags",

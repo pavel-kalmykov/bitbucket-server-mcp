@@ -6,6 +6,7 @@ import { aBranch } from "../../fixtures/test-builders.js";
 import {
   callAndParse,
   callRaw,
+  expectCalledWith,
   expectCalledWithJson,
   expectCalledWithSearchParams,
   setupToolHarness,
@@ -568,6 +569,146 @@ describe("Branch tools", () => {
         repository: "my-repo",
       });
 
+      expect(result.isError).toBe(true);
+    });
+  });
+
+  describe("get_branch_model", () => {
+    // Shape mirrors the live 8.9 payload for a fresh repo; a fresh instance
+    // does not include production or strategies.
+    const freshRepoModel = {
+      development: {
+        id: "refs/heads/master",
+        displayId: "master",
+        type: "BRANCH",
+        latestCommit: "e05b963cb7225271c2a5c8dff3afb549ebecd8ec",
+        latestChangeset: "e05b963cb7225271c2a5c8dff3afb549ebecd8ec",
+        isDefault: true,
+      },
+      types: [
+        { id: "BUGFIX", displayName: "Bugfix", prefix: "bugfix/" },
+        { id: "FEATURE", displayName: "Feature", prefix: "feature/" },
+      ],
+    };
+
+    test.each([
+      [
+        "requests the branch-utils branchmodel endpoint",
+        { project: "TEST", repository: "my-repo" },
+        "projects/TEST/repos/my-repo/branchmodel",
+      ],
+      [
+        "resolves the default project",
+        { repository: "my-repo" },
+        "projects/DEFAULT/repos/my-repo/branchmodel",
+      ],
+    ])("%s", async (_name, params, url) => {
+      mockJson(h.mockClients.branchUtils.get, freshRepoModel);
+      await callAndParse(h.client, "get_branch_model", params);
+      expectCalledWith(h.mockClients.branchUtils.get, url);
+    });
+
+    test("curates the default fields", async () => {
+      mockJson(h.mockClients.branchUtils.get, freshRepoModel);
+      const parsed = await callAndParse<Record<string, unknown>>(
+        h.client,
+        "get_branch_model",
+        { repository: "my-repo" },
+      );
+      expect(parsed).toEqual({
+        development: {
+          id: "refs/heads/master",
+          displayId: "master",
+          latestCommit: "e05b963cb7225271c2a5c8dff3afb549ebecd8ec",
+          isDefault: true,
+        },
+        types: [
+          { id: "BUGFIX", displayName: "Bugfix", prefix: "bugfix/" },
+          { id: "FEATURE", displayName: "Feature", prefix: "feature/" },
+        ],
+      });
+    });
+
+    test("keeps production and strategies when configured", async () => {
+      // Payload from the documented shape; a fresh instance does not
+      // include production or strategies, so the mock supplies them.
+      mockJson(h.mockClients.branchUtils.get, {
+        production: {
+          id: "refs/heads/master",
+          displayId: "master",
+          latestCommit: "abc",
+          isDefault: true,
+        },
+        development: { id: "refs/heads/master", displayId: "master" },
+        types: [{ id: "FEATURE", displayName: "Feature", prefix: "feature/" }],
+        strategies: [
+          { id: "FORK", displayName: "Forking strategy", enabled: true },
+        ],
+      });
+      const parsed = await callAndParse<Record<string, unknown>>(
+        h.client,
+        "get_branch_model",
+        { repository: "my-repo" },
+      );
+      expect(parsed).toEqual({
+        production: {
+          id: "refs/heads/master",
+          displayId: "master",
+          latestCommit: "abc",
+          isDefault: true,
+        },
+        development: { id: "refs/heads/master", displayId: "master" },
+        types: [{ id: "FEATURE", displayName: "Feature", prefix: "feature/" }],
+        strategies: [
+          { id: "FORK", displayName: "Forking strategy", enabled: true },
+        ],
+      });
+    });
+
+    test.each(["latestChangeset", "type"])(
+      "excludes undeclared key %s from the default curation",
+      async (key) => {
+        mockJson(h.mockClients.branchUtils.get, freshRepoModel);
+        const parsed = await callAndParse<{
+          development: Record<string, unknown>;
+        }>(h.client, "get_branch_model", { repository: "my-repo" });
+        expect(parsed.development).not.toHaveProperty(key);
+      },
+    );
+
+    test("forwards explicit fields", async () => {
+      mockJson(h.mockClients.branchUtils.get, freshRepoModel);
+      const parsed = await callAndParse<Record<string, unknown>>(
+        h.client,
+        "get_branch_model",
+        { repository: "my-repo", fields: "development.displayId" },
+      );
+      expect(parsed).toEqual({ development: { displayId: "master" } });
+    });
+
+    test("returns the raw payload for '*all'", async () => {
+      mockJson(h.mockClients.branchUtils.get, freshRepoModel);
+      const parsed = await callAndParse<Record<string, unknown>>(
+        h.client,
+        "get_branch_model",
+        { repository: "my-repo", fields: "*all" },
+      );
+      expect(parsed).toEqual(freshRepoModel);
+    });
+
+    test("propagates API failures", async () => {
+      mockReject(
+        h.mockClients.branchUtils.get,
+        new BitbucketApiError({
+          message: "No repository",
+          status: 404,
+          url: "https://bitbucket/rest/branch-utils/1.0/projects/T/repos/r/branchmodel",
+          body: { errors: [] },
+        }),
+      );
+      const result = await callRaw(h.client, "get_branch_model", {
+        repository: "my-repo",
+      });
       expect(result.isError).toBe(true);
     });
   });
