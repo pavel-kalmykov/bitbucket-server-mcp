@@ -267,6 +267,7 @@ Or build locally: `docker build -t bitbucket-mcp .`
 | `list_secret_scanning_rules` | List secret scanning allowlist rules (8.5+) |
 | `list_groups` | List Bitbucket group names (admin) |
 | `manage_project_permissions` | List, grant, and revoke project permissions for groups and users |
+| `manage_repository_permissions` | List, grant, and revoke repository permissions for groups and users |
 | `manage_secret_scanning` | Create, update, and delete secret scanning allowlist rules (8.5+) |
 
 ### Keys
