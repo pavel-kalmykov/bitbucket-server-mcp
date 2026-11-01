@@ -70,7 +70,7 @@ the swagger plus the un-documented endpoints catches anything missed.
 the live API or a captured `.har` before building):
 
 - `get_branch_model` (`/rest/branch-utils/1.0/.../branchmodel`).
-- `subscribe_to_repository` / `unsubscribe` (`/rest/api/1.0/.../watch`,
+- `watch_repository` / `unwatch_repository` (`/rest/api/1.0/.../watch`,
   POST/DELETE for the authenticated user; `list_watchers` is not
   implementable: no `GET .../watchers` resource exists in the WADL
   (verified live on 8.9, 404) nor in the DC 10.4 OpenAPI spec).

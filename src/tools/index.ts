@@ -4,6 +4,7 @@ import { registerCommentTools } from "./comments.js";
 import { registerCommitCommentTools } from "./commit-comments.js";
 import { registerDefaultReviewerTools } from "./default-reviewers.js";
 import { registerDeploymentTools } from "./deployments.js";
+import { registerWatcherTools } from "./watchers.js";
 import { registerForkTools } from "./forks.js";
 import { registerGpgKeyTools } from "./gpg-keys.js";
 import { registerGroupTools } from "./groups.js";
@@ -55,4 +56,5 @@ export const TOOL_REGISTRARS: Array<(ctx: ToolContext) => void> = [
   registerProjectPermissionTools,
   registerRepositoryPermissionTools,
   registerDeploymentTools,
+  registerWatcherTools,
 ];

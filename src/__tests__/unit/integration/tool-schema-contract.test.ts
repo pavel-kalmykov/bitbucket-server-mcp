@@ -114,6 +114,8 @@ describe("Tool schema contract: descriptions", () => {
     { name: "manage_ssh_keys", contains: "SSH" },
     { name: "list_gpg_keys", contains: "GPG" },
     { name: "manage_gpg_keys", contains: "GPG" },
+    { name: "watch_repository", contains: "Watch" },
+    { name: "unwatch_repository", contains: "Stop watching" },
   ])("$name description mentions '$contains'", ({ name, contains }) => {
     const tool = getTool(name);
     expect(tool.description).toContain(contains);
@@ -595,6 +597,14 @@ describe("Tool schema contract: annotations", () => {
       expected: { readOnlyHint: false, idempotentHint: false },
     },
     { name: "get_code_insights", expected: { readOnlyHint: true } },
+    {
+      name: "watch_repository",
+      expected: { readOnlyHint: false, idempotentHint: true },
+    },
+    {
+      name: "unwatch_repository",
+      expected: { readOnlyHint: false, idempotentHint: true },
+    },
     { name: "get_build_status", expected: { readOnlyHint: true } },
     { name: "list_commits", expected: { readOnlyHint: true } },
     { name: "list_pull_requests", expected: { readOnlyHint: true } },
@@ -752,6 +762,8 @@ describe("Tool schema contract: all expected tools are registered", () => {
       "list_branches",
       "get_default_branch",
       "set_default_branch",
+      "watch_repository",
+      "unwatch_repository",
       "list_commits",
       "manage_branches",
       "get_branch_model",

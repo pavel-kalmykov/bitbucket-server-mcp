@@ -39,6 +39,7 @@ import {
 } from "./keys.js";
 import { insightsApi, type InsightsApi } from "./insights.js";
 import { labelsApi, type LabelsApi } from "./labels.js";
+import { watchersApi, type WatchersApi } from "./watchers.js";
 import { mergeChecksApi, type MergeChecksApi } from "./merge-checks.js";
 import {
   reviewerGroupsApi,
@@ -106,6 +107,7 @@ export interface BitbucketClient {
   readonly server: ServerApi;
   readonly sshKeys: SshKeysApi;
   readonly tags: TagsApi;
+  readonly watchers: WatchersApi;
   readonly webhooks: WebhooksApi;
   readonly users: UsersApi;
 }
@@ -154,6 +156,7 @@ export function createBitbucketClient(
     server: serverApi(context),
     sshKeys: sshKeysApi(context),
     tags: tagsApi(context),
+    watchers: watchersApi(context),
     webhooks: webhooksApi(context),
     users: usersApi(context),
   };
