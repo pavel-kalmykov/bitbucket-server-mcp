@@ -44,7 +44,7 @@ describeBitbucket("pull requests", () => {
     form.append("content", "draft\n");
     form.append("message", "draft branch");
     form.append("branch", "draft-br");
-    form.append("sourceBranch", "main");
+    form.append("sourceBranch", "master");
     await bb.api.put(
       `projects/${scenario.project.key}/repos/${scenario.project.repo.slug}/browse/draft.md`,
       { body: form },
@@ -58,7 +58,7 @@ describeBitbucket("pull requests", () => {
         repository: scenario.project.repo.slug,
         title: "Draft PR " + Date.now(),
         sourceBranch: "draft-br",
-        targetBranch: "main",
+        targetBranch: "master",
         draft: true,
       },
     );

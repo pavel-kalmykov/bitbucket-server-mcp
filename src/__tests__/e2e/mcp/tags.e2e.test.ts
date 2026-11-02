@@ -24,7 +24,7 @@ describeBitbucket("tags", () => {
         project: scenario.project.key,
         repository: scenario.project.repo.slug,
         name: "e2e-tag",
-        startPoint: await scenario.project.repo.branches.main.firstCommit.id,
+        startPoint: await scenario.project.repo.branches.master.firstCommit.id,
       },
     );
 

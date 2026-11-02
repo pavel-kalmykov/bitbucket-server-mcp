@@ -14,7 +14,7 @@ describeBitbucket("commit comments", () => {
         action: "create",
         project: scenario.project.key,
         repository: scenario.project.repo.slug,
-        commitId: await scenario.project.repo.branches.main.firstCommit.id,
+        commitId: await scenario.project.repo.branches.master.firstCommit.id,
         text: "E2E commit comment",
       },
     );

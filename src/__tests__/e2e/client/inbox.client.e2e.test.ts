@@ -92,7 +92,7 @@ describeBitbucket("inbox", () => {
       repository: scenario.project.repo.slug,
       title: "inbox pagination boundary",
       sourceBranch: "inbox-boundary",
-      targetBranch: "main",
+      targetBranch: "master",
     });
 
     const page = await client.inbox.listPullRequests({
