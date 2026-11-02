@@ -8,7 +8,7 @@ describeBitbucket("insights", () => {
     scenario,
   }) => {
     const result = await callRaw(mcp.client, "get_build_status", {
-      commitId: await scenario.project.repo.branches.main.firstCommit.id,
+      commitId: await scenario.project.repo.branches.master.firstCommit.id,
     });
 
     expect(result.isError).toBeFalsy();

@@ -15,7 +15,7 @@ describeBitbucket("deployments", () => {
         action: "create",
         project: scenario.project.key,
         repository: scenario.project.repo.slug,
-        commitId: await scenario.project.repo.branches.main.firstCommit.id,
+        commitId: await scenario.project.repo.branches.master.firstCommit.id,
         deploymentSequenceNumber: 1,
         description: "E2E deploy",
         displayName: "Deploy 1",
@@ -48,7 +48,7 @@ describeBitbucket("deployments", () => {
         action: "get",
         project: scenario.project.key,
         repository: scenario.project.repo.slug,
-        commitId: await scenario.project.repo.branches.main.firstCommit.id,
+        commitId: await scenario.project.repo.branches.master.firstCommit.id,
         key: "e2e-deploy-1",
         environmentKey: "e2e-env",
         deploymentSequenceNumber: 1,
@@ -67,7 +67,7 @@ describeBitbucket("deployments", () => {
       action: "delete",
       project: scenario.project.key,
       repository: scenario.project.repo.slug,
-      commitId: await scenario.project.repo.branches.main.firstCommit.id,
+      commitId: await scenario.project.repo.branches.master.firstCommit.id,
       key: "e2e-deploy-1",
       environmentKey: "e2e-env",
       deploymentSequenceNumber: 1,
@@ -82,7 +82,7 @@ describeBitbucket("deployments", () => {
       action: "get",
       project: scenario.project.key,
       repository: scenario.project.repo.slug,
-      commitId: await scenario.project.repo.branches.main.firstCommit.id,
+      commitId: await scenario.project.repo.branches.master.firstCommit.id,
       key: "e2e-deploy-1",
       environmentKey: "e2e-env",
       deploymentSequenceNumber: 1,
@@ -99,7 +99,7 @@ describeBitbucket("deployments", () => {
       action: "create",
       project: scenario.project.key,
       repository: scenario.project.repo.slug,
-      commitId: await scenario.project.repo.branches.main.firstCommit.id,
+      commitId: await scenario.project.repo.branches.master.firstCommit.id,
     });
 
     expect(result.isError).toBe(true);
@@ -113,7 +113,7 @@ describeBitbucket("deployments", () => {
       action: "get",
       project: scenario.project.key,
       repository: scenario.project.repo.slug,
-      commitId: await scenario.project.repo.branches.main.firstCommit.id,
+      commitId: await scenario.project.repo.branches.master.firstCommit.id,
     });
 
     expect(result.isError).toBe(true);

@@ -24,12 +24,12 @@ export interface ScenarioLazyBranch extends ScenarioBranch {
 export interface ScenarioRepo {
   /** Planned name: available without creating anything. */
   readonly slug: string;
-  readonly mainCommitId: string;
+  readonly masterCommitId: string;
   readonly branches: {
-    readonly main: ScenarioExistingBranch;
+    readonly master: ScenarioExistingBranch;
     readonly feature: ScenarioLazyBranch;
   };
-  /** Awaiting it creates the feature branch and an open PR over main. */
+  /** Awaiting it creates the feature branch and an open PR over master. */
   readonly pr: Promise<{ readonly id: number }>;
   /**
    * A second user with REPO_WRITE on the repo: the "other participant"
@@ -129,7 +129,7 @@ export interface BitbucketSuite {
  * never start anything).
  *
  * `scenario` is file scoped and models the REST hierarchy. The base
- * (project + repo + main commit) is provisioned eagerly in the fixture
+ * (project + repo + master commit) is provisioned eagerly in the fixture
  * setup, so read-only tests can reference it by name without awaiting
  * anything; only `repo.pr` stays lazy (the feature branch, its commit
  * and the open PR are created on first await). Every file gets a
@@ -178,11 +178,11 @@ export const test = base.extend<BitbucketSuite>({
       await bb.api.post(`projects/${projectKey}/repos`, {
         json: { name: repoSlug },
       });
-      const mainCommitId = await commitFile(
+      const masterCommitId = await commitFile(
         bb,
         projectKey,
         repoSlug,
-        "main",
+        "master",
         "README.md",
         "hello\n",
         "init",
@@ -216,9 +216,9 @@ export const test = base.extend<BitbucketSuite>({
       let reviewerNode: Promise<ScenarioUser> | undefined;
       const repo: ScenarioRepo = {
         slug: repoSlug,
-        mainCommitId,
+        masterCommitId,
         branches: {
-          main: { name: "main", firstCommit: { id: mainCommitId } },
+          master: { name: "master", firstCommit: { id: masterCommitId } },
           feature: {
             name: "feature",
             firstCommit: {
@@ -228,7 +228,7 @@ export const test = base.extend<BitbucketSuite>({
                   projectKey,
                   repoSlug,
                   "feature",
-                  "main",
+                  "master",
                 ).then(() =>
                   commitFile(
                     bb,
@@ -254,9 +254,9 @@ export const test = base.extend<BitbucketSuite>({
         },
         get pr() {
           prNode ??= (async () => {
-            // Opening the PR provisions its refs: main first, then the
+            // Opening the PR provisions its refs: master first, then the
             // feature branch cut from it.
-            await repo.branches.main.firstCommit.id;
+            await repo.branches.master.firstCommit.id;
             await repo.branches.feature.firstCommit.id;
             const pr = await bb.api
               .post(`projects/${projectKey}/repos/${repoSlug}/pull-requests`, {
@@ -270,7 +270,7 @@ export const test = base.extend<BitbucketSuite>({
                     },
                   },
                   toRef: {
-                    id: "refs/heads/main",
+                    id: "refs/heads/master",
                     repository: {
                       slug: repoSlug,
                       project: { key: projectKey },

@@ -15,8 +15,8 @@ describeBitbucket("default reviewers", () => {
         project: scenario.project.key,
         repository: scenario.project.repo.slug,
         reviewers: ["admin"],
-        sourceRef: "main",
-        targetRef: "main",
+        sourceRef: "master",
+        targetRef: "master",
         requiredApprovals: 1,
       },
     );

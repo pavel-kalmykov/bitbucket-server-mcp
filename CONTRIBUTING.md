@@ -252,6 +252,8 @@ test("lists branches", async () => {
 
 E2E tests run against real Bitbucket Server containers via testcontainers. Each feature gets one E2E file that exercises the tool's happy path through the real API. CI gates E2E on pull requests.
 
+Scenario repositories use `master` for initial commits, feature-branch bases, and PR targets.
+
 Run all tests: `npm test`
 Run unit tests only: `npx vitest run --config vitest.config.ts`
 Run a specific file: `npx vitest run src/__tests__/tools/yourfile.test.ts`
