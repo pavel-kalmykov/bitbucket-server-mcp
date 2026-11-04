@@ -52,6 +52,7 @@ describe("Tool schema contract: descriptions", () => {
     { name: "update_pull_request", contains: "reviewers" },
     { name: "merge_pull_request", contains: "optimistic locking" },
     { name: "decline_pull_request", contains: "optimistic locking" },
+    { name: "reopen_pull_request", contains: "optimistic locking" },
     { name: "list_pull_requests", contains: "filtering" },
     { name: "list_dashboard_pull_requests", contains: "dashboard" },
     { name: "get_pull_request_activity", contains: "activity" },
@@ -134,6 +135,7 @@ describe("Tool schema contract: required fields", () => {
     { name: "merge_pull_request", required: ["repository", "prId"] },
     { name: "decline_pull_request", required: ["repository", "prId"] },
     { name: "call_bitbucket_api", required: ["method", "path"] },
+    { name: "reopen_pull_request", required: ["repository", "prId"] },
     { name: "list_pull_requests", required: ["repository"] },
     { name: "get_pull_request_activity", required: ["repository", "prId"] },
     { name: "get_diff", required: ["repository", "prId"] },
@@ -482,6 +484,14 @@ describe("Tool schema contract: annotations", () => {
       },
     },
     {
+      name: "reopen_pull_request",
+      expected: {
+        readOnlyHint: false,
+        destructiveHint: false,
+        idempotentHint: false,
+      },
+    },
+    {
       name: "manage_comment",
       expected: { readOnlyHint: false, idempotentHint: false },
     },
@@ -800,6 +810,7 @@ describe("Tool schema contract: all expected tools are registered", () => {
       "update_pull_request",
       "merge_pull_request",
       "decline_pull_request",
+      "reopen_pull_request",
       "list_pull_requests",
       "list_dashboard_pull_requests",
       "get_pull_request_activity",
