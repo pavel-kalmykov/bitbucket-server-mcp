@@ -75,13 +75,13 @@ Add to your workspace `.vscode/mcp.json`:
 
 These clients all use the same `mcpServers` format. Add the JSON below to the config file for your client:
 
-| Client | Config file |
-|--------|------------|
-| Claude Desktop | `~/Library/Application Support/Claude/claude_desktop_config.json` (macOS) or `%APPDATA%\Claude\claude_desktop_config.json` (Windows) |
-| Cursor | `~/.cursor/mcp.json` ([one-click install](https://cursor.com/en/install-mcp?name=bitbucket-server&config=eyJjb21tYW5kIjoibnB4IiwiYXJncyI6WyIteSIsIkBwYXZlbC1rYWxteWtvdi9iaXRidWNrZXQtc2VydmVyLW1jcCJdLCJlbnYiOnsiQklUQlVDS0VUX1VSTCI6IllPVVJfQklUQlVDS0VUX1VSTCIsIkJJVEJVQ0tFVF9UT0tFTiI6IllPVVJfQklUQlVDS0VUX1RPS0VOIn19)) |
-| Windsurf | `~/.codeium/windsurf/mcp_config.json` |
-| JetBrains | Settings > Tools > AI Assistant > MCP, or `~/.junie/mcp/mcp.json` |
-| Neovim | [mcphub.nvim](https://github.com/ravitemer/mcphub.nvim) `mcpservers.json` |
+| Client         | Config file                                                                                                                                                                                                                                                                                                                 |
+| -------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Claude Desktop | `~/Library/Application Support/Claude/claude_desktop_config.json` (macOS) or `%APPDATA%\Claude\claude_desktop_config.json` (Windows)                                                                                                                                                                                        |
+| Cursor         | `~/.cursor/mcp.json` ([one-click install](https://cursor.com/en/install-mcp?name=bitbucket-server&config=eyJjb21tYW5kIjoibnB4IiwiYXJncyI6WyIteSIsIkBwYXZlbC1rYWxteWtvdi9iaXRidWNrZXQtc2VydmVyLW1jcCJdLCJlbnYiOnsiQklUQlVDS0VUX1VSTCI6IllPVVJfQklUQlVDS0VUX1VSTCIsIkJJVEJVQ0tFVF9UT0tFTiI6IllPVVJfQklUQlVDS0VUX1RPS0VOIn19)) |
+| Windsurf       | `~/.codeium/windsurf/mcp_config.json`                                                                                                                                                                                                                                                                                       |
+| JetBrains      | Settings > Tools > AI Assistant > MCP, or `~/.junie/mcp/mcp.json`                                                                                                                                                                                                                                                           |
+| Neovim         | [mcphub.nvim](https://github.com/ravitemer/mcphub.nvim) `mcpservers.json`                                                                                                                                                                                                                                                   |
 
 ```json
 {
@@ -134,9 +134,13 @@ For environments without Node.js:
     "bitbucket": {
       "command": "docker",
       "args": [
-        "run", "-i", "--rm",
-        "-e", "BITBUCKET_URL=https://your-bitbucket-server.com",
-        "-e", "BITBUCKET_TOKEN=your-access-token",
+        "run",
+        "-i",
+        "--rm",
+        "-e",
+        "BITBUCKET_URL=https://your-bitbucket-server.com",
+        "-e",
+        "BITBUCKET_TOKEN=your-access-token",
         "ghcr.io/pavel-kalmykov/bitbucket-server-mcp"
       ]
     }
@@ -155,140 +159,141 @@ Or build locally: `docker build -t bitbucket-mcp .`
 
 ### Repositories
 
-| Tool | Description |
-|------|-------------|
-| `list_projects` | List all accessible Bitbucket projects |
-| `manage_projects` | Create, update, and delete projects |
-| `list_repositories` | List repositories in a project |
-| `browse_repository` | Browse files and directories |
-| `get_file_content` | Read file contents with pagination |
+| Tool                | Description                                                      |
+| ------------------- | ---------------------------------------------------------------- |
+| `list_projects`     | List all accessible Bitbucket projects                           |
+| `manage_projects`   | Create, update, and delete projects                              |
+| `list_repositories` | List repositories in a project                                   |
+| `browse_repository` | Browse files and directories                                     |
+| `get_file_content`  | Read file contents with pagination                               |
 | `upload_attachment` | Upload a local file and get a markdown reference for PR comments |
-| `edit_file` | Edit a file by committing a new version via the REST API |
-| `get_server_info` | Get Bitbucket Server version and properties |
-| `get_file_blame` | Get line-by-line blame/history for a file |
-| `create_repository` | Create a new repository |
-| `delete_repository` | Delete a repository (irreversible) |
+| `edit_file`         | Edit a file by committing a new version via the REST API         |
+| `get_server_info`   | Get Bitbucket Server version and properties                      |
+| `get_file_blame`    | Get line-by-line blame/history for a file                        |
+| `create_repository` | Create a new repository                                          |
+| `delete_repository` | Delete a repository (irreversible)                               |
 
 ### Pull Requests
 
-| Tool | Description |
-|------|-------------|
-| `create_pull_request` | Create a PR, including cross-repo from forks (`sourceProject`/`sourceRepository`) and drafts (`draft: true`). Auto-fetches default reviewers unless `includeDefaultReviewers: false`. |
-| `get_pull_request` | Get PR details |
-| `update_pull_request` | Safely update title, description, or reviewers (read-modify-write, preserves fields not explicitly changed) |
-| `merge_pull_request` | Merge a PR with optional strategy (`no-ff`, `ff`, `ff-only`, `squash`, `rebase-no-ff`, `rebase-ff-only`, `squash-ff-only`) |
-| `decline_pull_request` | Decline a PR |
-| `list_pull_requests` | List PRs with filtering by state, author, direction |
-| `list_dashboard_pull_requests` | List PRs across all repos for the authenticated user, filtered by role (`AUTHOR`/`REVIEWER`/`PARTICIPANT`), state, and review status |
-| `get_pull_request_activity` | Get PR activity timeline, filtered by type (`all`, `reviews`, `comments`) |
-| `get_diff` | Get PR diff with per-file truncation support. Use `stat: true` for a lightweight summary of changed files instead of the full diff. |
-| `get_pull_request_commits` | List commits in a pull request |
-| `get_commit_pull_requests` | List pull requests containing a specific commit |
+| Tool                           | Description                                                                                                                                                                           |
+| ------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `create_pull_request`          | Create a PR, including cross-repo from forks (`sourceProject`/`sourceRepository`) and drafts (`draft: true`). Auto-fetches default reviewers unless `includeDefaultReviewers: false`. |
+| `get_pull_request`             | Get PR details                                                                                                                                                                        |
+| `update_pull_request`          | Safely update title, description, or reviewers (read-modify-write, preserves fields not explicitly changed)                                                                           |
+| `merge_pull_request`           | Merge a PR with optional strategy (`no-ff`, `ff`, `ff-only`, `squash`, `rebase-no-ff`, `rebase-ff-only`, `squash-ff-only`)                                                            |
+| `decline_pull_request`         | Decline a PR                                                                                                                                                                          |
+| `reopen_pull_request`          | Reopen a declined PR                                                                                                                                                                  |
+| `list_pull_requests`           | List PRs with filtering by state, author, direction                                                                                                                                   |
+| `list_dashboard_pull_requests` | List PRs across all repos for the authenticated user, filtered by role (`AUTHOR`/`REVIEWER`/`PARTICIPANT`), state, and review status                                                  |
+| `get_pull_request_activity`    | Get PR activity timeline, filtered by type (`all`, `reviews`, `comments`)                                                                                                             |
+| `get_diff`                     | Get PR diff with per-file truncation support. Use `stat: true` for a lightweight summary of changed files instead of the full diff.                                                   |
+| `get_pull_request_commits`     | List commits in a pull request                                                                                                                                                        |
+| `get_commit_pull_requests`     | List pull requests containing a specific commit                                                                                                                                       |
 
 ### Code Review
 
-| Tool | Description |
-|------|-------------|
+| Tool             | Description                                                                                                                                                                                                                                                 |
+| ---------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `manage_comment` | Unified create/edit/delete for PR comments. Supports inline anchoring (`filePath`/`line`/`lineType`), draft state (`state: PENDING`), task creation (`severity: BLOCKER`), threaded replies (`parentId`), and resolve/unresolve (`state: RESOLVED`/`OPEN`). |
-| `manage_review` | Publish a review (transitions `PENDING` comments to visible, optional overview and final `participantStatus`), or set your own status (`APPROVED`/`UNAPPROVED`/`NEEDS_WORK`: the UI approve and "Needs work" buttons). |
+| `manage_review`  | Publish a review (transitions `PENDING` comments to visible, optional overview and final `participantStatus`), or set your own status (`APPROVED`/`UNAPPROVED`/`NEEDS_WORK`: the UI approve and "Needs work" buttons).                                      |
 
 ### Branches & Commits
 
-| Tool | Description |
-|------|-------------|
-| `list_branches` | List branches with default branch detection |
-| `get_default_branch` | Get the repository's configured default branch |
-| `set_default_branch` | Set the repository's default branch |
-| `list_commits` | Browse commit history with branch and author filtering |
-| `manage_branches` | Create or delete branches (safety check prevents deleting default branch) |
-| `get_commit` | Get details of a specific commit by its ID |
-| `compare_refs` | List commits reachable from one ref but not another |
-| `list_tags` | List tags in a repository |
-| `manage_tags` | Create or delete tags |
-| `get_tag` | Get details of a specific tag by its name |
+| Tool                 | Description                                                               |
+| -------------------- | ------------------------------------------------------------------------- |
+| `list_branches`      | List branches with default branch detection                               |
+| `get_default_branch` | Get the repository's configured default branch                            |
+| `set_default_branch` | Set the repository's default branch                                       |
+| `list_commits`       | Browse commit history with branch and author filtering                    |
+| `manage_branches`    | Create or delete branches (safety check prevents deleting default branch) |
+| `get_commit`         | Get details of a specific commit by its ID                                |
+| `compare_refs`       | List commits reachable from one ref but not another                       |
+| `list_tags`          | List tags in a repository                                                 |
+| `manage_tags`        | Create or delete tags                                                     |
+| `get_tag`            | Get details of a specific tag by its name                                 |
 
 ### Search & Insights
 
-| Tool | Description |
-|------|-------------|
-| `search` | Search code and files across repositories |
-| `get_code_insights` | Fetch Code Insights reports (SonarQube, security scans) and annotations |
-| `get_build_status` | Get CI build status (state, name, URL) by commit ID or PR. When using prId, resolves the latest commit automatically. |
+| Tool                | Description                                                                                                           |
+| ------------------- | --------------------------------------------------------------------------------------------------------------------- |
+| `search`            | Search code and files across repositories                                                                             |
+| `get_code_insights` | Fetch Code Insights reports (SonarQube, security scans) and annotations                                               |
+| `get_build_status`  | Get CI build status (state, name, URL) by commit ID or PR. When using prId, resolves the latest commit automatically. |
 
 ### Forks
 
-| Tool | Description |
-|------|-------------|
-| `list_forks` | List forks of a repository |
+| Tool              | Description                             |
+| ----------------- | --------------------------------------- |
+| `list_forks`      | List forks of a repository              |
 | `fork_repository` | Fork a repository into a target project |
 
 ### Users
 
-| Tool | Description |
-|------|-------------|
-| `get_user_profile` | Get a user profile by slug |
-| `search_users` | Search users by filter query |
+| Tool               | Description                  |
+| ------------------ | ---------------------------- |
+| `get_user_profile` | Get a user profile by slug   |
+| `search_users`     | Search users by filter query |
 
 ### Labels
 
-| Tool | Description |
-|------|-------------|
-| `list_labels` | List labels for a repository |
+| Tool            | Description                     |
+| --------------- | ------------------------------- |
+| `list_labels`   | List labels for a repository    |
 | `manage_labels` | Add or remove repository labels |
 
 ### Webhooks
 
-| Tool | Description |
-|------|-------------|
-| `list_webhooks` | List webhooks for a repository |
+| Tool              | Description                        |
+| ----------------- | ---------------------------------- |
+| `list_webhooks`   | List webhooks for a repository     |
 | `manage_webhooks` | Create, update, or delete webhooks |
 
 ### Commit Comments
 
-| Tool | Description |
-|------|-------------|
-| `list_commit_comments` | List comments on a specific commit |
+| Tool                     | Description                                  |
+| ------------------------ | -------------------------------------------- |
+| `list_commit_comments`   | List comments on a specific commit           |
 | `manage_commit_comments` | Create, edit, or delete comments on a commit |
 
 ### Repository Settings
 
-| Tool | Description |
-|------|-------------|
-| `list_default_reviewer_conditions` | List default reviewer conditions |
-| `manage_default_reviewers` | Create, update, and delete default reviewer conditions |
-| `list_branch_restrictions` | List branch permission restrictions |
-| `list_repository_hooks` | List repository hooks and their status |
-| `manage_repository_hooks` | Enable, disable, or configure repository hooks |
-| `list_merge_checks` | List merge check configurations |
-| `manage_merge_checks` | Configure merge check settings |
-| `list_reviewer_groups` | List reviewer groups |
-| `create_reviewer_group` | Create a reviewer group with one or more reviewers |
-| `delete_reviewer_group` | Delete a reviewer group by name |
-| `list_secret_scanning_rules` | List secret scanning allowlist rules (8.5+) |
-| `list_groups` | List Bitbucket group names (admin) |
-| `manage_project_permissions` | List, grant, and revoke project permissions for groups and users |
-| `manage_repository_permissions` | List, grant, and revoke repository permissions for groups and users |
-| `manage_secret_scanning` | Create, update, and delete secret scanning allowlist rules (8.5+) |
+| Tool                               | Description                                                         |
+| ---------------------------------- | ------------------------------------------------------------------- |
+| `list_default_reviewer_conditions` | List default reviewer conditions                                    |
+| `manage_default_reviewers`         | Create, update, and delete default reviewer conditions              |
+| `list_branch_restrictions`         | List branch permission restrictions                                 |
+| `list_repository_hooks`            | List repository hooks and their status                              |
+| `manage_repository_hooks`          | Enable, disable, or configure repository hooks                      |
+| `list_merge_checks`                | List merge check configurations                                     |
+| `manage_merge_checks`              | Configure merge check settings                                      |
+| `list_reviewer_groups`             | List reviewer groups                                                |
+| `create_reviewer_group`            | Create a reviewer group with one or more reviewers                  |
+| `delete_reviewer_group`            | Delete a reviewer group by name                                     |
+| `list_secret_scanning_rules`       | List secret scanning allowlist rules (8.5+)                         |
+| `list_groups`                      | List Bitbucket group names (admin)                                  |
+| `manage_project_permissions`       | List, grant, and revoke project permissions for groups and users    |
+| `manage_repository_permissions`    | List, grant, and revoke repository permissions for groups and users |
+| `manage_secret_scanning`           | Create, update, and delete secret scanning allowlist rules (8.5+)   |
 
 ### Keys
 
-| Tool | Description |
-|------|-------------|
-| `list_ssh_keys` | List SSH keys for the authenticated user |
-| `manage_ssh_keys` | Add or delete SSH keys |
-| `list_gpg_keys` | List GPG keys for the authenticated user |
-| `manage_gpg_keys` | Add or delete GPG keys |
+| Tool              | Description                              |
+| ----------------- | ---------------------------------------- |
+| `list_ssh_keys`   | List SSH keys for the authenticated user |
+| `manage_ssh_keys` | Add or delete SSH keys                   |
+| `list_gpg_keys`   | List GPG keys for the authenticated user |
+| `manage_gpg_keys` | Add or delete GPG keys                   |
 
 ### Prompts
 
-| Prompt | Description |
-|--------|-------------|
+| Prompt      | Description                                                                                                                                                                                                                                                                                                    |
+| ----------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `review-pr` | Step-by-step workflow for reviewing a PR: fetch details, read diff, check CI, create draft comments, and publish the review. Invoke via `/bitbucket:review-pr` in Claude Code. No arguments needed; the LLM asks for the PR interactively. You can add context, e.g. `/bitbucket:review-pr PR #42 in my-repo`. |
 
 ### Resources
 
-| Resource | URI | Description |
-|----------|-----|-------------|
+| Resource   | URI                    | Description                                                                                                |
+| ---------- | ---------------------- | ---------------------------------------------------------------------------------------------------------- |
 | `projects` | `bitbucket://projects` | Cached list of all accessible projects (5 min TTL). Useful as ambient context without explicit tool calls. |
 
 ## Use it as a library
@@ -319,22 +324,22 @@ curation and response envelopes belong to the MCP layer. Failed calls throw
 
 ### Environment Variables
 
-| Variable | Required | Description |
-|----------|----------|-------------|
-| `BITBUCKET_URL` | Yes | Base URL of your Bitbucket Server instance |
-| `BITBUCKET_TOKEN` | Yes* | Personal access token |
-| `BITBUCKET_USERNAME` | Yes* | Username for basic auth |
-| `BITBUCKET_PASSWORD` | Yes* | Password for basic auth |
-| `BITBUCKET_DEFAULT_PROJECT` | No | Default project key when not specified in tool calls |
-| `BITBUCKET_READ_ONLY` | No | Set to `true` to disable all write operations |
-| `BITBUCKET_CUSTOM_HEADERS` | No | Extra headers for all requests (`Key=Value,Key2=Value2`). Useful for Zero Trust tokens. |
-| `BITBUCKET_DIFF_MAX_LINES_PER_FILE` | No | Max lines per file in diffs. Set to `0` for no limit. |
-| `BITBUCKET_CACHE_TTL` | No | How long cached reads stay fresh, as a duration (default: `5m`). Set to `0` to disable caching. |
-| `BITBUCKET_REQUEST_TIMEOUT` | No | Per-request timeout, as a duration (default: `30s`). |
-| `BITBUCKET_ENABLED_TOOLS` | No | Comma-separated list of tool names to enable. If not set, all tools are available. |
-| `BITBUCKET_STARTUP_HEALTHCHECK` | No | Set to `true` to run a connectivity check against Bitbucket on startup (default: `false`). |
+| Variable                            | Required | Description                                                                                     |
+| ----------------------------------- | -------- | ----------------------------------------------------------------------------------------------- |
+| `BITBUCKET_URL`                     | Yes      | Base URL of your Bitbucket Server instance                                                      |
+| `BITBUCKET_TOKEN`                   | Yes\*    | Personal access token                                                                           |
+| `BITBUCKET_USERNAME`                | Yes\*    | Username for basic auth                                                                         |
+| `BITBUCKET_PASSWORD`                | Yes\*    | Password for basic auth                                                                         |
+| `BITBUCKET_DEFAULT_PROJECT`         | No       | Default project key when not specified in tool calls                                            |
+| `BITBUCKET_READ_ONLY`               | No       | Set to `true` to disable all write operations                                                   |
+| `BITBUCKET_CUSTOM_HEADERS`          | No       | Extra headers for all requests (`Key=Value,Key2=Value2`). Useful for Zero Trust tokens.         |
+| `BITBUCKET_DIFF_MAX_LINES_PER_FILE` | No       | Max lines per file in diffs. Set to `0` for no limit.                                           |
+| `BITBUCKET_CACHE_TTL`               | No       | How long cached reads stay fresh, as a duration (default: `5m`). Set to `0` to disable caching. |
+| `BITBUCKET_REQUEST_TIMEOUT`         | No       | Per-request timeout, as a duration (default: `30s`).                                            |
+| `BITBUCKET_ENABLED_TOOLS`           | No       | Comma-separated list of tool names to enable. If not set, all tools are available.              |
+| `BITBUCKET_STARTUP_HEALTHCHECK`     | No       | Set to `true` to run a connectivity check against Bitbucket on startup (default: `false`).      |
 
-*Either `BITBUCKET_TOKEN` or both `BITBUCKET_USERNAME` and `BITBUCKET_PASSWORD` are required.
+\*Either `BITBUCKET_TOKEN` or both `BITBUCKET_USERNAME` and `BITBUCKET_PASSWORD` are required.
 
 ### Durations
 
@@ -352,7 +357,7 @@ back to a default.
 
 ### Read-Only Mode
 
-Set `BITBUCKET_READ_ONLY=true` to restrict the server to read-only operations. All `create_*`, `update_*`, `delete_*`, `manage_*`, `merge_*`, `decline_*`, `fork_*`, `upload_*`, and `edit_*` tools are disabled.
+Set `BITBUCKET_READ_ONLY=true` to restrict the server to read-only operations. All `create_*`, `update_*`, `delete_*`, `manage_*`, `merge_*`, `decline_*`, `reopen_*`, `fork_*`, `upload_*`, and `edit_*` tools are disabled.
 
 ### Tool Filtering
 

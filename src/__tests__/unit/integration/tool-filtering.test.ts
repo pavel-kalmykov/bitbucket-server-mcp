@@ -60,6 +60,7 @@ describe("readOnly mode", () => {
     expect(names).not.toContain("update_pull_request");
     expect(names).not.toContain("merge_pull_request");
     expect(names).not.toContain("decline_pull_request");
+    expect(names).not.toContain("reopen_pull_request");
     expect(names).not.toContain("manage_comment");
     expect(names).not.toContain("manage_review");
     expect(names).not.toContain("manage_branches");
@@ -95,6 +96,7 @@ describe("default mode (no readOnly, no enabledTools)", () => {
     expect(names).toContain("update_pull_request");
     expect(names).toContain("merge_pull_request");
     expect(names).toContain("decline_pull_request");
+    expect(names).toContain("reopen_pull_request");
     expect(names).toContain("manage_comment");
     expect(names).toContain("manage_review");
     expect(names).toContain("manage_branches");
