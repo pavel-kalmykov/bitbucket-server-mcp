@@ -46,6 +46,7 @@ import {
   type ReviewerGroupsApi,
 } from "./reviewer-groups.js";
 import { projectsApi, type ProjectsApi } from "./projects.js";
+import { passthroughApi, type PassthroughApi } from "./passthrough.js";
 import { pullRequestsApi, type PullRequestsApi } from "./pull-requests.js";
 import { repositoriesApi, type RepositoriesApi } from "./repositories.js";
 import { searchApi, type SearchApi } from "./search.js";
@@ -98,6 +99,7 @@ export interface BitbucketClient {
   readonly insights: InsightsApi;
   readonly labels: LabelsApi;
   readonly mergeChecks: MergeChecksApi;
+  readonly passthrough: PassthroughApi;
   readonly projects: ProjectsApi;
   readonly pullRequests: PullRequestsApi;
   readonly repositories: RepositoriesApi;
@@ -147,6 +149,7 @@ export function createBitbucketClient(
     insights: insightsApi(context),
     labels: labelsApi(context),
     mergeChecks: mergeChecksApi(context),
+    passthrough: passthroughApi(context),
     projects: projectsApi(context),
     pullRequests: pullRequestsApi(context),
     repositories: repositoriesApi(context),

@@ -22,6 +22,7 @@ export type * from "./insights.js";
 export type * from "./keys.js";
 export type * from "./labels.js";
 export type * from "./merge-checks.js";
+export type * from "./passthrough.js";
 export type * from "./projects.js";
 export type * from "./pull-requests.js";
 export type * from "./repositories.js";
