@@ -57,6 +57,7 @@ describe("Tool schema contract: descriptions", () => {
     { name: "get_pull_request_activity", contains: "activity" },
     { name: "get_diff", contains: "stat=true" },
     { name: "list_projects", contains: "project keys" },
+    { name: "call_bitbucket_api", contains: "Escape hatch" },
     { name: "manage_project_permissions", contains: "PROJECT_READ" },
     {
       name: "manage_repository_permissions",
@@ -132,6 +133,7 @@ describe("Tool schema contract: required fields", () => {
     { name: "update_pull_request", required: ["repository", "prId"] },
     { name: "merge_pull_request", required: ["repository", "prId"] },
     { name: "decline_pull_request", required: ["repository", "prId"] },
+    { name: "call_bitbucket_api", required: ["method", "path"] },
     { name: "list_pull_requests", required: ["repository"] },
     { name: "get_pull_request_activity", required: ["repository", "prId"] },
     { name: "get_diff", required: ["repository", "prId"] },
@@ -252,6 +254,11 @@ describe("Tool schema contract: field descriptions", () => {
     { tool: "get_diff", field: "stat", contains: "summary" },
     { tool: "get_diff", field: "filePath", contains: "specific file" },
     { tool: "get_diff", field: "maxLinesPerFile", contains: "0 = no limit" },
+    {
+      tool: "call_bitbucket_api",
+      field: "maxLinesPerFile",
+      contains: "0 = no limit",
+    },
     { tool: "manage_comment", field: "severity", contains: "BLOCKER" },
     { tool: "manage_comment", field: "state", contains: "PENDING" },
     { tool: "manage_comment", field: "parentId", contains: "threaded" },
@@ -401,6 +408,11 @@ describe("Tool schema contract: enum values", () => {
       field: "action",
       enums: ["create", "edit", "delete"],
     },
+    {
+      tool: "call_bitbucket_api",
+      field: "method",
+      enums: ["GET", "POST", "PUT", "DELETE"],
+    },
   ])("$tool.$field has enum $enums", ({ tool, field, enums }) => {
     const t = getTool(tool);
     const prop = getProp(t, field);
@@ -412,6 +424,14 @@ describe("Tool schema contract: enum values", () => {
 describe("Tool schema contract: annotations", () => {
   test.each<{ name: string; expected: Partial<ToolAnnotations> }>([
     { name: "list_projects", expected: { readOnlyHint: true } },
+    {
+      name: "call_bitbucket_api",
+      expected: {
+        readOnlyHint: false,
+        destructiveHint: true,
+        idempotentHint: false,
+      },
+    },
     {
       name: "manage_projects",
       expected: { readOnlyHint: false, destructiveHint: true },
@@ -659,6 +679,8 @@ describe("Tool schema contract: optional fields", () => {
     { tool: "list_pull_requests", field: "author" },
     { tool: "get_diff", field: "stat" },
     { tool: "get_diff", field: "filePath" },
+    { tool: "call_bitbucket_api", field: "body" },
+    { tool: "call_bitbucket_api", field: "maxLinesPerFile" },
     { tool: "browse_repository", field: "branch" },
     { tool: "browse_repository", field: "path" },
     { tool: "edit_file", field: "project" },
@@ -751,6 +773,7 @@ describe("Tool schema contract: all expected tools are registered", () => {
     const expected = [
       "list_projects",
       "manage_projects",
+      "call_bitbucket_api",
       "list_repositories",
       "browse_repository",
       "get_file_content",

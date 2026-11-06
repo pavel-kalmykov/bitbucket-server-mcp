@@ -18,6 +18,7 @@ import {
   registerPullRequestTools,
   registerReviewTools,
 } from "./pull-requests.js";
+import { registerPassthroughTools } from "./passthrough.js";
 import { registerProjectTools } from "./projects.js";
 import { registerRepositoryTools } from "./repositories.js";
 import { registerReviewerGroupTools } from "./reviewer-groups.js";
@@ -30,6 +31,7 @@ import { registerUserTools } from "./users.js";
 import { registerWebhookTools } from "./webhooks.js";
 
 export const TOOL_REGISTRARS: Array<(ctx: ToolContext) => void> = [
+  registerPassthroughTools,
   registerProjectTools,
   registerRepositoryTools,
   registerForkTools,
