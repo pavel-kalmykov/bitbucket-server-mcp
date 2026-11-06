@@ -31,4 +31,5 @@ export type * from "./secret-scanning.js";
 export type * from "./server-info.js";
 export type * from "./tags.js";
 export type * from "./users.js";
+export type * from "./watchers.js";
 export type * from "./webhooks.js";
