@@ -75,6 +75,9 @@ the live API or a captured `.har` before building):
   implementable: no `GET .../watchers` resource exists in the WADL
   (verified live on 8.9, 404) nor in the DC 10.4 OpenAPI spec).
 - `get_repository_contributors`.
+  ~~`get_repository_contributors`~~: the endpoint does not exist. Verified
+  live on 7.21 and 8.9 (`/contributors` answers 404) and absent from the
+  REST reference 5.13 through 9.4 and from the swagger.
 
 **Catch-all for the rest:**
 
