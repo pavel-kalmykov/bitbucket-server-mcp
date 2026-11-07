@@ -56,8 +56,8 @@ the swagger plus the un-documented endpoints catches anything missed.
 
 **Gaps confirmed in the swagger:**
 
-- `manage_default_reviewers`: create, update, and delete conditions (today only
-  `list_default_reviewer_conditions`).
+- ~~`manage_default_reviewers`~~ Done: condition create, update, and delete
+  live alongside `list_default_reviewer_conditions`.
 - ~~`list_inbox`~~ Redundant as an MCP tool: the endpoint is the same
   data as `dashboard/pull-requests`, already exposed via
   `list_dashboard_pull_requests` with `role` + `participantStatus`
@@ -69,24 +69,23 @@ the swagger plus the un-documented endpoints catches anything missed.
 **Gaps that exist in the product but are not in the swagger** (verify against
 the live API or a captured `.har` before building):
 
-- `get_branch_model` (`/rest/branch-utils/1.0/.../branchmodel`).
-- `watch_repository` / `unwatch_repository` (`/rest/api/1.0/.../watch`,
-  POST/DELETE for the authenticated user; `list_watchers` is not
+- ~~`get_branch_model`~~ Done: read-only tool over
+  `/rest/branch-utils/1.0/.../branchmodel` (verified live across the full
+  version matrix; a fresh repo answers `development` + `types` only).
+- ~~`watch_repository` / `unwatch_repository`~~ Done: `POST`/`DELETE` on the
+  repo's watch resource for the authenticated user (`list_watchers` is not
   implementable: no `GET .../watchers` resource exists in the WADL
   (verified live on 8.9, 404) nor in the DC 10.4 OpenAPI spec).
-- `get_repository_contributors`.
-  ~~`get_repository_contributors`~~: the endpoint does not exist. Verified
+- ~~`get_repository_contributors`~~: the endpoint does not exist. Verified
   live on 7.21 and 8.9 (`/contributors` answers 404) and absent from the
   REST reference 5.13 through 9.4 and from the swagger.
 
 **Catch-all for the rest:**
 
-- **Generic API passthrough tool**, modeled on `gh api`: one tool that takes a
-  method, a path, and an optional body and forwards them to the Bitbucket REST
-  API. Covers any endpoint the MCP does not model, including third-party or
-  in-house plugin endpoints, without baking their namespaces into the codebase.
-  Simple enough to land in 1.0, and it removes the pressure to model every
-  long-tail endpoint as a dedicated tool.
+- ~~**Generic API passthrough tool**~~ Done: `call_bitbucket_api` forwards
+  `{ method, path, body }` to any relative `/rest/` route, including
+  third-party or in-house plugin endpoints, returning the raw response
+  without baking their namespaces into the codebase.
 
 Exit criterion: every endpoint in the Bitbucket Server REST reference that an
 MCP client would plausibly need is covered, each with an E2E test on every
