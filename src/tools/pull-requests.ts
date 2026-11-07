@@ -219,6 +219,28 @@ export function registerPullRequestTools(ctx: ToolContext) {
   );
 
   server.registerTool(
+    "reopen_pull_request",
+    {
+      description:
+        "Reopen a declined pull request. Fetches the current version automatically for optimistic locking.",
+      inputSchema: z.strictObject({
+        project: projectParam(),
+        repository: repositoryParam(),
+        prId: z.coerce.number().describe("Pull request ID."),
+      }),
+      annotations: toolAnnotations({
+        readOnlyHint: false,
+        idempotentHint: false,
+      }),
+    },
+    async (params) => {
+      const data = await bb.pullRequests.reopen(params);
+
+      return formatResponse(curateResponse(data, DEFAULT_PR_FIELDS));
+    },
+  );
+
+  server.registerTool(
     "list_pull_requests",
     {
       description:

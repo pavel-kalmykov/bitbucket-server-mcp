@@ -380,6 +380,16 @@ export function pullRequestsApi(ctx: ApiContext) {
         .json<Record<string, unknown>>();
     },
 
+    async reopen(target: PullRequestTarget): Promise<Record<string, unknown>> {
+      const current = await fetchPullRequest(target);
+
+      return ctx.http.api
+        .post(`${prPath(target)}/reopen`, {
+          json: { version: current.version },
+        })
+        .json<Record<string, unknown>>();
+    },
+
     /**
      * `author` filters the fetched page in memory because Bitbucket has no
      * author query on this endpoint, so `size` reports the matches on that

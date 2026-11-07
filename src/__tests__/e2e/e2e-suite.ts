@@ -67,7 +67,7 @@ async function createBranch(
   });
 }
 
-async function commitFile(
+export async function commitFile(
   bb: StartedBitbucket,
   projectKey: string,
   repoSlug: string,
@@ -75,6 +75,8 @@ async function commitFile(
   path: string,
   content: string,
   message: string,
+  /** Required when committing to a branch that does not exist yet. */
+  sourceBranch?: string,
 ): Promise<string> {
   // Fixture setup talks to the raw Bitbucket REST contract, never to the
   // client this suite validates: a client bug must fail assertions, not
@@ -84,6 +86,7 @@ async function commitFile(
   form.append("content", content);
   form.append("message", message);
   form.append("branch", branch);
+  if (sourceBranch) form.append("sourceBranch", sourceBranch);
   const result = await bb.api
     .put(`projects/${projectKey}/repos/${repoSlug}/browse/${path}`, {
       body: form,
