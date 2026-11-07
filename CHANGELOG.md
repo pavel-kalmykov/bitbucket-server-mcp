@@ -1,3 +1,34 @@
+# [0.16.0](https://github.com/pavel-kalmykov/bitbucket-server-mcp/compare/v0.15.0...v0.16.0) (2026-11-07)
+
+
+### Bug Fixes
+
+* report actual byte length in download_attachment ([09d9351](https://github.com/pavel-kalmykov/bitbucket-server-mcp/commit/09d9351b218f3476eda95985bcf8b399f1db4dfd))
+* skip the anchor readback for PENDING comments ([ffcbee5](https://github.com/pavel-kalmykov/bitbucket-server-mcp/commit/ffcbee5ed571dbd078bc8d3270d727ac325aa86a))
+
+
+### Features
+
+* add download_attachment and delete_attachment tools ([a3aa566](https://github.com/pavel-kalmykov/bitbucket-server-mcp/commit/a3aa56688352d4a111c323ae69b26e91e1fa1a33))
+* add generic api passthrough tool ([59ce7bc](https://github.com/pavel-kalmykov/bitbucket-server-mcp/commit/59ce7bc311541667044f119618266f238885c2be))
+* add get_branch_model tool ([c6b7575](https://github.com/pavel-kalmykov/bitbucket-server-mcp/commit/c6b757585e8a9b7b569a1378f9f4aa14557be2b3))
+* add get_default_branch and set_default_branch ([681efeb](https://github.com/pavel-kalmykov/bitbucket-server-mcp/commit/681efebd02b0c3a642d6593fd5d8f154fe9884b4))
+* add list_groups ([b475196](https://github.com/pavel-kalmykov/bitbucket-server-mcp/commit/b475196d2bb685440ac5a282bd8a58d4ba5dff7a))
+* add manage_default_reviewers for condition create, update, and delete ([61ee235](https://github.com/pavel-kalmykov/bitbucket-server-mcp/commit/61ee2356480b63f76069fb90051e890779c6e8d4))
+* add manage_project_permissions ([a83b197](https://github.com/pavel-kalmykov/bitbucket-server-mcp/commit/a83b197a841eb740d04f2edf51948409092d374a))
+* add manage_projects for project create, update, and delete ([ac7ca90](https://github.com/pavel-kalmykov/bitbucket-server-mcp/commit/ac7ca90ace21c22bc0b412d29705045119adb5a7))
+* add manage_repository_permissions ([263a3d6](https://github.com/pavel-kalmykov/bitbucket-server-mcp/commit/263a3d631522a92d20c6c599685ca84ad586caaa))
+* add manage_secret_scanning for allowlist rule create, update, and delete ([d5214c1](https://github.com/pavel-kalmykov/bitbucket-server-mcp/commit/d5214c196645617dc865ff6f1ba5c251654bd135))
+* add reopen_pull_request ([5738dc1](https://github.com/pavel-kalmykov/bitbucket-server-mcp/commit/5738dc17795258a05d60843b5947dd1ff582bb54))
+* add repository watch and unwatch tools ([9a3ac8d](https://github.com/pavel-kalmykov/bitbucket-server-mcp/commit/9a3ac8da8eb9d9adbc4cfb7e62e32486dd5f362b))
+* add the inbox namespace to the reusable client ([a48b0b4](https://github.com/pavel-kalmykov/bitbucket-server-mcp/commit/a48b0b4deca5f5d598ad82861a3a0c8a3e9defb1))
+* add the inbox namespace to the reusable client ([c793d7a](https://github.com/pavel-kalmykov/bitbucket-server-mcp/commit/c793d7a2eb14ec1c33e7cf6fc5eb32dd02f0e652))
+* curate the last three uncurated read tools ([2497eb5](https://github.com/pavel-kalmykov/bitbucket-server-mcp/commit/2497eb57e76e9961a6703a0c3805de8e71b2799a))
+* reject unknown params in tool input schemas ([dcdec38](https://github.com/pavel-kalmykov/bitbucket-server-mcp/commit/dcdec38e1fae3367154a2a3ac5915862ef6eda28))
+* reject unknown params in tool input schemas ([37ad345](https://github.com/pavel-kalmykov/bitbucket-server-mcp/commit/37ad3457f0dcb1f8799a19fbfd539960dfdf95c2))
+* surface comment anchors on create ([10e8dcc](https://github.com/pavel-kalmykov/bitbucket-server-mcp/commit/10e8dcca50427237aa823d1b6427636426d56216))
+* surface insight report data and default file annotations on ([e012874](https://github.com/pavel-kalmykov/bitbucket-server-mcp/commit/e0128740b3cab4678308744e0e1f68d618635080))
+
 # [0.15.0](https://github.com/pavel-kalmykov/bitbucket-server-mcp/compare/v0.14.2...v0.15.0) (2026-09-23)
 
 
