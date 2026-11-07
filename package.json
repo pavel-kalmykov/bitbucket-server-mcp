@@ -57,7 +57,7 @@
     "npm": "^11.18.0",
     "picomatch": "^4.0.4",
     "brace-expansion": "^5.0.12",
-    "ip-address": "10.5.0",
+    "ip-address": "^10.7.6",
     "qs": "^6.17.1",
     "nanoid": "^3.3.18"
   },
@@ -74,7 +74,7 @@
     "@vitest/coverage-v8": "^4.0.18",
     "eslint": "^10.0.2",
     "eslint-plugin-import-x": "^4.16.2",
-    "eslint-plugin-sonarjs": "^4.0.3",
+    "eslint-plugin-sonarjs": "4.0.3",
     "fallow": "^3.34.0",
     "globals": "^17.4.0",
     "husky": "^9.1.7",
