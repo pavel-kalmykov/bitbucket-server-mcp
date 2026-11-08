@@ -69,7 +69,7 @@ const bb = createBitbucketClient({
 
 Each tool module in `src/tools/` exports a registration function that receives a `ToolContext` holding the McpServer, the Bitbucket client and the logger. To add a new tool:
 
-1. **Write the test first** in `src/__tests__/tools/yourmodule.test.ts`. Follow the pattern in any existing test file (mock ky, use InMemoryTransport, assert on response content and API calls).
+1. **Write the test first** in `src/__tests__/unit/tools/yourmodule.test.ts`. Follow the pattern in any existing test file (mock ky, use InMemoryTransport, assert on response content and API calls).
 
 2. **Add the operation** to the matching api namespace in `src/api/<domain>.ts`. It takes one params object and returns domain data:
 
@@ -245,13 +245,24 @@ Use `formatResponse(data)` to wrap data in the standard MCP content format.
 
 The test suite has three layers:
 
-| Layer       | Location                     | Purpose                                                    | Runner             |
-| ----------- | ---------------------------- | ---------------------------------------------------------- | ------------------ |
-| Unit        | `src/__tests__/tools/`       | Individual tool handlers with mocked HTTP                  | `npm test`         |
-| Integration | `src/__tests__/integration/` | Cross-cutting behavior (annotations, schema resources)     | `npm test`         |
-| E2E         | `src/__tests__/e2e/`         | Full MCP round-trip against ephemeral Bitbucket containers | `npm run test:e2e` |
+| Layer       | Location                          | Purpose                                                    | Runner             |
+| ----------- | --------------------------------- | ---------------------------------------------------------- | ------------------ |
+| Unit        | `src/__tests__/unit/tools/`       | Individual tool handlers with mocked HTTP                  | `npm test`         |
+| Integration | `src/__tests__/unit/integration/` | Cross-cutting behavior (annotations, schema resources)     | `npm test`         |
+| E2E         | `src/__tests__/e2e/`              | Full MCP round-trip against ephemeral Bitbucket containers | `npm run test:e2e` |
 
-Unit tests use `setupToolHarness` (from `src/__tests__/tool-test-utils.ts`) which creates a McpServer with a real InMemoryTransport and mocked ky clients. Each test calls `h.client.callTool(...)` and asserts on the structured response:
+Reference files, one per concern: read them before writing tests of a kind.
+
+| Concern                                             | Reference                                                                                                                       |
+| --------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------- |
+| Tool test harness, mock clients, assertion helpers  | `src/__tests__/fixtures/tool-test-utils.ts` and `src/__tests__/fixtures/test-utils.ts` (`mockJson` family, `expectCalledWith*`) |
+| Library-error rules and fixtures                    | `src/__tests__/fixtures/http-test-utils.ts` (`setupHttpCapture`), plus the section below                                        |
+| E2E fixture suite, scenario shape, raw-REST arrange | `src/__tests__/e2e/e2e-suite.ts` (and `commitFile` for commits)                                                                 |
+| Version matrix and per-version gates                | `src/__tests__/e2e/versions.ts` (`atLeast`, `*_SINCE`)                                                                          |
+| Container lifecycle and local env                   | `src/__tests__/e2e/bitbucket-container.ts`, `src/__tests__/e2e/global-setup.ts`                                                 |
+| Mutation gate                                       | `stryker.config.mjs` (`thresholds.break: 90`)                                                                                   |
+
+Unit tests use `setupToolHarness` (from `src/__tests__/fixtures/tool-test-utils.ts`) which creates a McpServer with a real InMemoryTransport and mocked ky clients. Each test calls `h.client.callTool(...)` and asserts on the structured response:
 
 ```typescript
 const h = setupToolHarness({
@@ -272,7 +283,7 @@ Scenario repositories use `master` for initial commits, feature-branch bases, an
 
 Run all tests: `npm test`
 Run unit tests only: `npx vitest run --config vitest.config.ts`
-Run a specific file: `npx vitest run src/__tests__/tools/yourfile.test.ts`
+Run a specific file: `npx vitest run src/__tests__/unit/tools/yourfile.test.ts`
 
 ### Testing errors from external libraries
 

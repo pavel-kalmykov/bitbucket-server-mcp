@@ -99,11 +99,6 @@ Each bullet is one PR. P1 first, then P2, then P3.
 
 ### B5. Testing (P1-P2)
 
-- Write **`TESTING.md`**: a tier table (unit/property/integration/e2e), the
-  Meszaros double taxonomy with this repo's rule ("fake the boundary you don't
-  own with msw; stub and spy the seams you do own with mock-extended"), the
-  property and mutation strategy (mutation score is the real gate, coverage is
-  the floor), and a flakiness policy.
 - **Schema-driven fuzzing**: spike `@traversable/zod-test` to derive
   arbitraries from the existing zod schemas, and assert valid input never
   throws while invalid input always returns `isError`. Not `zod-fast-check`.
