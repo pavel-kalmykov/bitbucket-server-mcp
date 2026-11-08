@@ -93,38 +93,46 @@ export function widgetsApi(ctx: ApiContext) {
 }
 ```
 
-   Every namespace method is `async`, and
-   `@typescript-eslint/promise-function-async` enforces it over `src/api/**`.
-   Without it, a failure raised before the request is made (a missing project,
-   say) would leave the method by throwing rather than by rejecting, so a
-   caller's `.catch()` would miss it while the same caller's `.catch()` on the
-   next method worked. Module-level helpers are exempt: the rule only looks at
-   the methods of the returned object.
+Every namespace method is `async`, and
+`@typescript-eslint/promise-function-async` enforces it over `src/api/**`.
+Without it, a failure raised before the request is made (a missing project,
+say) would leave the method by throwing rather than by rejecting, so a
+caller's `.catch()` would miss it while the same caller's `.catch()` on the
+next method worked. Module-level helpers are exempt: the rule only looks at
+the methods of the returned object.
 
-   New namespaces go on `BitbucketClient` in `src/api/client.ts` and get re-exported from `src/api/index.ts`.
+New namespaces go on `BitbucketClient` in `src/api/client.ts` and get re-exported from `src/api/index.ts`.
 
 3. **Add the adapter** in `src/tools/<domain>.ts`. Name the schema keys after the api params so the handler can forward its validated input wholesale:
 
 ```typescript
-server.registerTool('get_widget', {
-  description: 'What this tool does. Lead with a verb.',
-  inputSchema: {
-    project: projectParam(),
-    repository: repositoryParam(),
-    widgetId: z.number().describe('Widget ID.'),
-    fields: fieldsParam(),
+server.registerTool(
+  "get_widget",
+  {
+    description: "What this tool does. Lead with a verb.",
+    inputSchema: {
+      project: projectParam(),
+      repository: repositoryParam(),
+      widgetId: z.number().describe("Widget ID."),
+      fields: fieldsParam(),
+    },
+    annotations: toolAnnotations(),
   },
-  annotations: toolAnnotations(),
-}, async ({ fields, ...params }) => {
-  const data = await bb.widgets.get(params);
-  return formatResponse(curateResponse(data, fields ?? DEFAULT_WIDGET_FIELDS));
-});
+  async ({ fields, ...params }) => {
+    const data = await bb.widgets.get(params);
+    return formatResponse(
+      curateResponse(data, fields ?? DEFAULT_WIDGET_FIELDS),
+    );
+  },
+);
 ```
 
-   When a tool bundles several operations behind an `action` param, dispatch through a table typed by the action union so TypeScript enforces that every action is covered:
+When a tool bundles several operations behind an `action` param, dispatch through a table typed by the action union so TypeScript enforces that every action is covered:
 
 ```typescript
-const actionParam = z.enum(['create', 'delete']).describe('Operation to perform.');
+const actionParam = z
+  .enum(["create", "delete"])
+  .describe("Operation to perform.");
 type WidgetAction = z.infer<typeof actionParam>;
 
 // inputSchema: { action: actionParam, ... }
@@ -135,7 +143,7 @@ async ({ action, ...params }) => {
     delete: async () => formatResponse(await bb.widgets.delete(params)),
   };
   return run[action]();
-}
+};
 ```
 
 Deriving the type from the schema keeps one source of truth: add an action to
@@ -150,7 +158,11 @@ the `z.enum` and the `Record` stops compiling until it has a handler.
 Read tools that return Bitbucket entities (PRs, projects, repositories, branches, commits) should curate their responses to reduce token usage. Use the utilities in `src/response/curate.ts`:
 
 ```typescript
-import { curateResponse, curateList, DEFAULT_PR_FIELDS } from '../response/curate.js';
+import {
+  curateResponse,
+  curateList,
+  DEFAULT_PR_FIELDS,
+} from "../response/curate.js";
 
 // Single entity
 return formatResponse(curateResponse(data, fields ?? DEFAULT_PR_FIELDS));
@@ -166,9 +178,11 @@ return formatResponse(
 Every read tool that returns entities should expose a `fields` parameter:
 
 ```typescript
-fields: z.string().optional().describe(
-  "Comma-separated fields to return (e.g. 'id,title,state'). Use '*all' for the full API response. Defaults to a curated summary."
-)
+fields: z.string()
+  .optional()
+  .describe(
+    "Comma-separated fields to return (e.g. 'id,title,state'). Use '*all' for the full API response. Defaults to a curated summary.",
+  );
 ```
 
 Default field sets are defined in `src/response/curate.ts` (`DEFAULT_PR_FIELDS`, `DEFAULT_PROJECT_FIELDS`, etc.). They include only the fields an LLM typically needs. Nested paths like `author.user.name` pick specific sub-fields from objects and arrays.
@@ -195,7 +209,9 @@ Use it for data that changes infrequently (repo metadata, project lists, default
 const cacheKey = `repos:${project}:${repository}`;
 let repoId = ctx.cache.get<number>(cacheKey);
 if (repoId === undefined) {
-  const data = await ctx.http.api.get(`projects/${project}/repos/${repository}`).json();
+  const data = await ctx.http.api
+    .get(`projects/${project}/repos/${repository}`)
+    .json();
   repoId = data.id;
   ctx.cache.set(cacheKey, repoId);
 }
@@ -229,11 +245,11 @@ Use `formatResponse(data)` to wrap data in the standard MCP content format.
 
 The test suite has three layers:
 
-| Layer | Location | Purpose | Runner |
-|---|---|---|---|
-| Unit | `src/__tests__/tools/` | Individual tool handlers with mocked HTTP | `npm test` |
-| Integration | `src/__tests__/integration/` | Cross-cutting behavior (annotations, schema resources) | `npm test` |
-| E2E | `src/__tests__/e2e/` | Full MCP round-trip against ephemeral Bitbucket containers | `npm run test:e2e` |
+| Layer       | Location                     | Purpose                                                    | Runner             |
+| ----------- | ---------------------------- | ---------------------------------------------------------- | ------------------ |
+| Unit        | `src/__tests__/tools/`       | Individual tool handlers with mocked HTTP                  | `npm test`         |
+| Integration | `src/__tests__/integration/` | Cross-cutting behavior (annotations, schema resources)     | `npm test`         |
+| E2E         | `src/__tests__/e2e/`         | Full MCP round-trip against ephemeral Bitbucket containers | `npm run test:e2e` |
 
 Unit tests use `setupToolHarness` (from `src/__tests__/tool-test-utils.ts`) which creates a McpServer with a real InMemoryTransport and mocked ky clients. Each test calls `h.client.callTool(...)` and asserts on the structured response:
 
@@ -260,7 +276,7 @@ Run a specific file: `npx vitest run src/__tests__/tools/yourfile.test.ts`
 
 ### Testing errors from external libraries
 
-Do not hand-craft mock error objects for library types. A hand-crafted `{ response: { status: 404, data: { ... } } }` passes the test because the test *also* constructs it, but it does not resemble what the library actually throws. Bugs hide in that gap.
+Do not hand-craft mock error objects for library types. A hand-crafted `{ response: { status: 404, data: { ... } } }` passes the test because the test _also_ constructs it, but it does not resemble what the library actually throws. Bugs hide in that gap.
 
 Two rules keep tests and production aligned on the same shape:
 
