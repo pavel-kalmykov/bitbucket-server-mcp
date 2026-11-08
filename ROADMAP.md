@@ -33,64 +33,31 @@ Phase B have landed.
 
 ## Phase A: feature coverage (pre-1.0)
 
-The 59-tool surface already spans PRs, reviews, comments (PR and commit),
+Complete. The 75-tool surface spans PRs, reviews, comments (PR and commit),
 diffs, branches/tags, repositories, forks, labels, webhooks, repository hooks,
 merge checks, default reviewers, reviewer groups, deployments, code insights,
-secret-scanning rules, SSH/GPG keys, users, search, and system info. The core
-coverage from the original three-phase plan is done.
+secret-scanning rules, SSH/GPG keys, users, search, watching, and system
+info, plus `call_bitbucket_api` as the escape hatch for everything else.
+Audited against the generated swagger post-v0.16.0: of 448 declared
+operations, the 314 plausible for an agent are covered by dedicated tools,
+the reusable client, or the passthrough; the remaining ~134 are administrative
+or infrastructure namespaces (`admin/*` ~60, `mirroring/*` ~30, `migration/*`
+~15, `access-tokens/*` ~8, `logs/*`, `jira/*`, `sync/*`, `hook-scripts/*`,
+`required-builds/*`, `policies/*`, `audit/*`, `application-properties`) an
+agent has no business driving, still reachable through the passthrough.
 
-The remaining work, before 1.0, is to close the gaps below. Each is one PR per
-tool, run as an OpenSpec change. Endpoints are verified against the generated
-swagger (`src/generated/bitbucket-api.d.ts`) unless noted; a final pass over
-the swagger plus the un-documented endpoints catches anything missed.
+Explicitly not modeled, with the reason (verified live; the investigations
+live in git history):
 
-**Bugs to fix first:**
-
-- ~~**Attachments symmetry.**~~ Done: `upload_attachment`,
-  `download_attachment`, and `delete_attachment` are live (non-REST
-  `POST /projects/{project}/repos/{repo}/attachments` for upload, REST
-  get/delete by id for the rest). `list_attachments` does not exist
-  server-side: the collection GET answers 405 and attachment ids only
-  surface in upload responses and comment refs. Per-attachment metadata
-  reads empty until someone PUTs it, so it is not modeled.
-
-**Gaps confirmed in the swagger:**
-
-- ~~`manage_default_reviewers`~~ Done: condition create, update, and delete
-  live alongside `list_default_reviewer_conditions`.
-- ~~`list_inbox`~~ Redundant as an MCP tool: the endpoint is the same
-  data as `dashboard/pull-requests`, already exposed via
-  `list_dashboard_pull_requests` with `role` + `participantStatus`
-  filters (verified live: `role=REVIEWER&participantStatus=UNAPPROVED`
-  returns the waiting-for-review queue). The reusable client exposes
-  the endpoint as `bb.inbox` for JS/CLI consumers; no MCP tool is
-  planned to avoid a duplicate agent surface.
-
-**Gaps that exist in the product but are not in the swagger** (verify against
-the live API or a captured `.har` before building):
-
-- ~~`get_branch_model`~~ Done: read-only tool over
-  `/rest/branch-utils/1.0/.../branchmodel` (verified live across the full
-  version matrix; a fresh repo answers `development` + `types` only).
-- ~~`watch_repository` / `unwatch_repository`~~ Done: `POST`/`DELETE` on the
-  repo's watch resource for the authenticated user (`list_watchers` is not
-  implementable: no `GET .../watchers` resource exists in the WADL
-  (verified live on 8.9, 404) nor in the DC 10.4 OpenAPI spec).
-- ~~`get_repository_contributors`~~: the endpoint does not exist. Verified
-  live on 7.21 and 8.9 (`/contributors` answers 404) and absent from the
-  REST reference 5.13 through 9.4 and from the swagger.
-
-**Catch-all for the rest:**
-
-- ~~**Generic API passthrough tool**~~ Done: `call_bitbucket_api` forwards
-  `{ method, path, body }` to any relative `/rest/` route, including
-  third-party or in-house plugin endpoints, returning the raw response
-  without baking their namespaces into the codebase.
-
-Exit criterion: every endpoint in the Bitbucket Server REST reference that an
-MCP client would plausibly need is covered, each with an E2E test on every
-version of the matrix where the feature exists (degrading gracefully where it
-does not). "Complete" is defined by the audit, not by feel.
+- `list_attachments`: the collection GET answers 405 server-side; ids only
+  surface in upload responses and comment refs.
+- `list_inbox`: same data as `dashboard/pull-requests`, already exposed via
+  `list_dashboard_pull_requests` (`role` + `participantStatus`); the
+  reusable client keeps `bb.inbox` for JS/CLI consumers.
+- `list_watchers`: no GET-able watchers resource exists (404 live on 8.9;
+  absent from the 8.9 WADL and the DC 10.4 spec).
+- `get_repository_contributors`: the endpoint does not exist (404 live on
+  7.21 and 8.9; absent from the REST reference 5.13-9.4 and the swagger).
 
 ---
 
@@ -171,10 +138,12 @@ Keep semantic-release as it is (one package, one version).
 
 ### B7. Security score and polish (P1-P3)
 
-- Tighten `main` branch protection: PR with at least one approval, required
-  status checks strict, dismiss stale approvals, block force-push, include
-  admins. Settings only, but it lifts Branch-Protection and Code-Review.
-- `npm audit fix` until the dev-toolchain tree is clean; commit the lockfile.
+- Branch protection stays minimal while the repo has a single contributor
+  (required approvals would break the Dependabot auto-merge chain); strict
+  required checks and DCO remain. Revisit with a second contributor.
+- The remaining audit advisories only clear through semver-major tooling
+  bumps (eslint, the semantic-release tree) and are accepted as dev-only
+  risk until those upgrades happen.
 - DCO bot plus Best Practices badge self-attestation toward Gold.
 
 ### B8. Optional and experimental (P3)
