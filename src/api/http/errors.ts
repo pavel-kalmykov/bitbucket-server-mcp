@@ -20,6 +20,8 @@ const errorEntrySchema = z.object({
   message: optionalString,
   reviewerErrors: z.array(z.unknown()).optional().catch(undefined),
   validReviewers: z.array(z.unknown()).optional().catch(undefined),
+  // Present on stale-version conflicts (409): the version a retry must use.
+  currentVersion: z.number().optional().catch(undefined),
 });
 
 const reviewerErrorSchema = z.object({
@@ -81,20 +83,24 @@ function formatErrorParts(entry: unknown): string {
   if (!parsed.success) return "";
   const e = parsed.data;
 
-  const pieces: string[] = [];
+  const core = [e.exceptionName, e.message]
+    .filter((s): s is string => typeof s === "string" && s.length > 0)
+    .join(": ");
 
-  const core = [e.exceptionName, e.message].filter(
-    (s): s is string => typeof s === "string" && s.length > 0,
-  );
-  pieces.push(...core);
-
+  const extras: string[] = [];
   const reviewerText = formatReviewerErrors(e.reviewerErrors);
-  if (reviewerText) pieces.push(reviewerText);
+  if (reviewerText) extras.push(reviewerText);
 
   const validReviewersText = formatValidReviewers(e.validReviewers);
-  if (validReviewersText) pieces.push(validReviewersText);
+  if (validReviewersText) extras.push(validReviewersText);
 
-  return pieces.join(": ");
+  if (e.currentVersion !== undefined) {
+    extras.push(`currentVersion: ${e.currentVersion}`);
+  }
+
+  if (core && extras.length > 0) return `${core} (${extras.join("; ")})`;
+  if (extras.length > 0) return extras.join("; ");
+  return core;
 }
 
 /**
