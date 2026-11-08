@@ -14,6 +14,7 @@ import type { ToolContext } from "./shared.js";
 import {
   fieldsHint,
   fieldsParam,
+  limitParam,
   projectParam,
   repositoryParam,
   startParam,
@@ -39,10 +40,7 @@ export function registerTagTools(ctx: ToolContext) {
           .string()
           .optional()
           .describe("Filter tags by name substring."),
-        limit: z
-          .number()
-          .optional()
-          .describe("Number of tags to return (default: 25, max: 1000)."),
+        limit: limitParam(),
         start: startParam(),
         fields: fieldsParam(),
       }),
