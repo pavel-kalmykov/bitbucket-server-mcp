@@ -353,11 +353,11 @@ describe("Branch tools", () => {
 
       await h.client.callTool({
         name: "list_branches",
-        arguments: { repository: "r", limit: 1000, start: 0 },
+        arguments: { repository: "r", limit: 100, start: 0 },
       });
 
       const searchParams = searchParamsOfBranchesCall();
-      expect(searchParams.limit).toBe(1000);
+      expect(searchParams.limit).toBe(100);
       expect(searchParams.start).toBe(0);
       expect(searchParams).not.toHaveProperty("filterText");
     });

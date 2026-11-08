@@ -122,10 +122,7 @@ export function registerBranchTools(ctx: ToolContext) {
           .string()
           .optional()
           .describe("Filter branches by name substring."),
-        limit: z
-          .number()
-          .optional()
-          .describe("Number of branches to return (default: 25, max: 1000)."),
+        limit: limitParam(),
         start: startParam(),
         fields: fieldsParam(),
       }),
@@ -165,10 +162,7 @@ export function registerBranchTools(ctx: ToolContext) {
           .describe(
             "Client-side filter by author (case-insensitive match on name, slug, or displayName). Only filters the current page of results. Use with start/limit to paginate for more matches.",
           ),
-        limit: z
-          .number()
-          .optional()
-          .describe("Number of commits to return (default: 25, max: 1000)."),
+        limit: limitParam(),
         start: startParam(),
         fields: fieldsParam(),
       }),
@@ -284,10 +278,7 @@ export function registerBranchTools(ctx: ToolContext) {
           .string()
           .optional()
           .describe("Target ref (commits reachable from here are included)."),
-        limit: z
-          .number()
-          .optional()
-          .describe("Number of commits to return (default: 25, max: 1000)."),
+        limit: limitParam(),
         start: startParam(),
         fields: fieldsParam(),
       }),

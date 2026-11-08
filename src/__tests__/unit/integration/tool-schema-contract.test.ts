@@ -884,3 +884,64 @@ describe("Tool schema contract: strict input", () => {
     }
   });
 });
+
+describe("Tool schema contract: limit params are capped at 100", () => {
+  test("every tool exposing a limit param declares maximum: 100", () => {
+    const withLimit = allTools.filter((t) => getProp(t, "limit"));
+    expect(withLimit.length).toBeGreaterThan(0);
+    for (const tool of withLimit) {
+      const prop = getProp(tool, "limit");
+      expect(prop).toBeDefined();
+      expect(prop!.maximum, tool.name).toBe(100);
+    }
+  });
+
+  test.each<{ name: string; args: Record<string, unknown> }>([
+    { name: "list_projects", args: {} },
+    { name: "list_repositories", args: {} },
+    { name: "browse_repository", args: { repository: "r" } },
+    {
+      name: "get_file_content",
+      args: { repository: "r", filePath: "src/index.ts" },
+    },
+    { name: "list_branches", args: { repository: "r" } },
+    { name: "list_commits", args: { repository: "r" } },
+    { name: "compare_refs", args: { repository: "r" } },
+    { name: "list_branch_restrictions", args: { repository: "r" } },
+    { name: "list_tags", args: { repository: "r" } },
+    { name: "list_forks", args: { repository: "r" } },
+    { name: "list_pull_requests", args: { repository: "r" } },
+    { name: "list_dashboard_pull_requests", args: {} },
+    { name: "get_pull_request_activity", args: { repository: "r", prId: 1 } },
+    { name: "get_pull_request_commits", args: { repository: "r", prId: 1 } },
+    {
+      name: "get_commit_pull_requests",
+      args: { repository: "r", commitId: "deadbeef" },
+    },
+    {
+      name: "list_commit_comments",
+      args: { repository: "r", commitId: "deadbeef" },
+    },
+    { name: "list_gpg_keys", args: {} },
+    { name: "list_ssh_keys", args: {} },
+    { name: "list_groups", args: {} },
+    { name: "search_users", args: { filter: "x" } },
+    { name: "search", args: { query: "x" } },
+    { name: "list_labels", args: { repository: "r" } },
+    { name: "list_webhooks", args: { repository: "r" } },
+    { name: "list_repository_hooks", args: { repository: "r" } },
+    { name: "manage_project_permissions", args: { action: "list-groups" } },
+    {
+      name: "manage_repository_permissions",
+      args: { action: "list-groups", repository: "r" },
+    },
+  ])(
+    "$name rejects limit=101 with a validation error",
+    async ({ name, args }) => {
+      const result = await callRaw(client, name, { ...args, limit: 101 });
+
+      expect(result.isError).toBe(true);
+      expect(result.content[0].text).toContain("limit");
+    },
+  );
+});

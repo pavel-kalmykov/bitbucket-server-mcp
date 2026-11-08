@@ -13,6 +13,7 @@ import type { ToolContext } from "./shared.js";
 import {
   fieldsHint,
   fieldsParam,
+  limitParam,
   projectParam,
   repositoryParam,
   startParam,
@@ -28,10 +29,7 @@ export function registerRepositoryTools(ctx: ToolContext) {
         "List all Bitbucket projects you have access to. Use this first to discover project keys." +
         fieldsHint(DEFAULT_PROJECT_FIELDS),
       inputSchema: z.strictObject({
-        limit: z
-          .number()
-          .optional()
-          .describe("Number of projects to return (default: 25, max: 1000)"),
+        limit: limitParam(),
         start: startParam(),
         fields: fieldsParam(),
       }),
@@ -56,12 +54,7 @@ export function registerRepositoryTools(ctx: ToolContext) {
         fieldsHint(DEFAULT_REPOSITORY_FIELDS),
       inputSchema: z.strictObject({
         project: projectParam(),
-        limit: z
-          .number()
-          .optional()
-          .describe(
-            "Number of repositories to return (default: 25, max: 1000)",
-          ),
+        limit: limitParam(),
         start: startParam(),
         fields: fieldsParam(),
       }),
@@ -99,8 +92,9 @@ export function registerRepositoryTools(ctx: ToolContext) {
           .describe("Branch or commit hash (default: default branch)."),
         limit: z
           .number()
+          .max(100)
           .optional()
-          .describe("Max items to return (default: 50)."),
+          .describe("Max items to return (default: 50, max: 100)."),
       }),
       annotations: toolAnnotations(),
     },
@@ -122,8 +116,9 @@ export function registerRepositoryTools(ctx: ToolContext) {
           .describe("Branch or commit hash (default: default branch)."),
         limit: z
           .number()
+          .max(100)
           .optional()
-          .describe("Max lines per request (default: 100, max: 1000)."),
+          .describe("Max lines per request (default: 100, max: 100)."),
         start: z
           .number()
           .optional()
