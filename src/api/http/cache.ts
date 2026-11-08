@@ -18,6 +18,7 @@ export class ApiCache {
   }
 
   get<T>(key: string): T | undefined {
+    // One store, many value shapes: T is the caller's per-key contract.
     return this.cache.get(key) as T | undefined;
   }
 

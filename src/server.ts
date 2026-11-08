@@ -1,3 +1,4 @@
+import { z } from "zod";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { parseConfig } from "./config.js";
 import { handleToolError } from "./response/errors.js";
@@ -13,6 +14,16 @@ import { createRequire } from "module";
 
 const require = createRequire(import.meta.url);
 const { version } = require("../package.json");
+
+const toolConfigSchema = z.object({
+  annotations: z.object({ readOnlyHint: z.boolean().optional() }).optional(),
+});
+
+function isToolHandler(
+  value: unknown,
+): value is (...args: unknown[]) => Promise<unknown> {
+  return typeof value === "function";
+}
 
 const SERVER_INSTRUCTIONS = `This server provides tools for Bitbucket Server (on-premise).
 Most tools require 'project' and 'repository' params. If not provided, 'project' defaults to BITBUCKET_DEFAULT_PROJECT.
@@ -74,18 +85,21 @@ export function createServer(options?: BitbucketServerOptions) {
   const filteredServer = new Proxy(server, {
     get(target, prop, receiver) {
       if (prop === "registerTool") {
-        return (...args: [string, ...unknown[]]) => {
+        return (...args: [name: string, ...rest: unknown[]]) => {
           const [name, toolConfig] = args;
           if (config.enabledTools && !config.enabledTools.includes(name)) {
             return;
           }
-          const annotations = (toolConfig as Record<string, unknown>)
-            ?.annotations as { readOnlyHint?: boolean } | undefined;
-          if (config.readOnly && annotations?.readOnlyHint === false) {
+          const parsedConfig = toolConfigSchema.safeParse(toolConfig);
+          if (
+            config.readOnly &&
+            parsedConfig.success &&
+            parsedConfig.data.annotations?.readOnlyHint === false
+          ) {
             return;
           }
-          if (args.length > 2 && typeof args[2] === "function") {
-            const original = args[2] as (...a: unknown[]) => Promise<unknown>;
+          if (isToolHandler(args[2])) {
+            const original = args[2];
             args[2] = async (...handlerArgs: unknown[]) => {
               try {
                 return await original(...handlerArgs);
@@ -94,6 +108,8 @@ export function createServer(options?: BitbucketServerOptions) {
               }
             };
           }
+          // Reflect.get cannot express "the method for this literal prop",
+          // so its callable shape is asserted at this one boundary.
           const method = Reflect.get(target, prop, receiver) as (
             ...a: unknown[]
           ) => unknown;

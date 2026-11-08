@@ -249,6 +249,18 @@ describe("extractBitbucketMessage — exact formatting of the fallback parts", (
     expect(extractBitbucketMessage(body)).toBe("");
   });
 
+  test("null entries in errors are skipped instead of failing extraction", () => {
+    const body = { errors: [{ message: "a" }, null] };
+    expect(extractBitbucketMessage(body)).toBe("a");
+  });
+
+  test("validReviewers with a malformed user field fall back to String()", () => {
+    const body = { errors: [{ validReviewers: [{ user: 42 }] }] };
+    expect(extractBitbucketMessage(body)).toBe(
+      "validReviewers: [[object Object]]",
+    );
+  });
+
   test("validReviewers objects render their user.name", () => {
     const body = {
       errors: [{ validReviewers: [{ user: { name: "jdoe" } }] }],
