@@ -1,32 +1,59 @@
 import { HTTPError } from "ky";
+import { z } from "zod";
 
 // Cap on how much of a raw body ends up in an error message. Bitbucket
 // normally stays well under this; the cap guards against accidentally
 // surfacing a 10 MiB HTML error page from a misconfigured proxy.
 const MAX_BODY_CHARS = 500;
 
+// Field-level catches mirror the per-field typeof filters this module used
+// to hand-roll: a wrong-typed field is ignored, it never fails the entry.
+const optionalString = z.string().optional().catch(undefined);
+
+const errorBodySchema = z.object({
+  errors: z.array(z.unknown()).optional().catch(undefined),
+  message: optionalString,
+});
+
+const errorEntrySchema = z.object({
+  exceptionName: optionalString,
+  message: optionalString,
+  reviewerErrors: z.array(z.unknown()).optional().catch(undefined),
+  validReviewers: z.array(z.unknown()).optional().catch(undefined),
+  // Present on stale-version conflicts (409): the version a retry must use.
+  currentVersion: z.number().optional().catch(undefined),
+});
+
+const reviewerErrorSchema = z.object({
+  context: optionalString,
+  message: optionalString,
+});
+
+const validReviewerSchema = z.object({
+  user: z.object({ name: z.unknown().optional() }).optional().catch(undefined),
+});
+
 export function hasExceptionName(data: unknown): boolean {
-  if (data == null || typeof data !== "object") return false;
-  const body = data as { errors?: unknown };
-  if (!Array.isArray(body.errors) || body.errors.length === 0) return false;
-  return body.errors.some(
-    (e) =>
-      e != null &&
-      typeof e === "object" &&
-      typeof (e as Record<string, unknown>).exceptionName === "string" &&
-      (e as Record<string, unknown>).exceptionName !== "",
-  );
+  const body = errorBodySchema.safeParse(data);
+  if (!body.success) return false;
+  const { errors } = body.data;
+  if (!errors || errors.length === 0) return false;
+  return errors.some((entry) => {
+    const parsed = errorEntrySchema.safeParse(entry);
+    return parsed.success && (parsed.data.exceptionName ?? "") !== "";
+  });
 }
 
-function formatReviewerErrors(reviewerErrors: unknown): string | undefined {
-  if (!Array.isArray(reviewerErrors)) return undefined;
+function formatReviewerErrors(
+  reviewerErrors: unknown[] | undefined,
+): string | undefined {
+  if (!reviewerErrors) return undefined;
 
   const parts: string[] = [];
   for (const re of reviewerErrors) {
-    if (!(re && typeof re === "object")) continue;
-    const r = re as Record<string, unknown>;
-    const ctx = typeof r.context === "string" ? r.context : null;
-    const rMsg = typeof r.message === "string" ? r.message : null;
+    const parsed = reviewerErrorSchema.safeParse(re);
+    if (!parsed.success) continue;
+    const { context: ctx, message: rMsg } = parsed.data;
     if (rMsg) {
       parts.push(ctx ? `reviewer "${ctx}": ${rMsg}` : `reviewer: ${rMsg}`);
     }
@@ -34,41 +61,46 @@ function formatReviewerErrors(reviewerErrors: unknown): string | undefined {
   return parts.length > 0 ? parts.join("; ") : undefined;
 }
 
-function formatValidReviewers(validReviewers: unknown): string | undefined {
-  if (!Array.isArray(validReviewers) || validReviewers.length === 0)
-    return undefined;
+function formatValidReviewers(
+  validReviewers: unknown[] | undefined,
+): string | undefined {
+  if (!validReviewers || validReviewers.length === 0) return undefined;
 
   const names = validReviewers
-    .map((vr) => {
+    .map((vr): unknown => {
       if (vr == null) return undefined;
-      if (typeof vr === "object") {
-        const v = vr as Record<string, unknown>;
-        return v.user && typeof v.user === "object"
-          ? (v.user as Record<string, unknown>).name
-          : String(vr);
-      }
-      return String(vr);
+      const parsed = validReviewerSchema.safeParse(vr);
+      if (!parsed.success) return String(vr);
+      return parsed.data.user ? parsed.data.user.name : String(vr);
     })
     .filter((n): n is string => typeof n === "string" && n.length > 0);
 
   return names.length > 0 ? `validReviewers: [${names.join(", ")}]` : undefined;
 }
 
-function formatErrorParts(e: Record<string, unknown>): string {
-  const pieces: string[] = [];
+function formatErrorParts(entry: unknown): string {
+  const parsed = errorEntrySchema.safeParse(entry);
+  if (!parsed.success) return "";
+  const e = parsed.data;
 
-  const core = [e.exceptionName, e.message].filter(
-    (s): s is string => typeof s === "string" && s.length > 0,
-  );
-  pieces.push(...core);
+  const core = [e.exceptionName, e.message]
+    .filter((s): s is string => typeof s === "string" && s.length > 0)
+    .join(": ");
 
+  const extras: string[] = [];
   const reviewerText = formatReviewerErrors(e.reviewerErrors);
-  if (reviewerText) pieces.push(reviewerText);
+  if (reviewerText) extras.push(reviewerText);
 
   const validReviewersText = formatValidReviewers(e.validReviewers);
-  if (validReviewersText) pieces.push(validReviewersText);
+  if (validReviewersText) extras.push(validReviewersText);
 
-  return pieces.join(": ");
+  if (e.currentVersion !== undefined) {
+    extras.push(`currentVersion: ${e.currentVersion}`);
+  }
+
+  if (core && extras.length > 0) return `${core} (${extras.join("; ")})`;
+  if (extras.length > 0) return extras.join("; ");
+  return core;
 }
 
 /**
@@ -87,18 +119,16 @@ export function extractBitbucketMessage(data: unknown): string {
 
   if (typeof data !== "object") return "";
 
-  const body = data as { errors?: unknown; message?: unknown };
+  const body = errorBodySchema.safeParse(data);
+  if (!body.success) return "";
 
-  if (Array.isArray(body.errors) && body.errors.length > 0) {
-    const parts = (body.errors as Array<Record<string, unknown>>)
-      .map(formatErrorParts)
-      .filter((s) => s.length > 0);
+  const { errors, message } = body.data;
+  if (errors && errors.length > 0) {
+    const parts = errors.map(formatErrorParts).filter((s) => s.length > 0);
     if (parts.length > 0) return parts.join("; ");
   }
 
-  if (typeof body.message === "string") return body.message;
-
-  return "";
+  return message ?? "";
 }
 
 /**

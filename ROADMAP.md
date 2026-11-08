@@ -88,11 +88,6 @@ Each bullet is one PR. P1 first, then P2, then P3.
 
 ### B4. Maintainability refactors (P2)
 
-- Add a `withErrorHandling(handler)` wrapper next to the registration
-  machinery, and fold caching and paginated-result shaping into it. Removes
-  ~59 hand-rolled try/catch blocks. Not in `shared.ts`.
-- Remove the remaining `as` casts with zod schemas for the error body and the
-  `Paginated` envelope. The standing preference is zero avoidable casts.
 - Wire up `ctx.cache` through **ky hooks** (`beforeRequest` / `afterResponse`
   keyed on method and URL for whitelisted GETs; mutating tools call
   `invalidateByPrefix`). Not a manual per-tool store, and not removed.

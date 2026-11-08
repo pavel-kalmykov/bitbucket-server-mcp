@@ -249,6 +249,35 @@ describe("extractBitbucketMessage — exact formatting of the fallback parts", (
     expect(extractBitbucketMessage(body)).toBe("");
   });
 
+  test("null entries in errors are skipped instead of failing extraction", () => {
+    const body = { errors: [{ message: "a" }, null] };
+    expect(extractBitbucketMessage(body)).toBe("a");
+  });
+
+  test("stale-version conflicts surface currentVersion for the retry", () => {
+    const body = {
+      errors: [
+        {
+          context: null,
+          message:
+            "You are attempting to modify a pull request based on out-of-date information.",
+          exceptionName:
+            "com.atlassian.bitbucket.pull.PullRequestOutOfDateException",
+          currentVersion: 0,
+          expectedVersion: 999,
+        },
+      ],
+    };
+    expect(extractBitbucketMessage(body)).toContain("currentVersion: 0");
+  });
+
+  test("validReviewers with a malformed user field fall back to String()", () => {
+    const body = { errors: [{ validReviewers: [{ user: 42 }] }] };
+    expect(extractBitbucketMessage(body)).toBe(
+      "validReviewers: [[object Object]]",
+    );
+  });
+
   test("validReviewers objects render their user.name", () => {
     const body = {
       errors: [{ validReviewers: [{ user: { name: "jdoe" } }] }],
@@ -303,7 +332,7 @@ describe("extractBitbucketMessage — exact formatting of the fallback parts", (
       ],
     };
     expect(extractBitbucketMessage(body)).toBe(
-      "reviewer: r: validReviewers: [v]",
+      "reviewer: r; validReviewers: [v]",
     );
   });
 

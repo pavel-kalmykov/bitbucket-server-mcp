@@ -19,9 +19,9 @@ async function readbackAnchor(
   bb: ToolContext["bb"],
   params: CreateCommentParams,
   filePath: string,
-  createdId: number | undefined,
+  createdId: unknown,
 ): Promise<Record<string, unknown> | undefined> {
-  if (createdId === undefined) return undefined;
+  if (typeof createdId !== "number") return undefined;
   const comments = await bb.comments.listForPath({
     ...params,
     filePath,
@@ -136,12 +136,7 @@ export function registerCommentTools(ctx: ToolContext) {
           // versions silently drop it when it does not match the PR
           // diff. Read it back through the only endpoint that returns
           // it and say so when it came back without one.
-          const stored = await readbackAnchor(
-            bb,
-            params,
-            filePath,
-            created.id as number | undefined,
-          );
+          const stored = await readbackAnchor(bb, params, filePath, created.id);
           if (stored && stored.anchor != null) {
             // The readback carries the server-resolved anchor (from/to
             // hashes included), which the POST response omits.
