@@ -170,5 +170,5 @@ export function getPaginated<T = Record<string, unknown>>(
   return client
     .get(url, options)
     .json()
-    .then((r) => validatePaginated(r, url) as Paginated<T>);
+    .then((r) => validatePaginated<T>(r, url));
 }

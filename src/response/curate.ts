@@ -1,3 +1,5 @@
+import { isRecord } from "../type-guards.js";
+
 // Default field sets per entity type.
 // Comma-separated top-level fields. Nested paths like "author.user.name" pick specific sub-fields.
 // Use "*all" to bypass curation and return the raw API response.
@@ -117,21 +119,12 @@ function pickFieldsFromObject(
       result[key] = value;
     } else if (Array.isArray(value)) {
       // Array: apply sub-field picking to each element
-      result[key] = value.map((item) => {
-        if (item && typeof item === "object") {
-          return pickFieldsFromObject(
-            item as Record<string, unknown>,
-            subPaths,
-          );
-        }
-        return item;
-      });
-    } else if (value && typeof value === "object") {
-      // Object: recurse with sub-paths
-      result[key] = pickFieldsFromObject(
-        value as Record<string, unknown>,
-        subPaths,
+      result[key] = value.map((item) =>
+        isRecord(item) ? pickFieldsFromObject(item, subPaths) : item,
       );
+    } else if (isRecord(value)) {
+      // Object: recurse with sub-paths
+      result[key] = pickFieldsFromObject(value, subPaths);
     }
   }
 

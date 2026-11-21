@@ -14,6 +14,8 @@ export function formatApiError(
   status: number,
   serverResponse: string,
 ): ToolErrorResult {
+  // Partial lookup: most status codes have no entry, TS has no cast-free
+  // idiom for indexing a closed record with a runtime number.
   const guidance =
     ERROR_GUIDANCE[status as keyof typeof ERROR_GUIDANCE] ??
     (status >= 500

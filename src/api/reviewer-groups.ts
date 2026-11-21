@@ -66,14 +66,17 @@ export function reviewerGroupsApi(ctx: ApiContext) {
       // exchanged for its id before the create call.
       const members = await Promise.all(
         params.reviewers.map(async (reviewer) => {
-          const user = (await users
+          const user = await users
             .get({ userSlug: reviewer })
             .catch((error: unknown) => {
               if (error instanceof BitbucketApiError && error.status === 404) {
                 throw new Error(`Reviewer "${reviewer}" does not exist.`);
               }
               throw error;
-            })) as { id: number };
+            });
+          if (typeof user.id !== "number") {
+            throw new Error(`Reviewer "${reviewer}" has no numeric id.`);
+          }
           return { id: user.id };
         }),
       );

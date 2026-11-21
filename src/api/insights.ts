@@ -51,16 +51,18 @@ export function insightsApi(ctx: ApiContext) {
           await Promise.all(
             reports
               .filter((r): r is InsightReport & { key: string } => !!r.key)
-              .map(async (report) => [
-                report.key,
-                await ctx.http.insights
-                  .get(`${basePath}/reports/${report.key}/annotations`)
-                  .json<{ values: unknown[] }>()
-                  .then((d) => d.values)
-                  .catch((): unknown[] => []),
-              ]),
+              .map(
+                async (report): Promise<[string, unknown[]]> => [
+                  report.key,
+                  await ctx.http.insights
+                    .get(`${basePath}/reports/${report.key}/annotations`)
+                    .json<{ values: unknown[] }>()
+                    .then((d) => d.values)
+                    .catch((): unknown[] => []),
+                ],
+              ),
           ),
-        ) as Promise<Record<string, unknown[]>>,
+        ),
         includeFileAnnotations
           ? ctx.http.api
               .get(`${basePath}/changes`, {
@@ -79,18 +81,20 @@ export function insightsApi(ctx: ApiContext) {
       const paths = changedFiles.values.map((change) => change.path.toString);
       const fileAnnotations = Object.fromEntries(
         await Promise.all(
-          paths.map(async (path) => [
-            path,
-            await ctx.http.insights
-              .get(`${basePath}/annotations`, {
-                searchParams: { path, annotationLocation: "FILES" },
-              })
-              .json<{ annotations: unknown[] }>()
-              .then((d) => d.annotations)
-              .catch((): unknown[] => []),
-          ]),
+          paths.map(
+            async (path): Promise<[string, unknown[]]> => [
+              path,
+              await ctx.http.insights
+                .get(`${basePath}/annotations`, {
+                  searchParams: { path, annotationLocation: "FILES" },
+                })
+                .json<{ annotations: unknown[] }>()
+                .then((d) => d.annotations)
+                .catch((): unknown[] => []),
+            ],
+          ),
         ),
-      ) as Record<string, unknown[]>;
+      );
 
       return {
         reports,

@@ -39,7 +39,6 @@ interface ListArgs {
 interface MutateArgs {
   project?: string;
   subject: Subject;
-  permission: ProjectPermission;
   name: string;
 }
 
@@ -52,23 +51,14 @@ function assertMutateArgs(
   },
   action: string,
 ): MutateArgs {
-  const { project, subject, permission, name } = raw;
+  const { project, subject, name } = raw;
   if (subject === undefined) {
     throw new Error(`subject is required for the ${action} action.`);
-  }
-  if (action === "grant" && permission === undefined) {
-    throw new Error(`permission is required for the ${action} action.`);
   }
   if (!name) {
     throw new Error(`name is required for the ${action} action.`);
   }
-  // The revoke path never passes a permission, hence the narrowing here.
-  return {
-    project,
-    subject,
-    permission: permission as ProjectPermission,
-    name,
-  };
+  return { project, subject, name };
 }
 
 export function registerProjectPermissionTools(ctx: ToolContext) {
@@ -111,16 +101,19 @@ export function registerProjectPermissionTools(ctx: ToolContext) {
     });
   };
 
-  const grant = (args: MutateArgs): Promise<ToolSuccessResult> => {
+  const grant = (
+    args: MutateArgs,
+    permission: ProjectPermission,
+  ): Promise<ToolSuccessResult> => {
     const runOne =
       args.subject === "group"
         ? bb.projectPermissions.grantGroup.bind(bb.projectPermissions)
         : bb.projectPermissions.grantUser.bind(bb.projectPermissions);
-    return runOne(args).then(() =>
+    return runOne({ ...args, permission }).then(() =>
       // The PUT answers with an empty body; the grant is the effect.
       formatResponse({
         granted: true,
-        permission: args.permission,
+        permission,
         name: args.name,
       }),
     );
@@ -170,10 +163,15 @@ export function registerProjectPermissionTools(ctx: ToolContext) {
       const run: Record<typeof action, () => Promise<ToolSuccessResult>> = {
         "list-groups": () => list("groups", { project, ...listArgs }),
         "list-users": () => list("users", { project, ...listArgs }),
-        grant: () =>
-          grant(
+        grant: () => {
+          if (permission === undefined) {
+            throw new Error(`permission is required for the ${action} action.`);
+          }
+          return grant(
             assertMutateArgs({ project, subject, permission, name }, action),
-          ),
+            permission,
+          );
+        },
         revoke: () =>
           revoke(assertMutateArgs({ project, subject, name }, action)),
       };
