@@ -229,13 +229,13 @@ describe("Repository tools", () => {
 
       await h.client.callTool({
         name: "browse_repository",
-        arguments: { project: "TEST", repository: "r", limit: 200 },
+        arguments: { project: "TEST", repository: "r", limit: 100 },
       });
 
       expectCalledWithSearchParams(
         h.mockClients.api.get,
         "projects/TEST/repos/r/browse",
-        { limit: 200 },
+        { limit: 100 },
       );
     });
 
@@ -887,9 +887,8 @@ describe("Repository tools", () => {
     });
 
     test.each([
-      { limit: 0, start: 0 },
       { limit: 1, start: 0 },
-      { limit: 1000, start: 0 },
+      { limit: 100, start: 0 },
       { limit: 25, start: 99999 },
     ])(
       "list_repositories forwards limit=$limit start=$start",
@@ -912,9 +911,8 @@ describe("Repository tools", () => {
     );
 
     test.each([
-      { limit: 0, start: 0 },
       { limit: 1, start: 0 },
-      { limit: 1000, start: 0 },
+      { limit: 100, start: 0 },
       { limit: 25, start: 99999 },
     ])(
       "list_projects forwards limit=$limit start=$start",

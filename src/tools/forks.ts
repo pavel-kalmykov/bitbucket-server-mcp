@@ -10,6 +10,7 @@ import type { ToolContext } from "./shared.js";
 import {
   fieldsHint,
   fieldsParam,
+  limitParam,
   projectParam,
   repositoryParam,
   startParam,
@@ -26,10 +27,7 @@ export function registerForkTools(ctx: ToolContext) {
       inputSchema: z.strictObject({
         project: projectParam(),
         repository: repositoryParam(),
-        limit: z
-          .number()
-          .optional()
-          .describe("Number of forks to return (default: 25, max: 1000)."),
+        limit: limitParam(),
         start: startParam(),
         fields: fieldsParam(),
       }),

@@ -25,45 +25,26 @@ const permissionParam = z
   .enum(["REPO_READ", "REPO_WRITE", "REPO_ADMIN"])
   .optional()
   .describe("Permission to grant or revoke (required for grant and revoke).");
-type RepositoryPermission = NonNullable<z.infer<typeof permissionParam>>;
+
+interface MutateArgs {
+  project?: string;
+  repository: string;
+  subject: "group" | "user";
+}
 
 function assertMutateArgs(
   raw: {
     project?: string;
     repository: string;
     subject?: "group" | "user";
-    permission?: "REPO_READ" | "REPO_WRITE" | "REPO_ADMIN";
-    names?: string[];
   },
   action: string,
-): {
-  project?: string;
-  repository: string;
-  subject: "group" | "user";
-  permission: RepositoryPermission;
-  names: string[];
-} {
-  const { project, repository, subject, permission, names = [] } = raw;
+): MutateArgs {
+  const { project, repository, subject } = raw;
   if (subject === undefined) {
     throw new Error(`subject is required for the ${action} action.`);
   }
-  if (action === "grant") {
-    if (permission === undefined) {
-      throw new Error(`permission is required for the ${action} action.`);
-    }
-    if (names.length === 0) {
-      throw new Error(
-        `names is required with at least one entry for the ${action} action.`,
-      );
-    }
-  }
-  return {
-    project,
-    repository,
-    subject,
-    permission: permission as RepositoryPermission,
-    names,
-  };
+  return { project, repository, subject };
 }
 
 export function registerRepositoryPermissionTools(ctx: ToolContext) {
@@ -173,9 +154,18 @@ export function registerRepositoryPermissionTools(ctx: ToolContext) {
         "list-users": () => list("users", { project, repository, ...listArgs }),
         grant: () => {
           const args = assertMutateArgs(
-            { project, repository, subject, permission, names },
+            { project, repository, subject },
             action,
           );
+          if (permission === undefined) {
+            throw new Error(`permission is required for the ${action} action.`);
+          }
+          const grantNames = names ?? [];
+          if (grantNames.length === 0) {
+            throw new Error(
+              `names is required with at least one entry for the ${action} action.`,
+            );
+          }
           const runOne =
             args.subject === "group"
               ? bb.repositoryPermissions.grantGroup.bind(
@@ -184,12 +174,12 @@ export function registerRepositoryPermissionTools(ctx: ToolContext) {
               : bb.repositoryPermissions.grantUser.bind(
                   bb.repositoryPermissions,
                 );
-          return runOne(args).then(() =>
+          return runOne({ ...args, permission, names: grantNames }).then(() =>
             // The PUT answers with an empty body; the grant is the effect.
             formatResponse({
               granted: true,
-              permission: args.permission,
-              names: args.names,
+              permission,
+              names: grantNames,
             }),
           );
         },

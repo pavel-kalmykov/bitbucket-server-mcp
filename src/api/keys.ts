@@ -1,5 +1,6 @@
 import type { ApiContext } from "./context.js";
 import type { Paginated } from "./http/pagination.js";
+import type { RestSshKey } from "../generated/types.js";
 import type { KyInstance } from "ky";
 
 export interface ListKeysParams {
@@ -26,7 +27,7 @@ function keysApi(client: KyInstance) {
       const searchParams: Record<string, string | number> = { limit, start };
       if (userSlug) searchParams.user = userSlug;
 
-      return client.get("keys", { searchParams }).json<Paginated>();
+      return client.get("keys", { searchParams }).json<Paginated<RestSshKey>>();
     },
 
     async add({ text }: AddKeyParams): Promise<unknown> {

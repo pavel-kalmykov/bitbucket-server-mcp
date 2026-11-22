@@ -177,6 +177,19 @@ describe("create_reviewer_group", () => {
     expect(r.content[0].text).toContain('Reviewer "alice" does not exist');
   });
 
+  test("rejects a reviewer whose lookup returns no numeric id", async () => {
+    mockJson(h.mockClients.api.get, { name: "alice" });
+    const r = await callRaw(h.client, "create_reviewer_group", {
+      project: "P",
+      repository: "r",
+      name: "team-a",
+      reviewers: ["alice"],
+    });
+    expect(r.isError).toBe(true);
+    expect(r.content[0].text).toContain('Reviewer "alice" has no numeric id');
+    expect(h.mockClients.api.post).not.toHaveBeenCalled();
+  });
+
   test("re-raises non-404 lookup errors unchanged", async () => {
     mockError(
       h.mockClients.api.get,

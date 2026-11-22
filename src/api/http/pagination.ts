@@ -10,6 +10,11 @@ const paginatedSchema = z.object({
   nextPageStart: z.number().optional(),
 });
 
+// Fallback bar for off-spec pages: any body whose values is an array.
+const loosePageSchema = z.object({
+  values: z.array(z.unknown()),
+});
+
 export type Paginated<T = Record<string, unknown>> = {
   values: T[];
   isLastPage: boolean;
@@ -19,21 +24,24 @@ export type Paginated<T = Record<string, unknown>> = {
   nextPageStart?: number;
 };
 
-export function validatePaginated(data: unknown, context: string): Paginated {
+export function validatePaginated<T = Record<string, unknown>>(
+  data: unknown,
+  context: string,
+): Paginated<T> {
   const result = paginatedSchema.safeParse(data);
-  if (!result.success) {
-    logger.warn(
-      `Unexpected paginated response in ${context}`,
-      z.flattenError(result.error),
-    );
-    if (
-      data &&
-      typeof data === "object" &&
-      Array.isArray((data as Record<string, unknown>).values)
-    ) {
-      return data as Paginated;
-    }
-    throw new Error(`Invalid paginated response from ${context}`);
+  if (result.success) {
+    // The envelope is schema-validated; the row type is the endpoint's
+    // contract, which no runtime schema here can check.
+    return { ...result.data, values: result.data.values as unknown as T[] };
   }
-  return result.data;
+  logger.warn(
+    `Unexpected paginated response in ${context}`,
+    z.flattenError(result.error),
+  );
+  if (loosePageSchema.safeParse(data).success) {
+    // The page is off-spec but usable; return it as-is so callers keep
+    // any fields beyond the envelope.
+    return data as Paginated<T>;
+  }
+  throw new Error(`Invalid paginated response from ${context}`);
 }

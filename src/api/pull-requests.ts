@@ -442,7 +442,7 @@ export function pullRequestsApi(ctx: ApiContext) {
       closedSince,
       limit = 25,
       start = 0,
-    }: ListDashboardParams): Promise<Paginated<Record<string, unknown>>> {
+    }: ListDashboardParams): Promise<Paginated<BasePullRequest>> {
       const searchParams: Record<string, string | number> = { limit, start };
       if (state) searchParams.state = state;
       if (role) searchParams.role = role;
@@ -545,7 +545,7 @@ export function pullRequestsApi(ctx: ApiContext) {
       limit = 25,
       start = 0,
       ...target
-    }: ListPullRequestPageParams): Promise<Paginated<Record<string, unknown>>> {
+    }: ListPullRequestPageParams): Promise<Paginated<BasePullRequest>> {
       return getPaginated(ctx.http.api, `${prPath(target)}/commits`, {
         searchParams: { limit, start },
       });
@@ -557,7 +557,7 @@ export function pullRequestsApi(ctx: ApiContext) {
       commitId,
       limit = 25,
       start = 0,
-    }: ListForCommitParams): Promise<Paginated<Record<string, unknown>>> {
+    }: ListForCommitParams): Promise<Paginated<BasePullRequest>> {
       return getPaginated(
         ctx.http.api,
         `${repoPath(project, repository)}/commits/${commitId}/pull-requests`,

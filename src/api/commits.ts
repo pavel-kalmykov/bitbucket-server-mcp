@@ -94,7 +94,7 @@ export function commitsApi(ctx: ApiContext) {
       to,
       limit = 25,
       start = 0,
-    }: CompareRefsParams): Promise<Paginated<Record<string, unknown>>> {
+    }: CompareRefsParams): Promise<Paginated<Commit>> {
       const searchParams: Record<string, string | number> = { limit, start };
       if (from) searchParams.from = from;
       if (to) searchParams.to = to;
