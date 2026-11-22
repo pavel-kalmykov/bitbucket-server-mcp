@@ -18,12 +18,24 @@ export type PullRequest = components["schemas"]["RestPullRequest"];
 export type Commit = components["schemas"]["RestCommit"];
 export type PullRequestActivity =
   components["schemas"]["RestPullRequestActivity"];
+export type RestMinimalRef = components["schemas"]["RestMinimalRef"];
 
 // CI / Insights
 export type InsightReport = components["schemas"]["RestInsightReport"];
 
 // Comments
 export type RestComment = components["schemas"]["RestComment"];
+
+// List rows
+export type RestBranch = components["schemas"]["RestBranch"];
+export type RestTag = components["schemas"]["RestTag"];
+export type RestLabel = components["schemas"]["RestLabel"];
+export type RestProject = components["schemas"]["RestProject"];
+export type RestRepository = components["schemas"]["RestRepository"];
+export type RestRepositoryHook = components["schemas"]["RestRepositoryHook"];
+export type RestWebhook = components["schemas"]["RestWebhook"];
+export type RestRefRestriction = components["schemas"]["RestRefRestriction"];
+export type RestSshKey = components["schemas"]["RestSshKey"];
 
 // Deployments
 export type Deployment = components["schemas"]["RestDeployment"];
