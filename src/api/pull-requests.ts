@@ -7,6 +7,8 @@ import type {
   PullRequestActivity,
   PullRequestMergeRequest,
   PullRequestDeclineRequest,
+  RestPullRequestParticipant,
+  RestPullRequestMergeability,
 } from "../generated/types.js";
 
 // Extend: the API returns these fields but the 8.5 spec marks them optional or missing
@@ -238,7 +240,7 @@ export function pullRequestsApi(ctx: ApiContext) {
       reviewers,
       includeDefaultReviewers,
       draft,
-    }: CreatePullRequestParams): Promise<Record<string, unknown>> {
+    }: CreatePullRequestParams): Promise<BasePullRequest> {
       const targetProject = resolveProject(ctx, project);
       const srcProject = sourceProject || targetProject;
       const srcRepo = sourceRepository || repository;
@@ -281,7 +283,7 @@ export function pullRequestsApi(ctx: ApiContext) {
             reviewers: allReviewers,
           },
         })
-        .json<Record<string, unknown>>();
+        .json<BasePullRequest>();
     },
 
     async get(target: GetPullRequestParams): Promise<PullRequest> {
@@ -291,10 +293,10 @@ export function pullRequestsApi(ctx: ApiContext) {
     /** Merge vetoes and conflict state. Null when the endpoint refuses. */
     async getMergeStatus(
       target: PullRequestTarget,
-    ): Promise<Record<string, unknown> | null> {
+    ): Promise<RestPullRequestMergeability | null> {
       return ctx.http.api
         .get(`${prPath(target)}/merge`)
-        .json<Record<string, unknown>>()
+        .json<RestPullRequestMergeability>()
         .catch(() => null);
     },
 
@@ -305,6 +307,7 @@ export function pullRequestsApi(ctx: ApiContext) {
     async getBuildSummaries(
       target: PullRequestTarget,
     ): Promise<Record<string, unknown> | null> {
+      // The UI layer has no OpenAPI schema; the shape stays raw.
       return ctx.http.ui
         .get(`${prPath(target)}/build-summaries`)
         .json<Record<string, unknown>>()
@@ -321,7 +324,7 @@ export function pullRequestsApi(ctx: ApiContext) {
       targetBranch,
       reviewers,
       ...target
-    }: UpdatePullRequestParams): Promise<Record<string, unknown>> {
+    }: UpdatePullRequestParams): Promise<BasePullRequest> {
       const current = await fetchPullRequest(target);
 
       return ctx.http.api
@@ -343,14 +346,14 @@ export function pullRequestsApi(ctx: ApiContext) {
               : current.reviewers,
           },
         })
-        .json<Record<string, unknown>>();
+        .json<BasePullRequest>();
     },
 
     async merge({
       message,
       strategy,
       ...target
-    }: MergePullRequestParams): Promise<Record<string, unknown>> {
+    }: MergePullRequestParams): Promise<BasePullRequest> {
       const current = await fetchPullRequest(target);
 
       const json: PullRequestMergeRequest = { version: current.version };
@@ -361,13 +364,13 @@ export function pullRequestsApi(ctx: ApiContext) {
 
       return ctx.http.api
         .post(`${prPath(target)}/merge`, { json, searchParams })
-        .json<Record<string, unknown>>();
+        .json<BasePullRequest>();
     },
 
     async decline({
       message,
       ...target
-    }: DeclinePullRequestParams): Promise<Record<string, unknown>> {
+    }: DeclinePullRequestParams): Promise<BasePullRequest> {
       const current = await fetchPullRequest(target);
 
       const json: PullRequestDeclineRequest = {
@@ -377,17 +380,17 @@ export function pullRequestsApi(ctx: ApiContext) {
 
       return ctx.http.api
         .post(`${prPath(target)}/decline`, { json })
-        .json<Record<string, unknown>>();
+        .json<BasePullRequest>();
     },
 
-    async reopen(target: PullRequestTarget): Promise<Record<string, unknown>> {
+    async reopen(target: PullRequestTarget): Promise<BasePullRequest> {
       const current = await fetchPullRequest(target);
 
       return ctx.http.api
         .post(`${prPath(target)}/reopen`, {
           json: { version: current.version },
         })
-        .json<Record<string, unknown>>();
+        .json<BasePullRequest>();
     },
 
     /**
@@ -571,7 +574,7 @@ export function pullRequestsApi(ctx: ApiContext) {
       prId,
       userSlug,
       status,
-    }: SetReviewStatusParams): Promise<Record<string, unknown>> {
+    }: SetReviewStatusParams): Promise<RestPullRequestParticipant> {
       const target = { project, repository, prId };
       if (userSlug === undefined && ctx.http.caller.username === undefined) {
         // Bitbucket stamps the caller identity on every response, but the
@@ -587,7 +590,7 @@ export function pullRequestsApi(ctx: ApiContext) {
       }
       return ctx.http.api
         .put(`${prPath(target)}/participants/${slug}`, { json: { status } })
-        .json<Record<string, unknown>>();
+        .json<RestPullRequestParticipant>();
     },
 
     async publishReview({

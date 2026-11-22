@@ -35,6 +35,15 @@ export type RestRepository = components["schemas"]["RestRepository"];
 export type RestRepositoryHook = components["schemas"]["RestRepositoryHook"];
 export type RestWebhook = components["schemas"]["RestWebhook"];
 export type RestRefRestriction = components["schemas"]["RestRefRestriction"];
+export type RestApplicationUser = components["schemas"]["RestApplicationUser"];
+export type RestPullRequestParticipant =
+  components["schemas"]["RestPullRequestParticipant"];
+export type RestPullRequestCondition =
+  components["schemas"]["RestPullRequestCondition"];
+export type RestSecretScanningAllowlistRule =
+  components["schemas"]["RestSecretScanningAllowlistRule"];
+export type RestPullRequestMergeability =
+  components["schemas"]["RestPullRequestMergeability"];
 export type RestSshKey = components["schemas"]["RestSshKey"];
 
 // Deployments

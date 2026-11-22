@@ -75,7 +75,7 @@ export function branchesApi(ctx: ApiContext) {
     }: {
       project?: string;
       repository: string;
-    }): Promise<Record<string, unknown>> {
+    }): Promise<RestMinimalRef> {
       return defaultBranchOf(resolveProject(ctx, project), repository);
     },
 
@@ -83,7 +83,7 @@ export function branchesApi(ctx: ApiContext) {
       project,
       repository,
       branch,
-    }: SetDefaultBranchParams): Promise<Record<string, unknown>> {
+    }: SetDefaultBranchParams): Promise<RestMinimalRef> {
       const resolved = resolveProject(ctx, project);
       // The PUT answers with an empty body; read back the resulting state.
       await ctx.http.api.put(
@@ -134,7 +134,7 @@ export function branchesApi(ctx: ApiContext) {
         ),
         ctx.http.api
           .get(`projects/${resolved}/repos/${repository}/default-branch`)
-          .json<Record<string, unknown>>()
+          .json<RestMinimalRef>()
           .catch(() => null),
       ]);
 
@@ -145,6 +145,8 @@ export function branchesApi(ctx: ApiContext) {
       project,
       repository,
     }: GetBranchModelParams): Promise<Record<string, unknown>> {
+      // branchmodel is a branch-utils endpoint the 8.5 spec does not
+      // describe; the shape stays raw.
       return ctx.http.branchUtils
         .get(
           `projects/${resolveProject(ctx, project)}/repos/${repository}/branchmodel`,
@@ -157,13 +159,13 @@ export function branchesApi(ctx: ApiContext) {
       repository,
       branch,
       startPoint,
-    }: CreateBranchParams): Promise<Record<string, unknown>> {
+    }: CreateBranchParams): Promise<RestBranch> {
       return ctx.http.branchUtils
         .post(
           `projects/${resolveProject(ctx, project)}/repos/${repository}/branches`,
           { json: { name: `refs/heads/${branch}`, startPoint } },
         )
-        .json<Record<string, unknown>>();
+        .json<RestBranch>();
     },
 
     async delete({

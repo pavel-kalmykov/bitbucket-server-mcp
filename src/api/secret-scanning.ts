@@ -1,5 +1,6 @@
 import type { ApiContext } from "./context.js";
 import { resolveProject } from "./context.js";
+import type { RestSecretScanningAllowlistRule } from "../generated/types.js";
 
 export interface ListSecretScanningRulesParams {
   project?: string;
@@ -34,14 +35,16 @@ export function secretScanningApi(ctx: ApiContext) {
     async list({
       project,
       repository,
-    }: ListSecretScanningRulesParams): Promise<Record<string, unknown>[]> {
+    }: ListSecretScanningRulesParams): Promise<
+      RestSecretScanningAllowlistRule[]
+    > {
       const data = await ctx.http.api
         .get(
           `projects/${resolveProject(ctx, project)}/repos/${repository}/secret-scanning/allowlist`,
         )
-        .json<{ values: Record<string, unknown>[] }>();
+        .json<{ values?: RestSecretScanningAllowlistRule[] }>();
 
-      return data.values;
+      return data.values ?? [];
     },
 
     async create({
@@ -50,7 +53,7 @@ export function secretScanningApi(ctx: ApiContext) {
       name,
       lineRegex,
       pathRegex,
-    }: CreateSecretScanningRuleParams): Promise<Record<string, unknown>> {
+    }: CreateSecretScanningRuleParams): Promise<RestSecretScanningAllowlistRule> {
       return ctx.http.api
         .post(
           `projects/${resolveProject(ctx, project)}/repos/${repository}/secret-scanning/allowlist`,
@@ -62,7 +65,7 @@ export function secretScanningApi(ctx: ApiContext) {
             },
           },
         )
-        .json<Record<string, unknown>>();
+        .json<RestSecretScanningAllowlistRule>();
     },
 
     async update({
@@ -72,7 +75,7 @@ export function secretScanningApi(ctx: ApiContext) {
       name,
       lineRegex,
       pathRegex,
-    }: UpdateSecretScanningRuleParams): Promise<Record<string, unknown>> {
+    }: UpdateSecretScanningRuleParams): Promise<RestSecretScanningAllowlistRule> {
       return ctx.http.api
         .put(
           `projects/${resolveProject(ctx, project)}/repos/${repository}/secret-scanning/allowlist/${ruleId}`,
@@ -84,7 +87,7 @@ export function secretScanningApi(ctx: ApiContext) {
             },
           },
         )
-        .json<Record<string, unknown>>();
+        .json<RestSecretScanningAllowlistRule>();
     },
 
     async delete({

@@ -1,5 +1,6 @@
 import type { ApiContext } from "./context.js";
 import { resolveProject } from "./context.js";
+import type { RestComment } from "../generated/types.js";
 
 export type CommentState = "OPEN" | "PENDING" | "RESOLVED";
 export type CommentSeverity = "NORMAL" | "BLOCKER";
@@ -68,9 +69,7 @@ export function commentsApi(ctx: ApiContext) {
       return page.values ?? [];
     },
 
-    async create(
-      params: CreateCommentParams,
-    ): Promise<Record<string, unknown>> {
+    async create(params: CreateCommentParams): Promise<RestComment> {
       const {
         text,
         parentId,
@@ -99,14 +98,10 @@ export function commentsApi(ctx: ApiContext) {
         }),
       };
 
-      return ctx.http.api
-        .post(path(params), { json })
-        .json<Record<string, unknown>>();
+      return ctx.http.api.post(path(params), { json }).json<RestComment>();
     },
 
-    async update(
-      params: UpdateCommentParams,
-    ): Promise<Record<string, unknown>> {
+    async update(params: UpdateCommentParams): Promise<RestComment> {
       const { commentId, text, version, severity, state, threadResolved } =
         params;
 
@@ -120,7 +115,7 @@ export function commentsApi(ctx: ApiContext) {
 
       return ctx.http.api
         .put(`${path(params)}/${commentId}`, { json })
-        .json<Record<string, unknown>>();
+        .json<RestComment>();
     },
 
     async delete(
