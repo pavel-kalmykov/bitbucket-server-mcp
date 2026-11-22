@@ -32,4 +32,10 @@ See `.claude/skills/add-tool` for the end-to-end checklist, and
 - Bitbucket client -> `src/api/` (namespaces on `src/api/client.ts`), free of MCP and env-var vocabulary
 - HTTP client -> `src/api/http/`
 - E2E wiring -> `src/__tests__/e2e/mcp-harness.ts`
+- Test layers and runners -> `src/__tests__/` (`unit/tools/` handlers,
+  `unit/integration/` cross-cutting, `e2e/` full round-trips)
+- Test doubles and assertion helpers -> `src/__tests__/fixtures/`
+  (`test-utils.ts` mock clients + `mockJson`, `tool-test-utils.ts`
+  harness + `expectCalledWith*`, `http-test-utils.ts` error bodies)
+- E2E fixture suite and scenario shape -> `src/__tests__/e2e/e2e-suite.ts`
 - Roadmap -> `ROADMAP.md`
