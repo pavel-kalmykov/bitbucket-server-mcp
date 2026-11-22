@@ -1,6 +1,7 @@
 import type { ApiContext } from "./context.js";
 import { getPaginated } from "./http/client.js";
 import type { Paginated } from "./http/pagination.js";
+import type { RestProject } from "../generated/types.js";
 
 export interface ListProjectsParams {
   limit?: number;
@@ -28,7 +29,7 @@ export interface DeleteProjectParams {
 export function projectsApi(ctx: ApiContext) {
   return {
     async list({ limit = 25, start = 0 }: ListProjectsParams = {}): Promise<
-      Paginated<Record<string, unknown>>
+      Paginated<RestProject>
     > {
       return getPaginated(ctx.http.api, "projects", {
         searchParams: { limit, start },

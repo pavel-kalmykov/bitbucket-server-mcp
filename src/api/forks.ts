@@ -2,6 +2,7 @@ import type { ApiContext } from "./context.js";
 import { resolveProject } from "./context.js";
 import { getPaginated } from "./http/client.js";
 import type { Paginated } from "./http/pagination.js";
+import type { RestRepository } from "../generated/types.js";
 
 export interface ListForksParams {
   project?: string;
@@ -24,7 +25,7 @@ export function forksApi(ctx: ApiContext) {
       repository,
       limit = 25,
       start = 0,
-    }: ListForksParams): Promise<Paginated<Record<string, unknown>>> {
+    }: ListForksParams): Promise<Paginated<RestRepository>> {
       return getPaginated(
         ctx.http.api,
         `projects/${resolveProject(ctx, project)}/repos/${repository}/forks`,

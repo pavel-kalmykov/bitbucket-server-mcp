@@ -2,6 +2,7 @@ import type { ApiContext } from "./context.js";
 import { resolveProject } from "./context.js";
 import { getPaginated } from "./http/client.js";
 import type { Paginated } from "./http/pagination.js";
+import type { RestRepository } from "../generated/types.js";
 
 export interface ListRepositoriesParams {
   project?: string;
@@ -90,7 +91,7 @@ export function repositoriesApi(ctx: ApiContext) {
       project,
       limit = 25,
       start = 0,
-    }: ListRepositoriesParams): Promise<Paginated<Record<string, unknown>>> {
+    }: ListRepositoriesParams): Promise<Paginated<RestRepository>> {
       return getPaginated(
         ctx.http.api,
         `projects/${resolveProject(ctx, project)}/repos`,

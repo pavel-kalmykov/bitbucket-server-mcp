@@ -2,6 +2,11 @@ import { BitbucketApiError } from "./http/errors.js";
 import type { ApiContext } from "./context.js";
 import { resolveProject } from "./context.js";
 import { getPaginated } from "./http/client.js";
+import type {
+  RestBranch,
+  RestMinimalRef,
+  RestRefRestriction,
+} from "../generated/types.js";
 import type { Paginated } from "./http/pagination.js";
 
 export interface ListBranchRestrictionsParams {
@@ -20,8 +25,8 @@ export interface ListBranchesParams {
 }
 
 export interface ListBranchesResult {
-  branches: Paginated<Record<string, unknown>>;
-  defaultBranch: Record<string, unknown> | null;
+  branches: Paginated<RestBranch>;
+  defaultBranch: RestMinimalRef | null;
 }
 
 export interface CreateBranchParams {
@@ -52,10 +57,10 @@ export function branchesApi(ctx: ApiContext) {
   function defaultBranchOf(
     project: string,
     repository: string,
-  ): Promise<Record<string, unknown>> {
+  ): Promise<RestMinimalRef> {
     return ctx.http.api
       .get(`projects/${project}/repos/${repository}/default-branch`)
-      .json<Record<string, unknown>>();
+      .json<RestMinimalRef>();
   }
 
   return {
@@ -97,9 +102,7 @@ export function branchesApi(ctx: ApiContext) {
       repository,
       limit = 25,
       start = 0,
-    }: ListBranchRestrictionsParams): Promise<
-      Paginated<Record<string, unknown>>
-    > {
+    }: ListBranchRestrictionsParams): Promise<Paginated<RestRefRestriction>> {
       return getPaginated(
         ctx.http.branchUtils,
         `projects/${resolveProject(ctx, project)}/repos/${repository}/restrictions`,

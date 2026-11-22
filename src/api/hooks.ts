@@ -2,6 +2,7 @@ import type { ApiContext } from "./context.js";
 import { resolveProject } from "./context.js";
 import { getPaginated } from "./http/client.js";
 import type { Paginated } from "./http/pagination.js";
+import type { RestRepositoryHook } from "../generated/types.js";
 
 export interface ListHooksParams {
   project?: string;
@@ -27,7 +28,7 @@ export function hooksApi(ctx: ApiContext) {
       repository,
       limit = 25,
       start = 0,
-    }: ListHooksParams): Promise<Paginated<Record<string, unknown>>> {
+    }: ListHooksParams): Promise<Paginated<RestRepositoryHook>> {
       return getPaginated(ctx.http.api, path(project, repository), {
         searchParams: { limit, start },
       });

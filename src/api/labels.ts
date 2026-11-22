@@ -2,6 +2,7 @@ import type { ApiContext } from "./context.js";
 import { resolveProject } from "./context.js";
 import { getPaginated } from "./http/client.js";
 import type { Paginated } from "./http/pagination.js";
+import type { RestLabel } from "../generated/types.js";
 
 export interface ListLabelsParams {
   project?: string;
@@ -23,7 +24,7 @@ export function labelsApi(ctx: ApiContext) {
       repository,
       limit = 25,
       start = 0,
-    }: ListLabelsParams): Promise<Paginated<Record<string, unknown>>> {
+    }: ListLabelsParams): Promise<Paginated<RestLabel>> {
       return getPaginated(
         ctx.http.api,
         `projects/${resolveProject(ctx, project)}/repos/${repository}/labels`,

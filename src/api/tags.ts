@@ -2,6 +2,7 @@ import type { ApiContext } from "./context.js";
 import { resolveProject } from "./context.js";
 import { getPaginated } from "./http/client.js";
 import type { Paginated } from "./http/pagination.js";
+import type { RestTag } from "../generated/types.js";
 
 export interface ListTagsParams {
   project?: string;
@@ -39,7 +40,7 @@ export function tagsApi(ctx: ApiContext) {
       filterText,
       limit = 25,
       start = 0,
-    }: ListTagsParams): Promise<Paginated<Record<string, unknown>>> {
+    }: ListTagsParams): Promise<Paginated<RestTag>> {
       const searchParams: Record<string, string | number> = { limit, start };
       if (filterText) searchParams.filterText = filterText;
 

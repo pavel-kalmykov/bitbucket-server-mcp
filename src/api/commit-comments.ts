@@ -2,6 +2,7 @@ import type { ApiContext } from "./context.js";
 import { resolveProject } from "./context.js";
 import { getPaginated } from "./http/client.js";
 import type { Paginated } from "./http/pagination.js";
+import type { RestComment } from "../generated/types.js";
 
 export interface ListCommitCommentsParams {
   project?: string;
@@ -46,7 +47,7 @@ export function commitCommentsApi(ctx: ApiContext) {
       commitId,
       limit = 25,
       start = 0,
-    }: ListCommitCommentsParams): Promise<Paginated<Record<string, unknown>>> {
+    }: ListCommitCommentsParams): Promise<Paginated<RestComment>> {
       return getPaginated(ctx.http.api, path(project, repository, commitId), {
         searchParams: { limit, start },
       });
