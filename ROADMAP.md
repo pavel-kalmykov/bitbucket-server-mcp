@@ -94,11 +94,6 @@ Each bullet is one PR. P1 first, then P2, then P3.
 
 ### B5. Testing (P1-P2)
 
-- Write **`TESTING.md`**: a tier table (unit/property/integration/e2e), the
-  Meszaros double taxonomy with this repo's rule ("fake the boundary you don't
-  own with msw; stub and spy the seams you do own with mock-extended"), the
-  property and mutation strategy (mutation score is the real gate, coverage is
-  the floor), and a flakiness policy.
 - **Schema-driven fuzzing**: spike `@traversable/zod-test` to derive
   arbitraries from the existing zod schemas, and assert valid input never
   throws while invalid input always returns `isError`. Not `zod-fast-check`.
@@ -120,9 +115,13 @@ from outside the server:
 - **`bbs` CLI binary.** The second consumer, and the one that proves the client
   is reusable. It needs a real argument parser and `--help`.
 - **Consumer-facing Agent Skill**, once the client surface settles.
-- **Typed domain returns.** Operations answer with `Record<string, unknown>`.
-  The generated OpenAPI types in `src/generated/` can narrow the high-traffic
-  ones: pull requests, repositories, branches, commits, comments.
+- **Typed domain returns.** List rows are typed by the generated schemas
+  (`Paginated<RestBranch>` and friends). Still raw: the 27 write/read
+  operations answering `Record<string, unknown>` and the 29
+  `json<Record<string, unknown>>` parses behind them. The generated types are
+  all-optional and encode no nullability, so they carry field names and
+  compile-time drift detection, not runtime guarantees; the zod envelope
+  validation stays the trust boundary.
 - **Iterable pagination.** A `list` answers with one page and the caller walks
   it with `limit` and `start`. An async iterator, the way `octokit.paginate`
   and Stripe's `autoPagingEach` work, is what a JS consumer expects.
