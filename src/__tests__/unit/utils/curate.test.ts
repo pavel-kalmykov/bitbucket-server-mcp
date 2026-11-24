@@ -8,6 +8,7 @@ import {
   DEFAULT_BRANCH_FIELDS,
   DEFAULT_COMMIT_FIELDS,
   DEFAULT_SEARCH_FIELDS,
+  fieldsToString,
 } from "../../../response/curate.js";
 
 describe("curateResponse", () => {
@@ -184,11 +185,11 @@ describe("default field constants", () => {
         "id",
         "title",
         "state",
-        "author",
-        "reviewers",
-        "fromRef",
-        "toRef",
-        "properties",
+        "author.user.name",
+        "reviewers.user.name",
+        "fromRef.displayId",
+        "toRef.displayId",
+        "properties.commentCount",
       ],
     ],
     ["Project", DEFAULT_PROJECT_FIELDS, ["key", "name", "type"]],
@@ -215,8 +216,10 @@ describe("default field constants", () => {
       DEFAULT_COMMIT_FIELDS,
       DEFAULT_SEARCH_FIELDS,
     ]) {
-      expect(constant.split(",").length).toBeGreaterThan(0);
-      expect(constant.length).toBeGreaterThan(0);
+      const fields =
+        typeof constant === "string" ? constant.split(",") : [...constant];
+      expect(fields.length).toBeGreaterThan(0);
+      expect(fieldsToString(fields).length).toBeGreaterThan(0);
     }
   });
 

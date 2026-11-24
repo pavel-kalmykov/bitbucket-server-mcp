@@ -1,92 +1,283 @@
 import { isRecord } from "../type-guards.js";
+import type {
+  Commit,
+  Deployment,
+  InsightReport,
+  PullRequest,
+  PullRequestActivity,
+  RestApplicationUser,
+  RestBranch,
+  RestGpgKey,
+  RestProject,
+  RestPullRequestParticipant,
+  RestPullRequestCondition,
+  RestRefRestriction,
+  RestRepository,
+  RestRepositoryHook,
+  RestReviewerGroup,
+  RestSecretScanningAllowlistRule,
+  RestTag,
+  RestWebhook,
+} from "../generated/types.js";
 
 // Default field sets per entity type.
 // Comma-separated top-level fields. Nested paths like "author.user.name" pick specific sub-fields.
 // Use "*all" to bypass curation and return the raw API response.
+//
+// Field paths are validated by PathsOf<T> against the generated schemas.
+// Fields the server adds that the spec does not declare (extras) are
+// listed as literal strings next to each default with their cause.
 
-export const DEFAULT_PR_FIELDS =
-  "id,title,description,state,createdDate,updatedDate," +
-  "author.user.name,author.user.displayName,author.status," +
-  "fromRef.displayId,toRef.displayId," +
-  "reviewers.user.name,reviewers.user.displayName,reviewers.status,reviewers.approved," +
-  "properties.commentCount,properties.openTaskCount,properties.resolvedTaskCount,properties.mergeResult";
+type PathsOf<T> = T extends readonly (infer U)[]
+  ? PathsOf<U>
+  : T extends object
+    ? {
+        [K in keyof T & string]: NonNullable<T[K]> extends readonly (infer V)[]
+          ? K | `${K}.${PathsOf<V>}`
+          : NonNullable<T[K]> extends object
+            ? K | `${K}.${PathsOf<NonNullable<T[K]>>}`
+            : K;
+      }[keyof T & string]
+    : never;
 
-export const DEFAULT_PROJECT_FIELDS = "key,id,name,description,type,public";
+type FieldOf<T, E extends string = never> = readonly (PathsOf<T> | E)[];
 
-export const DEFAULT_REPOSITORY_FIELDS =
-  "slug,id,name,description,state,forkable,project.key,project.name";
+export function fieldsToString(fields: readonly string[]): string {
+  return fields.join(",");
+}
 
-export const DEFAULT_BRANCH_FIELDS =
-  "id,displayId,type,latestCommit,isDefault,metadata";
+// The server nests author.user.name and adds properties.commentCount and
+// the task counts; the spec has author.name inline and contentHash instead.
+export const DEFAULT_PR_FIELDS: FieldOf<
+  PullRequest,
+  | "author.user.name"
+  | "author.user.displayName"
+  | "author.status"
+  | "properties.commentCount"
+  | "properties.openTaskCount"
+  | "properties.resolvedTaskCount"
+  | "properties.mergeResult"
+> = [
+  "id",
+  "title",
+  "description",
+  "state",
+  "createdDate",
+  "updatedDate",
+  "author.user.name",
+  "author.user.displayName",
+  "author.status",
+  "fromRef.displayId",
+  "toRef.displayId",
+  "reviewers.user.name",
+  "reviewers.user.displayName",
+  "reviewers.status",
+  "reviewers.approved",
+  "properties.commentCount",
+  "properties.openTaskCount",
+  "properties.resolvedTaskCount",
+  "properties.mergeResult",
+] as FieldOf<PullRequest>;
 
-export const DEFAULT_BRANCH_MODEL_FIELDS =
+export const DEFAULT_PROJECT_FIELDS: FieldOf<RestProject> = [
+  "key",
+  "id",
+  "name",
+  "description",
+  "type",
+  "public",
+];
+
+export const DEFAULT_REPOSITORY_FIELDS: FieldOf<RestRepository> = [
+  "slug",
+  "id",
+  "name",
+  "description",
+  "state",
+  "forkable",
+  "project.key",
+  "project.name",
+];
+
+// The server adds isDefault and metadata; the spec declares only default.
+export const DEFAULT_BRANCH_FIELDS: FieldOf<
+  RestBranch,
+  "isDefault" | "metadata"
+> = [
+  "id",
+  "displayId",
+  "type",
+  "latestCommit",
+  "isDefault",
+  "metadata",
+] as FieldOf<RestBranch>;
+
+// branchmodel is a branch-utils endpoint the spec does not describe.
+export const DEFAULT_BRANCH_MODEL_FIELDS: string =
   "development.id,development.displayId,development.latestCommit," +
   "development.isDefault,production.id,production.displayId," +
   "production.latestCommit,production.isDefault," +
   "types.id,types.displayName,types.prefix," +
   "strategies.id,strategies.displayName,strategies.enabled";
 
-export const DEFAULT_SEARCH_FIELDS =
+// search is a plugin endpoint the spec does not describe.
+export const DEFAULT_SEARCH_FIELDS: string =
   "file,hitCount,hitContexts,pathMatches," +
   "repository.slug,repository.name,repository.project.key";
 
-export const DEFAULT_COMMIT_FIELDS =
-  "id,displayId,message," +
-  "author.name,author.emailAddress,authorTimestamp," +
-  "committer.name,committer.emailAddress,committerTimestamp," +
-  "parents.id";
+export const DEFAULT_COMMIT_FIELDS: FieldOf<Commit> = [
+  "id",
+  "displayId",
+  "message",
+  "author.name",
+  "author.emailAddress",
+  "authorTimestamp",
+  "committer.name",
+  "committer.emailAddress",
+  "committerTimestamp",
+  "parents.id",
+];
 
-export const DEFAULT_TAG_FIELDS = "id,displayId,type,hash,latestCommit";
+export const DEFAULT_TAG_FIELDS: FieldOf<RestTag> = [
+  "id",
+  "displayId",
+  "type",
+  "hash",
+  "latestCommit",
+];
 
-export const DEFAULT_ACTIVITY_FIELDS =
-  "id,action,createdDate," +
-  "user.name,user.displayName," +
-  "comment.id,comment.text,comment.createdAt,comment.updatedAt";
+// comment.* stays outside the type: RestComment.comments -> RestComment is
+// circular and breaks the mapped type.
+export const DEFAULT_ACTIVITY_FIELDS: FieldOf<
+  PullRequestActivity,
+  "comment.id" | "comment.text" | "comment.createdAt" | "comment.updatedAt"
+> = [
+  "id",
+  "action",
+  "createdDate",
+  "user.name",
+  "user.displayName",
+  "comment.id",
+  "comment.text",
+  "comment.createdAt",
+  "comment.updatedAt",
+] as FieldOf<PullRequestActivity>;
 
-export const DEFAULT_USER_FIELDS =
-  "name,displayName,emailAddress,slug,active,type";
+export const DEFAULT_USER_FIELDS: FieldOf<RestApplicationUser> = [
+  "name",
+  "displayName",
+  "emailAddress",
+  "slug",
+  "active",
+  "type",
+];
 
-export const DEFAULT_BRANCH_RESTRICTION_FIELDS =
-  "id,type,matcher.id,matcher.type.id,matcher.type.name,matcher.value," +
-  "users.name,users.displayName,groups.name";
+// The server adds matcher.value; the spec does not declare it.
+// groups.name is a lie: groups is string[], so the field never exists in
+// the response.
+export const DEFAULT_BRANCH_RESTRICTION_FIELDS: FieldOf<
+  RestRefRestriction,
+  "matcher.value"
+> = [
+  "id",
+  "type",
+  "matcher.id",
+  "matcher.type.id",
+  "matcher.type.name",
+  "matcher.value",
+  "users.name",
+  "users.displayName",
+] as FieldOf<RestRefRestriction>;
 
-export const DEFAULT_HOOK_FIELDS =
-  "details.key,details.name,details.type,details.description," +
-  "enabled,configured";
+export const DEFAULT_HOOK_FIELDS: FieldOf<RestRepositoryHook> = [
+  "details.key",
+  "details.name",
+  "details.type",
+  "details.description",
+  "enabled",
+  "configured",
+];
 
-export const DEFAULT_GPG_KEY_FIELDS = "id,fingerprint,emailAddress,expiryDate";
+export const DEFAULT_GPG_KEY_FIELDS: FieldOf<RestGpgKey> = [
+  "id",
+  "fingerprint",
+  "emailAddress",
+  "expiryDate",
+];
 
-export const DEFAULT_WEBHOOK_FIELDS = "name,url,events,active";
+export const DEFAULT_WEBHOOK_FIELDS: FieldOf<RestWebhook> = [
+  "name",
+  "url",
+  "events",
+  "active",
+];
 
-export const DEFAULT_REVIEWER_GROUP_FIELDS = "id,name,description,users.name";
+export const DEFAULT_REVIEWER_GROUP_FIELDS: FieldOf<RestReviewerGroup> = [
+  "id",
+  "name",
+  "description",
+  "users.name",
+];
 
-export const DEFAULT_SECRET_SCANNING_FIELDS = "id,name,lineRegex,pathRegex";
+export const DEFAULT_SECRET_SCANNING_FIELDS: FieldOf<RestSecretScanningAllowlistRule> =
+  ["id", "name", "lineRegex", "pathRegex"];
 
-export const DEFAULT_PROJECT_PERMISSION_FIELDS =
+// project and repo permissions answer raw pages without a schema.
+export const DEFAULT_PROJECT_PERMISSION_FIELDS: string =
   "group.name,user.name,permission";
 
-export const DEFAULT_PARTICIPANT_FIELDS =
-  "status,approved,role,lastReviewedCommit,user.name";
-export const DEFAULT_REPOSITORY_PERMISSION_FIELDS =
+export const DEFAULT_PARTICIPANT_FIELDS: FieldOf<RestPullRequestParticipant> = [
+  "status",
+  "approved",
+  "role",
+  "lastReviewedCommit",
+  "user.name",
+];
+
+export const DEFAULT_REPOSITORY_PERMISSION_FIELDS: string =
   "group.name,user.name,permission";
 
-export const DEFAULT_DEPLOYMENT_FIELDS =
-  "key,state,displayName,description,url," +
-  "environment.key,environment.displayName,environment.type," +
-  "deploymentSequenceNumber,lastUpdated";
+export const DEFAULT_DEPLOYMENT_FIELDS: FieldOf<Deployment> = [
+  "key",
+  "state",
+  "displayName",
+  "description",
+  "url",
+  "environment.key",
+  "environment.displayName",
+  "environment.type",
+  "deploymentSequenceNumber",
+  "lastUpdated",
+];
 
-export const DEFAULT_COMMENT_FIELDS =
+// RestComment.comments -> RestComment is circular and breaks the mapped
+// type, so this one stays plain.
+export const DEFAULT_COMMENT_FIELDS: string =
   "id,text,version,createdDate,updatedDate," +
   "author.name,author.displayName,severity,state,threadResolved," +
   "anchor.path,anchor.line,anchor.lineType";
 
-export const DEFAULT_INSIGHT_FIELDS =
-  "key,result,createdDate,details,link,title,reporter,data";
+export const DEFAULT_INSIGHT_FIELDS: FieldOf<InsightReport> = [
+  "key",
+  "result",
+  "createdDate",
+  "details",
+  "link",
+  "title",
+  "reporter",
+  "data",
+];
 
-export const DEFAULT_REVIEWER_FIELDS =
-  "id,scope.type,reviewers.name,requiredApprovals," +
-  "sourceRefMatcher.type,sourceRefMatcher.displayId," +
-  "targetRefMatcher.type,targetRefMatcher.displayId";
+export const DEFAULT_REVIEWER_FIELDS: FieldOf<RestPullRequestCondition> = [
+  "id",
+  "scope.type",
+  "reviewers.name",
+  "requiredApprovals",
+  "sourceRefMatcher.type",
+  "sourceRefMatcher.displayId",
+  "targetRefMatcher.type",
+  "targetRefMatcher.displayId",
+];
 
 function pickFieldsFromObject(
   source: Record<string, unknown>,
@@ -141,16 +332,19 @@ function pickFieldsFromObject(
  */
 export function curateResponse<T extends Record<string, unknown>>(
   data: T,
-  fields: string,
+  fields: string | readonly string[],
 ): Record<string, unknown> {
   if (fields === "*all") {
     return data;
   }
 
-  const fieldPaths = fields
-    .split(",")
-    .map((f) => f.trim())
-    .filter(Boolean);
+  const fieldPaths =
+    typeof fields === "string"
+      ? fields
+          .split(",")
+          .map((f) => f.trim())
+          .filter(Boolean)
+      : [...fields];
 
   return pickFieldsFromObject(data, fieldPaths);
 }
@@ -160,7 +354,7 @@ export function curateResponse<T extends Record<string, unknown>>(
  */
 export function curateList<T extends Record<string, unknown>>(
   items: T[],
-  fields: string,
+  fields: string | readonly string[],
 ): Record<string, unknown>[] {
   if (fields === "*all") {
     return items;
