@@ -1,4 +1,5 @@
 import type { ApiContext } from "./context.js";
+import type { RestApplicationUser } from "../generated/types.js";
 
 export interface UserSearchResult {
   values: Record<string, unknown>[];
@@ -18,10 +19,8 @@ export interface SearchUsersParams {
 
 export function usersApi(ctx: ApiContext) {
   return {
-    async get({ userSlug }: GetUserParams): Promise<Record<string, unknown>> {
-      return ctx.http.api
-        .get(`users/${userSlug}`)
-        .json<Record<string, unknown>>();
+    async get({ userSlug }: GetUserParams): Promise<RestApplicationUser> {
+      return ctx.http.api.get(`users/${userSlug}`).json<RestApplicationUser>();
     },
 
     async search({

@@ -1,5 +1,6 @@
 import type { ApiContext } from "./context.js";
 import { resolveProject } from "./context.js";
+import type { RestPullRequestCondition } from "../generated/types.js";
 
 export interface ListReviewerConditionsParams {
   project?: string;
@@ -57,12 +58,12 @@ export function defaultReviewersApi(ctx: ApiContext) {
     async list({
       project,
       repository,
-    }: ListReviewerConditionsParams): Promise<Record<string, unknown>[]> {
+    }: ListReviewerConditionsParams): Promise<RestPullRequestCondition[]> {
       return ctx.http.defaultReviewers
         .get(
           `projects/${resolveProject(ctx, project)}/repos/${repository}/conditions`,
         )
-        .json<Record<string, unknown>[]>();
+        .json<RestPullRequestCondition[]>();
     },
 
     async create({
@@ -72,7 +73,7 @@ export function defaultReviewersApi(ctx: ApiContext) {
       source,
       target,
       requiredApprovals,
-    }: SaveReviewerConditionParams): Promise<Record<string, unknown>> {
+    }: SaveReviewerConditionParams): Promise<RestPullRequestCondition> {
       return ctx.http.defaultReviewers
         .post(
           `projects/${resolveProject(ctx, project)}/repos/${repository}/condition`,
@@ -87,7 +88,7 @@ export function defaultReviewersApi(ctx: ApiContext) {
             },
           },
         )
-        .json<Record<string, unknown>>();
+        .json<RestPullRequestCondition>();
     },
 
     async update({
@@ -98,7 +99,7 @@ export function defaultReviewersApi(ctx: ApiContext) {
       source,
       target,
       requiredApprovals,
-    }: SaveReviewerConditionParams): Promise<Record<string, unknown>> {
+    }: SaveReviewerConditionParams): Promise<RestPullRequestCondition> {
       return ctx.http.defaultReviewers
         .put(
           `projects/${resolveProject(ctx, project)}/repos/${repository}/condition/${conditionId}`,
@@ -113,7 +114,7 @@ export function defaultReviewersApi(ctx: ApiContext) {
             },
           },
         )
-        .json<Record<string, unknown>>();
+        .json<RestPullRequestCondition>();
     },
 
     async delete({

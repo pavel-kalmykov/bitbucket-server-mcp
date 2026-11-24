@@ -79,12 +79,12 @@ export function commitsApi(ctx: ApiContext) {
       project,
       repository,
       commitId,
-    }: GetCommitParams): Promise<Record<string, unknown>> {
+    }: GetCommitParams): Promise<Commit> {
       return ctx.http.api
         .get(
           `projects/${resolveProject(ctx, project)}/repos/${repository}/commits/${commitId}`,
         )
-        .json<Record<string, unknown>>();
+        .json<Commit>();
     },
 
     async compare({

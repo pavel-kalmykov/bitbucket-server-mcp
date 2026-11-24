@@ -38,7 +38,7 @@ export function forksApi(ctx: ApiContext) {
       repository,
       name,
       targetProject,
-    }: CreateForkParams): Promise<Record<string, unknown>> {
+    }: CreateForkParams): Promise<RestRepository> {
       const json: Record<string, unknown> = {};
       if (name) json.name = name;
       if (targetProject) json.project = { key: targetProject };
@@ -47,7 +47,7 @@ export function forksApi(ctx: ApiContext) {
         .post(`projects/${resolveProject(ctx, project)}/repos/${repository}`, {
           json,
         })
-        .json<Record<string, unknown>>();
+        .json<RestRepository>();
     },
   };
 }

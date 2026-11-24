@@ -41,7 +41,7 @@ export function projectsApi(ctx: ApiContext) {
       key,
       description,
       public: isPublic,
-    }: CreateProjectParams): Promise<Record<string, unknown>> {
+    }: CreateProjectParams): Promise<RestProject> {
       return ctx.http.api
         .post("projects", {
           json: {
@@ -51,7 +51,7 @@ export function projectsApi(ctx: ApiContext) {
             ...(isPublic !== undefined && { public: isPublic }),
           },
         })
-        .json<Record<string, unknown>>();
+        .json<RestProject>();
     },
 
     async update({
@@ -59,7 +59,7 @@ export function projectsApi(ctx: ApiContext) {
       name,
       description,
       public: isPublic,
-    }: UpdateProjectParams): Promise<Record<string, unknown>> {
+    }: UpdateProjectParams): Promise<RestProject> {
       const json: Record<string, unknown> = {
         ...(name !== undefined && { name }),
         ...(description !== undefined && { description }),
@@ -67,7 +67,7 @@ export function projectsApi(ctx: ApiContext) {
       };
       return ctx.http.api
         .put(`projects/${project}`, { json })
-        .json<Record<string, unknown>>();
+        .json<RestProject>();
     },
 
     async delete({

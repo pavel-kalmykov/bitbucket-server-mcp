@@ -227,14 +227,14 @@ export function repositoriesApi(ctx: ApiContext) {
       name,
       description,
       defaultBranch,
-    }: CreateRepositoryParams): Promise<Record<string, unknown>> {
+    }: CreateRepositoryParams): Promise<RestRepository> {
       const json: Record<string, unknown> = { name };
       if (description) json.description = description;
       if (defaultBranch) json.defaultBranch = defaultBranch;
 
       return ctx.http.api
         .post(`projects/${resolveProject(ctx, project)}/repos`, { json })
-        .json<Record<string, unknown>>();
+        .json<RestRepository>();
     },
 
     async delete({

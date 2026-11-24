@@ -58,10 +58,10 @@ export function commitCommentsApi(ctx: ApiContext) {
       repository,
       commitId,
       text,
-    }: CreateCommitCommentParams): Promise<Record<string, unknown>> {
+    }: CreateCommitCommentParams): Promise<RestComment> {
       return ctx.http.api
         .post(path(project, repository, commitId), { json: { text } })
-        .json<Record<string, unknown>>();
+        .json<RestComment>();
     },
 
     async update({
@@ -71,12 +71,12 @@ export function commitCommentsApi(ctx: ApiContext) {
       commentId,
       text,
       version,
-    }: UpdateCommitCommentParams): Promise<Record<string, unknown>> {
+    }: UpdateCommitCommentParams): Promise<RestComment> {
       return ctx.http.api
         .put(`${path(project, repository, commitId)}/${commentId}`, {
           json: { text, version },
         })
-        .json<Record<string, unknown>>();
+        .json<RestComment>();
     },
 
     async delete({

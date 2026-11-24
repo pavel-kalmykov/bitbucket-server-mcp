@@ -51,16 +51,12 @@ export function tagsApi(ctx: ApiContext) {
       );
     },
 
-    async get({
-      project,
-      repository,
-      name,
-    }: GetTagParams): Promise<Record<string, unknown>> {
+    async get({ project, repository, name }: GetTagParams): Promise<RestTag> {
       return ctx.http.api
         .get(
           `projects/${resolveProject(ctx, project)}/repos/${repository}/tags/${name}`,
         )
-        .json<Record<string, unknown>>();
+        .json<RestTag>();
     },
 
     async create({
@@ -69,13 +65,13 @@ export function tagsApi(ctx: ApiContext) {
       name,
       startPoint,
       message,
-    }: CreateTagParams): Promise<Record<string, unknown>> {
+    }: CreateTagParams): Promise<RestTag> {
       return ctx.http.api
         .post(
           `projects/${resolveProject(ctx, project)}/repos/${repository}/tags`,
           { json: { name: `refs/tags/${name}`, startPoint, message } },
         )
-        .json<Record<string, unknown>>();
+        .json<RestTag>();
     },
 
     async delete({
