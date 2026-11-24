@@ -40,8 +40,15 @@ export function startParam() {
  * the raw API response; otherwise pass comma-separated dot paths
  * (e.g. "author.user.name,state").
  */
-export function fieldsHint(defaults: string, take = 3): string {
-  const example = defaults.split(",").slice(0, take).join(",");
+export function fieldsHint(
+  defaults: string | readonly string[],
+  take = 3,
+): string {
+  const example = (
+    typeof defaults === "string" ? defaults.split(",") : [...defaults]
+  )
+    .slice(0, take)
+    .join(",");
   return `Supports custom field selection via the \`fields\` param (\`'*all'\` for full raw response, \`'${example}'\` for a custom subset).`;
 }
 

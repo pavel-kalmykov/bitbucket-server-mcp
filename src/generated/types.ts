@@ -45,6 +45,7 @@ export type RestSecretScanningAllowlistRule =
 export type RestPullRequestMergeability =
   components["schemas"]["RestPullRequestMergeability"];
 export type RestSshKey = components["schemas"]["RestSshKey"];
+export type RestGpgKey = components["schemas"]["RestGpgKey"];
 
 // Deployments
 export type Deployment = components["schemas"]["RestDeployment"];
