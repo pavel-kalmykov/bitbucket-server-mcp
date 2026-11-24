@@ -115,13 +115,15 @@ from outside the server:
 - **`bbs` CLI binary.** The second consumer, and the one that proves the client
   is reusable. It needs a real argument parser and `--help`.
 - **Consumer-facing Agent Skill**, once the client surface settles.
-- **Typed domain returns.** List rows are typed by the generated schemas
-  (`Paginated<RestBranch>` and friends). Still raw: the 27 write/read
-  operations answering `Record<string, unknown>` and the 29
-  `json<Record<string, unknown>>` parses behind them. The generated types are
-  all-optional and encode no nullability, so they carry field names and
-  compile-time drift detection, not runtime guarantees; the zod envelope
-  validation stays the trust boundary.
+- **Typed domain returns.** List rows and 24 of the 27 operation responses
+  are typed by the generated schemas (`Paginated<RestBranch>` and friends).
+  The 3 raw spots stay raw on purpose (branchmodel, build-summaries, hook
+  settings: no real schema in the spec). Curated field paths stay plain
+  strings: prototype with template-literal path types failed 12 of 20
+  defaults that are correct in production (the spec drifts from real server
+  shapes, e.g. the spec has `author.name` where the server nests
+  `author.user.name`), and literal-union extras still compile with a typo,
+  so drift detection stays with the E2E suite, not `tsc`.
 - **Iterable pagination.** A `list` answers with one page and the caller walks
   it with `limit` and `start`. An async iterator, the way `octokit.paginate`
   and Stripe's `autoPagingEach` work, is what a JS consumer expects.
